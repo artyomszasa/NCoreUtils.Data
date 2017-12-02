@@ -63,7 +63,7 @@ namespace NCoreUtils.Linq
             return await asyncProvider.ExecuteAsync<bool>(Expression.Call(
                 null,
                 GetMethodInfo(Queryable.Any, source),
-                Expression.Constant(source)
+                source.Expression
             ), cancellationToken);
         }
 
@@ -86,7 +86,7 @@ namespace NCoreUtils.Linq
             return await asyncProvider.ExecuteAsync<bool>(Expression.Call(
                 null,
                 GetMethodInfo(Queryable.Contains, source, item),
-                Expression.Constant(source),
+                source.Expression,
                 Expression.Constant(item)
             ), cancellationToken);
         }
@@ -101,7 +101,7 @@ namespace NCoreUtils.Linq
             return await asyncProvider.ExecuteAsync<int>(Expression.Call(
                 null,
                 GetMethodInfo(Queryable.Count, source),
-                Expression.Constant(source)
+                source.Expression
             ), cancellationToken);
         }
 
@@ -123,7 +123,7 @@ namespace NCoreUtils.Linq
             return await asyncProvider.ExecuteAsync<T>(Expression.Call(
                 null,
                 GetMethodInfo(Queryable.ElementAt, source, index),
-                Expression.Constant(source),
+                source.Expression,
                 Expression.Constant(index)
             ), cancellationToken);
         }
@@ -138,7 +138,7 @@ namespace NCoreUtils.Linq
             return await asyncProvider.ExecuteAsync<T>(Expression.Call(
                 null,
                 GetMethodInfo(Queryable.ElementAtOrDefault, source, index),
-                Expression.Constant(source),
+                source.Expression,
                 Expression.Constant(index)
             ), cancellationToken);
         }
@@ -153,7 +153,7 @@ namespace NCoreUtils.Linq
             return await asyncProvider.ExecuteAsync<T>(Expression.Call(
                 null,
                 GetMethodInfo(Queryable.First, source),
-                Expression.Constant(source)
+                source.Expression
             ), cancellationToken);
         }
 
@@ -167,7 +167,7 @@ namespace NCoreUtils.Linq
             return await asyncProvider.ExecuteAsync<T>(Expression.Call(
                 null,
                 GetMethodInfo(Queryable.FirstOrDefault, source),
-                Expression.Constant(source)
+                source.Expression
             ), cancellationToken);
         }
 
@@ -199,7 +199,7 @@ namespace NCoreUtils.Linq
             return await asyncProvider.ExecuteAsync<long>(Expression.Call(
                 null,
                 GetMethodInfo(Queryable.LongCount, source),
-                Expression.Constant(source)
+                source.Expression
             ), cancellationToken);
         }
 
@@ -222,7 +222,7 @@ namespace NCoreUtils.Linq
             return await asyncProvider.ExecuteAsync<T>(Expression.Call(
                 null,
                 GetMethodInfo(Queryable.Single, source),
-                Expression.Constant(source)
+                source.Expression
             ), cancellationToken);
         }
 
@@ -236,7 +236,7 @@ namespace NCoreUtils.Linq
             return await asyncProvider.ExecuteAsync<T>(Expression.Call(
                 null,
                 GetMethodInfo(Queryable.SingleOrDefault, source),
-                Expression.Constant(source)
+                source.Expression
             ), cancellationToken);
         }
 
