@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <VersionPrefix>1.1.0</VersionPrefix>
+    <!-- NuGet -->
+    <PackageId>NCoreUtils.Data</PackageId>
+    <Title>$(PackageId)</Title>
+    <Authors>Artyom Antyipin</Authors>
+    <Description>Data entity repository generic functinality.</Description>
+    <Copyright>Artyom Antyipin</Copyright>
+    <RepositoryUrl>https://github.com/artyomszasa/NCoreUtils.Data.git</RepositoryUrl>
+    <!-- Assembly Info -->
+    <Product>NCoreUtils</Product>
+    <AssemblyName>$(PackageId)</AssemblyName>
+    <AssemblyTitle>$(AssemblyName)</AssemblyTitle>
+    <!-- Compilation -->
+    <OutputType>Library</OutputType>
+    <DebugType>portable</DebugType>
+    <!-- <GenerateDocumentationFile>true</GenerateDocumentationFile> -->
+    <!-- <TreatWarningsAsErrors>true</TreatWarningsAsErrors> -->
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\NCoreUtils.Data.Abstractions\NCoreUtils.Data.Abstractions.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="2.0.0" />
+    <PackageReference Include="System.Runtime.Loader" Version="4.3.0" />
+  </ItemGroup>
+</Project>
