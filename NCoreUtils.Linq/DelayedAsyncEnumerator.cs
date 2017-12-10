@@ -27,4 +27,10 @@ namespace NCoreUtils.Linq
             return await _source.MoveNext(cancellationToken);
         }
     }
+
+    public static class DelayedAsyncEnumerator
+    {
+        public static IAsyncEnumerator<T> Delay<T>(Func<CancellationToken, Task<IAsyncEnumerator<T>>> factory)
+            => new DelayedAsyncEnumerator<T>(factory);
+    }
 }

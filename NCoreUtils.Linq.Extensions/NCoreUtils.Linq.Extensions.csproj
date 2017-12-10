@@ -1,12 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <VersionPrefix>1.1.0</VersionPrefix>
+    <RootNamespace>NCoreUtils.Linq</RootNamespace>
+    <VersionPrefix>1.0.1</VersionPrefix>
     <!-- NuGet -->
-    <PackageId>NCoreUtils.Data</PackageId>
+    <PackageId>NCoreUtils.Linq.Extensions</PackageId>
     <Title>$(PackageId)</Title>
     <Authors>Artyom Antyipin</Authors>
-    <Description>Data entity repository generic functinality.</Description>
+    <Description>Linq extensions.</Description>
     <Copyright>Artyom Antyipin</Copyright>
     <RepositoryUrl>https://github.com/artyomszasa/NCoreUtils.Data.git</RepositoryUrl>
     <!-- Assembly Info -->
@@ -17,14 +18,9 @@
     <OutputType>Library</OutputType>
     <DebugType>portable</DebugType>
     <!-- <GenerateDocumentationFile>true</GenerateDocumentationFile> -->
-    <!-- <TreatWarningsAsErrors>true</TreatWarningsAsErrors> -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\NCoreUtils.Data.Abstractions\NCoreUtils.Data.Abstractions.csproj" />
-    <ProjectReference Include="..\NCoreUtils.Linq.Extensions\NCoreUtils.Linq.Extensions.csproj" />
-  </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="2.0.0" />
-    <PackageReference Include="System.Runtime.Loader" Version="4.3.0" />
+    <PackageReference Include="NcoreUtils.Maybe" Version="1.0.1" />
   </ItemGroup>
 </Project>
