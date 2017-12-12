@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <VersionPrefix>1.1.1</VersionPrefix>
+    <VersionPrefix>1.1.2</VersionPrefix>
     <!-- NuGet -->
     <PackageId>NCoreUtils.Data.Abstractions</PackageId>
     <Title>$(PackageId)</Title>
@@ -20,6 +20,10 @@
     <!-- <TreatWarningsAsErrors>true</TreatWarningsAsErrors> -->
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="NCoreUtils.Maybe" Version="1.0.1" />
     <PackageReference Include="System.Collections.Immutable" Version="1.4.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\NCoreUtils.Linq.Extensions\NCoreUtils.Linq.Extensions.csproj" />
   </ItemGroup>
 </Project>
