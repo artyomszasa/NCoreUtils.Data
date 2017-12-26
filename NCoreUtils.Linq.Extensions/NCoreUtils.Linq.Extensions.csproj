@@ -2,7 +2,7 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <RootNamespace>NCoreUtils.Linq</RootNamespace>
-    <VersionPrefix>1.0.1</VersionPrefix>
+    <VersionPrefix>1.0.2</VersionPrefix>
     <!-- NuGet -->
     <PackageId>NCoreUtils.Linq.Extensions</PackageId>
     <Title>$(PackageId)</Title>
@@ -22,5 +22,6 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="NcoreUtils.Maybe" Version="1.0.1" />
+    <PackageReference Include="System.Interactive.Async" Version="3.1.1" />
   </ItemGroup>
 </Project>
