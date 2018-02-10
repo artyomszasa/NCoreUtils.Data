@@ -5,6 +5,9 @@ using NCoreUtils.Data.Events;
 
 namespace NCoreUtils.Data
 {
+    /// <summary>
+    ///
+    /// </summary>
     [ImplicitDataEventObserver]
     public class TimeTrackingObserver : DataEventObserver
     {

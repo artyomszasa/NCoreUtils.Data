@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <VersionPrefix>1.1.2</VersionPrefix>
+    <VersionPrefix>1.1.3</VersionPrefix>
     <!-- NuGet -->
     <PackageId>NCoreUtils.Data</PackageId>
     <Title>$(PackageId)</Title>
@@ -16,7 +16,7 @@
     <!-- Compilation -->
     <OutputType>Library</OutputType>
     <DebugType>portable</DebugType>
-    <!-- <GenerateDocumentationFile>true</GenerateDocumentationFile> -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <!-- <TreatWarningsAsErrors>true</TreatWarningsAsErrors> -->
   </PropertyGroup>
   <ItemGroup>
