@@ -366,5 +366,179 @@ namespace NCoreUtils.Linq
                 return asyncProvider.ExecuteAsync<T>(source.Expression);
             });
         }
+
+        public static async Task<int> SumAsync(this IQueryable<int> source, CancellationToken cancellationToken)
+        {
+            if (source == null)
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
+            var asyncProvider = await source.Provider.GetAsync(cancellationToken);
+            return await asyncProvider.ExecuteAsync<int>(Expression.Call(
+                null,
+                GetMethodInfo(Queryable.Sum, source),
+                source.Expression
+            ), cancellationToken);
+        }
+
+        public static async Task<int> SumAsync<T>(this IQueryable<T> source, Expression<Func<T, int>> selector, CancellationToken cancellationToken)
+        {
+            if (source == null)
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
+            var asyncProvider = await source.Provider.GetAsync(cancellationToken);
+            return await asyncProvider.ExecuteAsync<int>(Expression.Call(
+                null,
+                GetMethodInfo(Queryable.Sum, source, selector),
+                source.Expression,
+                Expression.Quote(selector)
+            ), cancellationToken);
+        }
+
+        public static async Task<long> SumAsync(this IQueryable<long> source, CancellationToken cancellationToken)
+        {
+            if (source == null)
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
+            var asyncProvider = await source.Provider.GetAsync(cancellationToken);
+            return await asyncProvider.ExecuteAsync<long>(Expression.Call(
+                null,
+                GetMethodInfo(Queryable.Sum, source),
+                source.Expression
+            ), cancellationToken);
+        }
+
+        public static async Task<long> SumAsync<T>(this IQueryable<T> source, Expression<Func<T, long>> selector, CancellationToken cancellationToken)
+        {
+            if (source == null)
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
+            var asyncProvider = await source.Provider.GetAsync(cancellationToken);
+            return await asyncProvider.ExecuteAsync<long>(Expression.Call(
+                null,
+                GetMethodInfo(Queryable.Sum, source, selector),
+                source.Expression,
+                Expression.Quote(selector)
+            ), cancellationToken);
+        }
+
+        public static async Task<decimal> SumAsync(this IQueryable<decimal> source, CancellationToken cancellationToken)
+        {
+            if (source == null)
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
+            var asyncProvider = await source.Provider.GetAsync(cancellationToken);
+            return await asyncProvider.ExecuteAsync<decimal>(Expression.Call(
+                null,
+                GetMethodInfo(Queryable.Sum, source),
+                source.Expression
+            ), cancellationToken);
+        }
+
+        public static async Task<decimal> SumAsync<T>(this IQueryable<T> source, Expression<Func<T, decimal>> selector, CancellationToken cancellationToken)
+        {
+            if (source == null)
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
+            var asyncProvider = await source.Provider.GetAsync(cancellationToken);
+            return await asyncProvider.ExecuteAsync<decimal>(Expression.Call(
+                null,
+                GetMethodInfo(Queryable.Sum, source, selector),
+                source.Expression,
+                Expression.Quote(selector)
+            ), cancellationToken);
+        }
+
+        public static async Task<int?> SumAsync(this IQueryable<int?> source, CancellationToken cancellationToken)
+        {
+            if (source == null)
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
+            var asyncProvider = await source.Provider.GetAsync(cancellationToken);
+            return await asyncProvider.ExecuteAsync<int?>(Expression.Call(
+                null,
+                GetMethodInfo(Queryable.Sum, source),
+                source.Expression
+            ), cancellationToken);
+        }
+
+        public static async Task<int?> SumAsync<T>(this IQueryable<T> source, Expression<Func<T, int?>> selector, CancellationToken cancellationToken)
+        {
+            if (source == null)
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
+            var asyncProvider = await source.Provider.GetAsync(cancellationToken);
+            return await asyncProvider.ExecuteAsync<int?>(Expression.Call(
+                null,
+                GetMethodInfo(Queryable.Sum, source, selector),
+                source.Expression,
+                Expression.Quote(selector)
+            ), cancellationToken);
+        }
+
+        public static async Task<long?> SumAsync(this IQueryable<long?> source, CancellationToken cancellationToken)
+        {
+            if (source == null)
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
+            var asyncProvider = await source.Provider.GetAsync(cancellationToken);
+            return await asyncProvider.ExecuteAsync<long?>(Expression.Call(
+                null,
+                GetMethodInfo(Queryable.Sum, source),
+                source.Expression
+            ), cancellationToken);
+        }
+
+        public static async Task<long?> SumAsync<T>(this IQueryable<T> source, Expression<Func<T, long?>> selector, CancellationToken cancellationToken)
+        {
+            if (source == null)
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
+            var asyncProvider = await source.Provider.GetAsync(cancellationToken);
+            return await asyncProvider.ExecuteAsync<long>(Expression.Call(
+                null,
+                GetMethodInfo(Queryable.Sum, source, selector),
+                source.Expression,
+                Expression.Quote(selector)
+            ), cancellationToken);
+        }
+
+        public static async Task<decimal?> SumAsync(this IQueryable<decimal?> source, CancellationToken cancellationToken)
+        {
+            if (source == null)
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
+            var asyncProvider = await source.Provider.GetAsync(cancellationToken);
+            return await asyncProvider.ExecuteAsync<decimal?>(Expression.Call(
+                null,
+                GetMethodInfo(Queryable.Sum, source),
+                source.Expression
+            ), cancellationToken);
+        }
+
+        public static async Task<decimal?> SumAsync<T>(this IQueryable<T> source, Expression<Func<T, decimal?>> selector, CancellationToken cancellationToken)
+        {
+            if (source == null)
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
+            var asyncProvider = await source.Provider.GetAsync(cancellationToken);
+            return await asyncProvider.ExecuteAsync<decimal?>(Expression.Call(
+                null,
+                GetMethodInfo(Queryable.Sum, source, selector),
+                source.Expression,
+                Expression.Quote(selector)
+            ), cancellationToken);
+        }
     }
 }
