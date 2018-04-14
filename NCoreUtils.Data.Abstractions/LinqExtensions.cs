@@ -27,18 +27,27 @@ namespace NCoreUtils.Data
                         var index = Array.FindIndex(mapping.InterfaceMethods, m => m.Equals(propertyInfo.GetMethod));
                         var implementationMethod = mapping.TargetMethods[index];
                         propertyInfo = dynamicType.GetProperties(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.FlattenHierarchy)
-                            .First(p => p.CanRead && null != p.GetMethod && p.GetMethod.Equals(implementationMethod));
-                        var attribute = propertyInfo.GetCustomAttribute<TargetPropertyAttribute>();
+                            .FirstOrDefault(p => p.CanRead && null != p.GetMethod && p.GetMethod.Equals(implementationMethod));
+                        TargetPropertyAttribute attribute;
+                        if (null == propertyInfo)
+                        {
+                            // In F# no implementation property is created --> TargetPropertyAttribute placed on method
+                            attribute = implementationMethod.GetCustomAttribute<TargetPropertyAttribute>();
+                        }
+                        else
+                        {
+                            attribute = propertyInfo.GetCustomAttribute<TargetPropertyAttribute>();
+                        }
                         if (null != attribute)
                         {
-                            var targetPropertyInfo = propertyInfo.DeclaringType.GetProperty(attribute.PropertyName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                            var targetPropertyInfo = dynamicType.GetProperty(attribute.PropertyName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
                             if (null == targetPropertyInfo)
                             {
-                                throw new InvalidOperationException($"{propertyInfo.DeclaringType.FullName} has no property with name {attribute.PropertyName}.");
+                                throw new InvalidOperationException($"{dynamicType.FullName} has no property with name {attribute.PropertyName}.");
                             }
-                            if (propertyInfo.DeclaringType.IsAssignableFrom(targetPropertyInfo.PropertyType))
+                            if (!node.Type.IsAssignableFrom(targetPropertyInfo.PropertyType))
                             {
-                                throw new InvalidOperationException($"{propertyInfo.DeclaringType.FullName}.{attribute.PropertyName} is not compatible with {propertyInfo.DeclaringType.FullName}.{propertyInfo.Name}.");
+                                throw new InvalidOperationException($"{dynamicType.FullName}.{attribute.PropertyName} is not compatible with {dynamicType.FullName}.{propertyInfo.Name}.");
                             }
                             return Expression.Property(base.Visit(realExpression), targetPropertyInfo);
                         }
@@ -64,7 +73,7 @@ namespace NCoreUtils.Data
                         {
                             throw new InvalidOperationException($"{ownProperty.DeclaringType.FullName} has no property with name {attribute.PropertyName}.");
                         }
-                        if (ownProperty.DeclaringType.IsAssignableFrom(targetPropertyInfo.PropertyType))
+                        if (!node.Type.IsAssignableFrom(targetPropertyInfo.PropertyType))
                         {
                             throw new InvalidOperationException($"{ownProperty.DeclaringType.FullName}.{attribute.PropertyName} is not compatible with {ownProperty.DeclaringType.FullName}.{ownProperty.Name}.");
                         }

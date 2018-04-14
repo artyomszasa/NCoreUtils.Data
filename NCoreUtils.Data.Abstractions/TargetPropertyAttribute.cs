@@ -6,7 +6,7 @@ namespace NCoreUtils.Data
     /// Allows specifying "real" property then some interface defined property has explicit implementation. In this
     /// case target property is used when creating queries.
     /// </summary>
-    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = false)]
+    [AttributeUsage(AttributeTargets.Property | AttributeTargets.Method, AllowMultiple = false, Inherited = false)]
     public class TargetPropertyAttribute : Attribute
     {
         /// <summary>
