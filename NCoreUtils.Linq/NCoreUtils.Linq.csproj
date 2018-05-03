@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;net452</TargetFrameworks>
-    <VersionPrefix>1.0.4</VersionPrefix>
+    <VersionPrefix>1.0.5</VersionPrefix>
     <!-- NuGet -->
     <PackageId>NCoreUtils.Linq</PackageId>
     <Title>$(PackageId)</Title>
@@ -9,7 +9,7 @@
     <Description>Linq asynchronous extesnions.</Description>
     <Copyright>Artyom Antyipin</Copyright>
     <RepositoryUrl>https://github.com/artyomszasa/NCoreUtils.Data.git</RepositoryUrl>
-    <PackageReleaseNotes>Added .NET 4.5.2 support.</PackageReleaseNotes>
+    <PackageReleaseNotes>Added some IEnumerator extensions.</PackageReleaseNotes>
     <!-- Assembly Info -->
     <Product>NCoreUtils</Product>
     <AssemblyName>$(PackageId)</AssemblyName>
