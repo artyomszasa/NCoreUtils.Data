@@ -2,7 +2,7 @@
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;net452</TargetFrameworks>
     <RootNamespace>NCoreUtils.Linq</RootNamespace>
-    <VersionPrefix>1.0.4</VersionPrefix>
+    <VersionPrefix>1.0.5</VersionPrefix>
     <!-- NuGet -->
     <PackageId>NCoreUtils.Linq.Extensions</PackageId>
     <Title>$(PackageId)</Title>
@@ -10,7 +10,7 @@
     <Description>Linq extensions.</Description>
     <Copyright>Artyom Antyipin</Copyright>
     <RepositoryUrl>https://github.com/artyomszasa/NCoreUtils.Data.git</RepositoryUrl>
-    <PackageReleaseNotes>Added .NET 4.5.2 support.</PackageReleaseNotes>
+    <PackageReleaseNotes>Added expression splicing.</PackageReleaseNotes>
     <!-- Assembly Info -->
     <Product>NCoreUtils</Product>
     <AssemblyName>$(PackageId)</AssemblyName>
@@ -30,7 +30,7 @@
     <AssemblySearchPaths Condition="'$(BaseFrameworkPathOverrideForMono)' != ''">$(FrameworkPathOverride)/Facades;$(AssemblySearchPaths)</AssemblySearchPaths>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="NcoreUtils.Maybe" Version="1.0.4" />
+    <PackageReference Include="NCoreUtils.Maybe" Version="1.0.4" />
     <PackageReference Include="System.Interactive.Async" Version="3.1.1" />
   </ItemGroup>
 </Project>

@@ -1,4 +1,6 @@
+using System;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -28,6 +30,42 @@ namespace NCoreUtils.Linq
             }
         }
 
+        sealed class SpliceInliner : ExpressionVisitor
+        {
+            public static SpliceInliner Instance { get; } = new SpliceInliner();
+
+            protected override Expression VisitMethodCall(MethodCallExpression node)
+            {
+                if (node.Method.DeclaringType == typeof(Splice))
+                {
+                    if (node.Method.Name == nameof(Splice.Value))
+                    {
+                        if (node.Arguments[0].TryExtractConstant(out var cexpr))
+                        {
+                            return Visit((Expression)cexpr);
+                        }
+                        else
+                        {
+                            throw new InvalidOperationException("Splice value must be constant extractable expression.");
+                        }
+                    }
+                    if (node.Method.Name == nameof(Splice.Apply))
+                    {
+                        if (!node.Arguments[0].TryExtractConstant(out var boxedLambda) || !(boxedLambda is LambdaExpression lambda))
+                        {
+                            throw new InvalidOperationException("Splice applicant must be constant extractable lambda expression.");
+                        }
+                        var inlined = node.Arguments
+                            .Skip(1)
+                            .Zip(lambda.Parameters, (arg, param) => new { Argument = arg, Parameter = param })
+                            .Aggregate(lambda.Body, (expr, subs) => expr.SubstituteParameter(subs.Parameter, subs.Argument));
+                        return Visit(inlined);
+                    }
+                }
+                return base.VisitMethodCall(node);
+            }
+        }
+
         /// <summary>
         /// Replaces all <paramref name="parameter" /> occurrences within the source expression with the specified
         /// expression.
@@ -50,6 +88,11 @@ namespace NCoreUtils.Linq
             }
             var visitor = new ParameterSubstitution(parameter, replacement);
             return (T)visitor.Visit(expression);
+        }
+
+        public static T InlineSplices<T>(this T expression) where T : Expression
+        {
+            return (T)SpliceInliner.Instance.Visit(expression);
         }
 
         static Maybe<object> MaybeExtractConstantImpl(Expression source)

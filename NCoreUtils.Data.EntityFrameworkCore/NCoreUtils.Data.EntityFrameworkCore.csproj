@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <VersionPrefix>1.2.0</VersionPrefix>
+    <VersionPrefix>1.2.1</VersionPrefix>
     <!-- NuGet -->
     <PackageId>NCoreUtils.Data.EntityFrameworkCore</PackageId>
     <Title>$(PackageId)</Title>
@@ -25,6 +25,6 @@
     <ProjectReference Include="..\NCoreUtils.Linq.Abstractions\NCoreUtils.Linq.Abstractions.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="2.1.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="2.1.1" />
   </ItemGroup>
 </Project>
