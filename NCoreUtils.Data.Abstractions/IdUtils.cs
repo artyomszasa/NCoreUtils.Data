@@ -15,6 +15,11 @@ namespace NCoreUtils.Data
     /// </summary>
     public static class IdUtils
     {
+        sealed class IdBox<T>
+        {
+            public T Value;
+        }
+
         static class GenericIdCheck<T>
         {
             static readonly Func<T, bool> _check;
@@ -207,11 +212,16 @@ namespace NCoreUtils.Data
             where TEntity : IHasId<TId>
         {
             Expression<Func<TEntity, TId>> idAccess = e => e.Id;
+            // see: https://github.com/aspnet/EntityFrameworkCore/issues/8909
+            // see: https://github.com/aspnet/EntityFrameworkCore/issues/10535
+            // instead of constant member access expression must be generated to avoid cache issues.
+            var idBox = new IdBox<TId> { Value = value };
+            var idExpression = Expression.Field(Expression.Constant(idBox), nameof(IdBox<int>.Value));
             var expressionParameter = Expression.Parameter(typeof(TEntity));
             return LinqExtensions.ReplaceExplicitProperties(Expression.Lambda<Func<TEntity, bool>>(
                 Expression.Equal(
                     idAccess.Body.SubstituteParameter(idAccess.Parameters[0], expressionParameter),
-                    Expression.Constant(value)
+                    idExpression
                 ),
                 expressionParameter
             ));

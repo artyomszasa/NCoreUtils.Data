@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <VersionPrefix>1.2.1</VersionPrefix>
+    <VersionPrefix>1.2.2</VersionPrefix>
     <!-- NuGet -->
     <PackageId>NCoreUtils.Data</PackageId>
     <Title>$(PackageId)</Title>
@@ -9,7 +9,7 @@
     <Description>Data entity repository generic functinality.</Description>
     <Copyright>Artyom Antyipin</Copyright>
     <RepositoryUrl>https://github.com/artyomszasa/NCoreUtils.Data.git</RepositoryUrl>
-    <PackageReleaseNotes>NuGet dependencies version bump.</PackageReleaseNotes>
+    <PackageReleaseNotes>EF Core memory leak fix.</PackageReleaseNotes>
     <!-- Assembly Info -->
     <Product>NCoreUtils</Product>
     <AssemblyName>$(PackageId)</AssemblyName>

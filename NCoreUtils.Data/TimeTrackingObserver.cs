@@ -6,11 +6,17 @@ using NCoreUtils.Data.Events;
 namespace NCoreUtils.Data
 {
     /// <summary>
-    ///
+    /// Performes automatic field updates on time tracking fields defined by <c>IHasTimetracking</c>.
     /// </summary>
     [ImplicitDataEventObserver]
     public class TimeTrackingObserver : DataEventObserver
     {
+        /// <summary>
+        /// Updates fields defined by <c>IHasTimetracking</c> depending on the actual operation.
+        /// </summary>
+        /// <param name="operation">Actual operation.</param>
+        /// <param name="entity">Target entity.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
         protected override Task HandleAsync(DataOperation operation, object entity, CancellationToken cancellationToken)
         {
             if (operation == DataOperation.Insert)
