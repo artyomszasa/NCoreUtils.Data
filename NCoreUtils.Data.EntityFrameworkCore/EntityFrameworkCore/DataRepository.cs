@@ -129,9 +129,16 @@ namespace NCoreUtils.Data.EntityFrameworkCore
             var dbContext = _context.DbContext;
             if (entry.Entity.Id.CompareTo(default(TId)) > 0)
             {
-                var updatedEntry = dbContext.Update(entry.Entity);
-                await PrepareUpdatedEntityAsync(updatedEntry, cancellationToken).ConfigureAwait(false);
-                return updatedEntry;
+                // check whether another instance is already tracked
+                var existentEntry = dbContext.ChangeTracker.Entries<TData>().FirstOrDefault(e => e.Entity.Id.Equals(entry.Entity.Id));
+                if (null == existentEntry)
+                {
+                    var updatedEntry = dbContext.Update(entry.Entity);
+                    await PrepareUpdatedEntityAsync(updatedEntry, cancellationToken).ConfigureAwait(false);
+                    return updatedEntry;
+                }
+                existentEntry.CurrentValues.SetValues(entry.Entity);
+                return existentEntry;
             }
             var addedEntry = await dbContext.AddAsync(entry.Entity, cancellationToken).ConfigureAwait(false);
             await PrepareAddedEntityAsync(addedEntry, cancellationToken);

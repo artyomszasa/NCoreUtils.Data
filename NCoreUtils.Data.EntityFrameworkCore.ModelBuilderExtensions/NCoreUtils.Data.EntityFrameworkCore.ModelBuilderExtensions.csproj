@@ -1,15 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <VersionPrefix>1.2.3</VersionPrefix>
+    <RootNamespace>NCoreUtils.Data</RootNamespace>
+    <VersionPrefix>1.2.2</VersionPrefix>
     <!-- NuGet -->
-    <PackageId>NCoreUtils.Data.EntityFrameworkCore</PackageId>
+    <PackageId>NCoreUtils.Data.EntityFrameworkCore.ModelBuilderExtensions</PackageId>
     <Title>$(PackageId)</Title>
     <Authors>Artyom Antyipin</Authors>
-    <Description>EntityFrameworkCore based data entity repository implementation.</Description>
+    <Description>Model builder extensions for EntityFrameworkCore.</Description>
     <Copyright>Artyom Antyipin</Copyright>
     <RepositoryUrl>https://github.com/artyomszasa/NCoreUtils.Data.git</RepositoryUrl>
-    <PackageReleaseNotes>Fix handling already tracked entities.</PackageReleaseNotes>
     <!-- Assembly Info -->
     <Product>NCoreUtils</Product>
     <AssemblyName>$(PackageId)</AssemblyName>
@@ -21,10 +21,9 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\NCoreUtils.Data.Abstractions\NCoreUtils.Data.Abstractions.csproj" />
-    <ProjectReference Include="..\NCoreUtils.Linq.Abstractions\NCoreUtils.Linq.Abstractions.csproj" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="2.1.1" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="2.1.1" />
+    <ProjectReference Include="..\NCoreUtils.Data.Abstractions\NCoreUtils.Data.Abstractions.csproj" />
   </ItemGroup>
 </Project>
