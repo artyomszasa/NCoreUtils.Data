@@ -177,7 +177,7 @@ namespace NCoreUtils.Data
                 return false;
             }
             property = prop;
-            return false;
+            return true;
         }
 
         /// <summary>
@@ -200,7 +200,7 @@ namespace NCoreUtils.Data
                 return true;
             }
             property = default(PropertyInfo);
-            return true;
+            return false;
         }
 
         /// <summary>

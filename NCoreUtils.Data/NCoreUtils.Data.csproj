@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <VersionPrefix>1.2.2</VersionPrefix>
+    <VersionPrefix>1.3.0</VersionPrefix>
     <!-- NuGet -->
     <PackageId>NCoreUtils.Data</PackageId>
     <Title>$(PackageId)</Title>
@@ -9,7 +9,7 @@
     <Description>Data entity repository generic functinality.</Description>
     <Copyright>Artyom Antyipin</Copyright>
     <RepositoryUrl>https://github.com/artyomszasa/NCoreUtils.Data.git</RepositoryUrl>
-    <PackageReleaseNotes>EF Core memory leak fix.</PackageReleaseNotes>
+    <PackageReleaseNotes>Id name generation support.</PackageReleaseNotes>
     <!-- Assembly Info -->
     <Product>NCoreUtils</Product>
     <AssemblyName>$(PackageId)</AssemblyName>
@@ -22,7 +22,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\NCoreUtils.Data.Abstractions\NCoreUtils.Data.Abstractions.csproj" />
-    <ProjectReference Include="..\NCoreUtils.Linq.Extensions\NCoreUtils.Linq.Extensions.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="2.1.1" />

@@ -12,6 +12,59 @@ namespace NCoreUtils.Data
     /// </summary>
     public static class ExpressionExtensions
     {
+        static Maybe<PropertyInfo> MaybeExtractBodyProperty(this Expression body)
+        {
+            if (body is MemberExpression memberExpression && memberExpression.Member is PropertyInfo propertyInfo)
+            {
+                return propertyInfo.Just();
+            }
+            if (body.NodeType == ExpressionType.Convert)
+            {
+                return ((UnaryExpression)body).Operand.MaybeExtractBodyProperty();
+            }
+            return Maybe.Nothing;
+        }
+
+        /// <summary>
+        /// Extracts property info from the expression.
+        /// </summary>
+        /// <param name="expression">Source expression.</param>
+        /// <returns>Either property info or empty value.</returns>
+        public static Maybe<PropertyInfo> MaybeExtractProperty(this LambdaExpression expression)
+        {
+            if (expression == null)
+            {
+                throw new ArgumentNullException(nameof(expression));
+            }
+            return expression.Body.MaybeExtractBodyProperty();
+            //throw new InvalidOperationException($"Expected property access expression, got: {expression}.");
+        }
+
+        /// <summary>
+        /// Extracts property info from the expression.
+        /// </summary>
+        /// <param name="expression">Source expression.</param>
+        /// <param name="propertyInfo">On success contains extracted property.</param>
+        /// <returns><c>true</c> if property info could be extracted from expression, <c>false</c> otherwise.</returns>
+        public static bool TryExtractProperty(this LambdaExpression expression, out PropertyInfo propertyInfo)
+            => MaybeExtractProperty(expression).TryGetValue(out propertyInfo);
+
+        /// <summary>
+        /// Extracts property info from the expression.
+        /// </summary>
+        /// <param name="expression">Source expression.</param>
+        /// <returns>Extracted property info.</returns>
+        /// <exception cref="System.InvalidOperationException">
+        /// Thrown if property info cannot be extracted from the specified expression.
+        /// </exception>
+        public static PropertyInfo ExtractProperty(this LambdaExpression expression)
+        {
+            if (TryExtractProperty(expression, out var propertyInfo))
+            {
+                return propertyInfo;
+            }
+            throw new InvalidOperationException($"Expected property access expression, got: {expression}.");
+        }
 
         /// <summary>
         /// Extracts query object from expression as nullable value.
