@@ -14,11 +14,14 @@ namespace NCoreUtils.Data
         {
             public Func<IDataEvent, CancellationToken, Task<bool>> Predicate { get; }
 
-            public ExplicitDataEventFilter(IDataEventHandler handler, Func<IDataEvent, CancellationToken, Task<bool>> predicate)
+            public ExplicitDataEventFilter(
+                IDataEventHandler handler,
+                Func<IDataEvent, CancellationToken, Task<bool>> predicate)
                 : base(handler)
                 => Predicate = predicate ?? throw new ArgumentNullException(nameof(predicate));
 
-            protected override Task<bool> IsHandled(IDataEvent @event, CancellationToken cancellationToken) => Predicate(@event, cancellationToken);
+            protected override Task<bool> IsHandled(IDataEvent @event, CancellationToken cancellationToken)
+                => Predicate(@event, cancellationToken);
         }
 
         /// <summary>
@@ -28,7 +31,9 @@ namespace NCoreUtils.Data
         /// <param name="handler">Target handler.</param>
         /// <param name="predicate">Predicate used to filter data events.</param>
         /// <returns>Newly created data event handler.</returns>
-        public static DataEventFilter Filter(IDataEventHandler handler, Func<IDataEvent, CancellationToken, Task<bool>> predicate)
+        public static DataEventFilter Filter(
+            IDataEventHandler handler,
+            Func<IDataEvent, CancellationToken, Task<bool>> predicate)
             => new ExplicitDataEventFilter(handler, predicate);
 
         /// <summary>
@@ -40,7 +45,8 @@ namespace NCoreUtils.Data
         /// Initializes new instance with the specified target handler.
         /// </summary>
         /// <param name="handler">Target handler.</param>
-        protected DataEventFilter(IDataEventHandler handler) => Handler = handler ?? throw new System.ArgumentNullException(nameof(handler));
+        protected DataEventFilter(IDataEventHandler handler)
+            => Handler = handler ?? throw new System.ArgumentNullException(nameof(handler));
 
         /// <summary>
         /// Performes user defined operation for single data repository related data event. Overridden to invoke target

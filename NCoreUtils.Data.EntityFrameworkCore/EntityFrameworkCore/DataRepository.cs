@@ -193,6 +193,14 @@ namespace NCoreUtils.Data.EntityFrameworkCore
             {
                 entry = await AttachNewOrUpdateAsync(entry, cancellationToken);
             }
+            else if (entry.State == EntityState.Added)
+            {
+                await EventHandlers.TriggerInsertAsync(ServiceProvider, this, entry.Entity, cancellationToken);
+            }
+            else if (entry.State == EntityState.Modified)
+            {
+                await EventHandlers.TriggerUpdateAsync(ServiceProvider, this, entry.Entity, cancellationToken);
+            }
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             return entry.Entity;
         }

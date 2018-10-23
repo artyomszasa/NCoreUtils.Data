@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
 
 namespace NCoreUtils.Data.EntityFrameworkCore
@@ -28,10 +29,15 @@ namespace NCoreUtils.Data.EntityFrameworkCore
 
         sealed class NothingByIdNameExpressionBuilder : ByIdNameExpressionBuilder
         {
-            internal static NothingByIdNameExpressionBuilder Instance { get; } = new NothingByIdNameExpressionBuilder();
+            internal static NothingByIdNameExpressionBuilder Instance { [ExcludeFromCodeCoverage] get; }
 
+            [ExcludeFromCodeCoverage]
+            static NothingByIdNameExpressionBuilder() => Instance = new NothingByIdNameExpressionBuilder();
+
+            [ExcludeFromCodeCoverage]
             NothingByIdNameExpressionBuilder() { }
 
+            [ExcludeFromCodeCoverage]
             protected override Maybe<Expression> MaybeGetExpression() => Maybe.Nothing;
         }
 

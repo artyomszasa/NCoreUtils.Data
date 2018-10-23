@@ -80,6 +80,13 @@ namespace NCoreUtils.Data.IdNameGeneration
             }
             else
             {
+                if (null == indexValues)
+                {
+                    throw new ArgumentNullException(
+                        nameof(indexValues),
+                        $"Following index values should be specified: {String.Join(",", idNameDescription.AdditionalIndexProperties.Select(p => p.Name))}"
+                    );
+                }
                 var eArg = Expression.Parameter(typeof(T));
                 var predicates = new List<Expression>(idNameDescription.AdditionalIndexProperties.Length);
                 var props = indexValues.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.FlattenHierarchy);

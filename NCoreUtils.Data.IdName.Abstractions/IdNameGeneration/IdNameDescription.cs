@@ -45,7 +45,7 @@ namespace NCoreUtils.Data.IdNameGeneration
             PropertyInfo nameSourceProperty,
             IStringDecomposer decomposer,
             PropertyInfo[] additionalIndexProperties)
-            : this(idNameProperty, nameSourceProperty, decomposer, ToArray(additionalIndexProperties))
+            : this(idNameProperty, nameSourceProperty, decomposer, (IEnumerable<PropertyInfo>)additionalIndexProperties)
         { }
     }
 }

@@ -13,7 +13,14 @@ namespace NCoreUtils.Data
             builder.Entity<Item>(b =>
             {
                 b.HasKey(e => e.Id);
-                b.HasIdName(e => e.IdName, e => e.Name);
+                b.HasIdName(e => e.Name);
+                b.Property(e => e.Name).HasMaxLength(320).IsUnicode(true).IsRequired(true);
+            });
+
+            builder.Entity<Item2>(b =>
+            {
+                b.HasKey(e => e.Id);
+                b.HasIdName(e => e.Name, e => e.ForeignId);
                 b.Property(e => e.Name).HasMaxLength(320).IsUnicode(true).IsRequired(true);
             });
 

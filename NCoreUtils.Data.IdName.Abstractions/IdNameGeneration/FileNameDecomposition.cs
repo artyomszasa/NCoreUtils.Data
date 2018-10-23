@@ -17,6 +17,10 @@ namespace NCoreUtils.Data.IdNameGeneration
 
         public FileNameDecomposition(string input)
         {
+            if (input == null)
+            {
+                throw new ArgumentNullException(nameof(input));
+            }
             var extensionIndex = input.LastIndexOf('.');
             if (-1 == extensionIndex)
             {

@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using Microsoft.EntityFrameworkCore;
 
 namespace NCoreUtils.Data.IdNameGeneration
@@ -9,9 +11,8 @@ namespace NCoreUtils.Data.IdNameGeneration
     public class IdNameGenerationInitialization
     {
         static readonly object _sync = new object();
-        // static readonly ConcurrentDictionary<Type, MethodInfo> _initializedFunctions = new ConcurrentDictionary<Type, MethodInfo>();
 
-        static volatile MethodInfo _methodInfo = null;
+        static readonly ConcurrentDictionary<string, MethodInfo> _initializedFunctions = new ConcurrentDictionary<string, MethodInfo>();
 
         readonly DbContext _dbContext;
 
@@ -19,7 +20,7 @@ namespace NCoreUtils.Data.IdNameGeneration
 
         public IdNameGenerationInitialization(DbContext dbContext, IStoredProcedureGenerator generator = null)
         {
-            _dbContext = dbContext;
+            _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
             if (null == generator)
             {
                 if (!BuiltInStoredProcedureGenerators.TryGetGenerator(dbContext.Database.ProviderName, out generator))
@@ -30,49 +31,37 @@ namespace NCoreUtils.Data.IdNameGeneration
             _generator = generator;
         }
 
-        public MethodInfo GetGetIdNameSuffixMethod()
+        [ExcludeFromCodeCoverage]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        void ThrowIfNoAnnotation(string packedAnnotation)
         {
-            if (null != _methodInfo)
+            if (null == packedAnnotation)
             {
-                return _methodInfo;
-            }
-            lock (_sync)
-            {
-                if (null != _methodInfo)
-                {
-                    return _methodInfo;
-                }
-                var annotation = Annotations.GetIdNameFunctionAnnotation.Unpack(_dbContext.Model.FindAnnotation(Annotations.GetIdNameFunction).Value as string);
-                var sql = _generator.Generate(annotation.FunctionSchema, annotation.FunctionName);
-                _dbContext.Database.ExecuteSqlCommand(sql);
-                _methodInfo = annotation.Method;
-                return _methodInfo;
+                throw new InvalidOperationException("GetIdFunction annotation not defined on the context.");
             }
         }
 
-        // public MethodInfo GetGenerationMethod(Type entityType)
-        // {
-        //     if (_initializedFunctions.TryGetValue(entityType, out var result))
-        //     {
-        //         return result;
-        //     }
-        //     lock (_sync)
-        //     {
-        //         if (_initializedFunctions.TryGetValue(entityType, out result))
-        //         {
-        //             return result;
-        //         }
-        //         var model = _dbContext.Model.FindEntityType(entityType) ?? throw new InvalidOperationException($"Type {entityType.FullName} is not an entity type.");
-        //         var rel = model.Relational();
-        //         var idNameProperty = model.GetProperties().First(p => null != p.FindAnnotation(Annotations.IdNameGenerationMethod));
-        //         var methodAnnotation = (Annotations.IdNameGenerationMethodAnnotation)idNameProperty.FindAnnotation(Annotations.IdNameGenerationMethod).Value;
-        //         var sql = _generator.Generate(methodAnnotation.FunctionSchema, methodAnnotation.FunctionName, rel.Schema, rel.TableName, idNameProperty.Relational().ColumnName);
-        //         _dbContext.Database.ExecuteSqlCommand(sql);
-        //         _initializedFunctions[entityType] = methodAnnotation.Method;
-        //         return methodAnnotation.Method;
-        //     }
-        // }
+        public MethodInfo GetGetIdNameSuffixMethod()
+        {
+            var packedAnnotation = _dbContext.Model.FindAnnotation(Annotations.GetIdNameFunction).Value as string;
+            ThrowIfNoAnnotation(packedAnnotation);
+            if (_initializedFunctions.TryGetValue(packedAnnotation, out var method))
+            {
+                return method;
+            }
+            lock (_sync)
+            {
+                return _initializedFunctions.GetOrAdd(packedAnnotation, raw =>
+                {
+                    var annotation = Annotations.GetIdNameFunctionAnnotation.Unpack(raw);
+                    var sql = _generator.Generate(annotation.FunctionSchema, annotation.FunctionName);
+                    _dbContext.Database.ExecuteSqlCommand(sql);
+                    return annotation.Method;
+                });
+            }
+        }
     }
+
     public class IdNameGenerationInitialization<TDbContext> : IdNameGenerationInitialization
         where TDbContext : DbContext
     {

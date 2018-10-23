@@ -46,7 +46,7 @@ namespace NCoreUtils.Data.IdNameGeneration
                     }
                     var additionalProperties = data.AdditionalPropertyNames
                         .Select(name => {
-                            var property = ty.GetProperty(data.SourcePropertyName, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+                            var property = ty.GetProperty(name, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
                             if (null == property)
                             {
                                 throw new IdNameGenerationAnnotationException($"Unresolvable property name {property.Name} for type {ty.FullName} in annotation.");

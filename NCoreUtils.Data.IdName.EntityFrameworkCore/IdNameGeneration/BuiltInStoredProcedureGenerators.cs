@@ -3,7 +3,7 @@ using System.Collections.Concurrent;
 
 namespace NCoreUtils.Data.IdNameGeneration
 {
-    static class BuiltInStoredProcedureGenerators
+    internal static class BuiltInStoredProcedureGenerators
     {
         static readonly ConcurrentDictionary<Type, IStoredProcedureGenerator> _cache = new ConcurrentDictionary<Type, IStoredProcedureGenerator>();
 

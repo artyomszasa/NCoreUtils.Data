@@ -45,5 +45,26 @@ namespace NCoreUtils.Data
             var generator = (IIdNameGenerator)(serviceProvider.GetService(typeof(IIdNameGenerator)) ?? ActivatorUtilities.CreateInstance(serviceProvider, typeof(IdNameGenerator)));
             return generator.GenerateAsync(query, idNameDescription, entity, cancellationToken);
         }
+
+        public static string GenerateIdName<T>(
+            this IQueryable<T> query,
+            IServiceProvider serviceProvider,
+            IdNameDescription idNameDescription,
+            string name,
+            object indexValues)
+            where T : class, IHasIdName
+            => query.GenerateIdNameAsync(serviceProvider, idNameDescription, name, indexValues)
+                .GetAwaiter()
+                .GetResult();
+
+        public static string GenerateIdName<T>(
+            this IQueryable<T> query,
+            IServiceProvider serviceProvider,
+            IdNameDescription idNameDescription,
+            T entity)
+            where T : class, IHasIdName
+            => query.GenerateIdNameAsync(serviceProvider, idNameDescription, entity)
+                .GetAwaiter()
+                .GetResult();
     }
 }

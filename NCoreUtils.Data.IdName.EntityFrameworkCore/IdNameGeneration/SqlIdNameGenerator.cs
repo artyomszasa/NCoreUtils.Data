@@ -31,7 +31,7 @@ namespace NCoreUtils.Data.IdNameGeneration
         {
             var boxType = typeof(Box<>).MakeGenericType(type);
             var field = boxType.GetField(nameof(Box<int>.Value));
-            var box = Activator.CreateInstance(boxType, true);
+            var box = Activator.CreateInstance(boxType, value);
             field.SetValue(box, value);
             return Expression.Field(Expression.Constant(box, boxType), field);
         }
@@ -72,7 +72,7 @@ namespace NCoreUtils.Data.IdNameGeneration
             var decomposition = idNameDescription.Decomposer.Decompose(name);
             var getIdNameSuffix = _initialization.GetGetIdNameSuffixMethod();
             var simplified = _simplifier.Simplify(decomposition.MainPart);
-            var regex = "^" + Regex.Escape(decomposition.Rebuild((simplified), "ŁŁŁ")).Replace("ŁŁŁ", "(-[0-9]+)?") + "$";
+            var regex = "^" + Regex.Escape(decomposition.Rebuild((simplified), "ŁŁŁ")).Replace("-ŁŁŁ", "(-[0-9]+)?") + "$";
             var def = decomposition.Rebuild(simplified, null);
 
             var eArg = Expression.Parameter(typeof(T));
@@ -85,7 +85,9 @@ namespace NCoreUtils.Data.IdNameGeneration
                 Expression.Call(getIdNameSuffix, Expression.Property(eArg, idNameDescription.IdNameProperty), BoxedConstant(regex))
             );
             var selector = Expression.Lambda<Func<T, string>>(eIfThenElse, eArg);
-            var rawSuffixes = await NCoreUtils.Linq.QueryableExtensions.ToListAsync((query ?? _dbContext.Set<T>()).Select(selector).Where(s => s != null), cancellationToken);
+            var rawSuffixes = await NCoreUtils.Linq.QueryableExtensions.ToListAsync(
+                (query ?? _dbContext.Set<T>()).Select(selector).Where(s => s != null),
+                cancellationToken);
             string idName;
             if (0 == rawSuffixes.Count)
             {
@@ -93,7 +95,9 @@ namespace NCoreUtils.Data.IdNameGeneration
             }
             else
             {
-                var suffixes = new HashSet<int>(rawSuffixes.Select(raw => string.IsNullOrEmpty(raw) ? 0 : int.Parse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture)));
+                var suffixes = new HashSet<int>(rawSuffixes.Select(raw => string.IsNullOrEmpty(raw)
+                    ? 0
+                    : int.Parse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture)));
                 var suffix = -1;
                 for (var i = 0; -1 == suffix; ++i)
                 {
@@ -126,6 +130,13 @@ namespace NCoreUtils.Data.IdNameGeneration
             }
             else
             {
+                if (null == indexValues)
+                {
+                    throw new ArgumentNullException(
+                        nameof(indexValues),
+                        $"Following index values should be specified: {String.Join(",", idNameDescription.AdditionalIndexProperties.Select(p => p.Name))}"
+                    );
+                }
                 var eArg = Expression.Parameter(typeof(T));
                 var predicates = new List<Expression>(idNameDescription.AdditionalIndexProperties.Length);
                 var props = indexValues.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.FlattenHierarchy);

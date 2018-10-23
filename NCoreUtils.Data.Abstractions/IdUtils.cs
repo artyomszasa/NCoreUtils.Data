@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -24,6 +25,7 @@ namespace NCoreUtils.Data
         {
             static readonly Func<T, bool> _check;
 
+            [ExcludeFromCodeCoverage]
             static GenericIdCheck()
             {
                 _check = _idChecks.TryGetValue(typeof(T), out var check) ? (Func<T, bool>)check : throw new InvalidOperationException($"No invalid id check defined for {typeof(T).FullName}");
@@ -171,13 +173,8 @@ namespace NCoreUtils.Data
             var getter = interfaceMapping.TargetMethods[index];
             var prop = entityType.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
                 .FirstOrDefault(p => p.CanRead && null != p.GetMethod && p.GetMethod.Equals(getter));
-            if (null == prop)
-            {
-                property = default(PropertyInfo);
-                return false;
-            }
             property = prop;
-            return true;
+            return prop != null;
         }
 
         /// <summary>

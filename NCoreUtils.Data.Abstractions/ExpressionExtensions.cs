@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Linq.Expressions;
@@ -104,5 +105,55 @@ namespace NCoreUtils.Data
         public static bool TryExtractQueryable(this Expression source, out IQueryable queryable, params Type[] extensionTypes)
             => source.MaybeExtractQueryable(extensionTypes).TryGetValue(out queryable);
 
+        /// <summary>
+        /// Extracts properties from expression.
+        /// </summary>
+        /// <param name="source">Source expression.</param>
+        /// <param name="throw">Whether to throw exception if the expression in invalid or unsupported.</param>
+        /// <returns>Collection of properties found in the expression.</returns>
+        /// <exception cref="System.InvalidOperationException">
+        /// Thrown if the expression invalid or unsupported and <paramref name="throw" /> is <c>true</c>
+        /// </exception>
+        public static IEnumerable<PropertyInfo> ExtractProperties(this Expression source, bool @throw = true)
+        {
+            switch (source)
+            {
+                case null: throw new ArgumentNullException(nameof(source));
+                case LambdaExpression lambda:
+                    foreach (var prop in lambda.Body.ExtractProperties(@throw))
+                    {
+                        yield return prop;
+                    }
+                    break;
+                case MemberExpression memberExpression when memberExpression.Member is PropertyInfo singleProp:
+                    yield return singleProp;
+                    break;
+                case UnaryExpression unaryExpression when unaryExpression.Operand != null:
+                    foreach (var prop in unaryExpression.Operand.ExtractProperties(@throw))
+                    {
+                        yield return prop;
+                    }
+                    break;
+                case NewExpression newExpression:
+                    if (null != newExpression.Members && newExpression.Members.Count == newExpression.Arguments.Count)
+                    {
+                        foreach (var prop in newExpression.Arguments.SelectMany(argumentExpression => argumentExpression.ExtractProperties(@throw)))
+                        {
+                            yield return prop;
+                        }
+                    }
+                    else if (@throw)
+                    {
+                        throw new InvalidOperationException("Invalid new expression.");
+                    }
+                    break;
+                default:
+                    if (@throw)
+                    {
+                        throw new InvalidOperationException($"Unable to extract properties from {source}.");
+                    }
+                    break;
+            }
+        }
     }
 }

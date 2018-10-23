@@ -52,27 +52,10 @@ namespace NCoreUtils.Data.IdNameGeneration
 
         public IdNameDescriptionBuilder<T> SetAdditionalIndexProperties(Expression<Func<T, object>> selector)
         {
-            if (selector.TryExtractProperty(out var property))
-            {
-                AdditionalIndexProperties = new List<PropertyInfo> { property };
-                return this;
-            }
-            if (selector.Body is NewExpression newExpression)
-            {
-                if (null == newExpression.Members || (newExpression.Members.Count != newExpression.Arguments.Count))
-                {
-                    throw new InvalidOperationException("Invalid expression.");
-                }
-                AdditionalIndexProperties = newExpression.Arguments
-                    .Select(expr => expr is MemberExpression mexpr && mexpr.Member is PropertyInfo prop
-                                    ? prop
-                                    : throw new InvalidOperationException($"Unable to extract property from {expr}."))
-                    .ToList();
-                return this;
-            }
-            throw new InvalidOperationException($"Unable to extract properties from {selector}.");
+            AdditionalIndexProperties = new List<PropertyInfo>(selector.ExtractProperties(true));
+            return this;
         }
 
-        public IdNameDescription Build() => new IdNameDescription(IdNameProperty, NameSourceProperty, Decompose, AdditionalIndexProperties);
+        public IdNameDescription Build() => new IdNameDescription(IdNameProperty, NameSourceProperty, Decompose, AdditionalIndexProperties.ToArray());
     }
 }

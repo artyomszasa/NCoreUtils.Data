@@ -17,5 +17,14 @@ namespace NCoreUtils.Data
 
         [Fact]
         public override Task InsertTwo() => base.InsertTwo();
+
+        [Fact]
+        public override Task InsertOneWithForeign() => base.InsertOneWithForeign();
+
+        [Fact]
+        public override Task InsertTwoWithForeign() => base.InsertTwoWithForeign();
+
+        [Fact]
+        public override void InsertOneSync() => base.InsertOneSync();
     }
 }
