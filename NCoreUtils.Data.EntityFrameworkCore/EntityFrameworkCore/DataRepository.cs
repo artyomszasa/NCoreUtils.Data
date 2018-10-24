@@ -6,11 +6,30 @@ using System.Threading.Tasks;
 using NCoreUtils.Data.Events;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
+using NCoreUtils.Data.IdNameGeneration;
+using System.Reflection;
+using System.Collections.Concurrent;
+using System.Linq.Expressions;
 
 namespace NCoreUtils.Data.EntityFrameworkCore
 {
-    public abstract partial class DataRepository
+    /// <summary>
+    /// Common implmentation of repository backed by entity framework core context.
+    /// </summary>
+    public abstract partial class DataRepository : ISupportsIdNameGeneration
     {
+        static readonly ConcurrentDictionary<Type, Maybe<(PropertyInfo, ImmutableArray<PropertyInfo>)>> _idNameSourceProperties
+            = new ConcurrentDictionary<Type, Maybe<(PropertyInfo, ImmutableArray<PropertyInfo>)>>();
+
+        /// <summary>
+        /// Internal Id name descriptions cache.
+        /// </summary>
+        protected static readonly ConcurrentDictionary<Type, Maybe<IdNameDescription>> _idNameDesciptionCache
+            = new ConcurrentDictionary<Type, Maybe<IdNameDescription>>();
+
+        /// <summary>
+        /// Default special property names. Spcial properties are not opverridden on entity update.
+        /// </summary>
         protected static ImmutableHashSet<string> _defaultSpecialPropertyNames = ImmutableHashSet.CreateRange(StringComparer.InvariantCultureIgnoreCase, new []
         {
             "Created",
@@ -21,29 +40,111 @@ namespace NCoreUtils.Data.EntityFrameworkCore
         {
             Linq.AsyncQueryAdapters.Add(new QueryProviderAdapter());
         }
+
+        protected static Maybe<(PropertyInfo, ImmutableArray<PropertyInfo>)> MaybeIdNameSourceProperty(Type elementType, DbContext dbContext)
+        {
+            if (_idNameSourceProperties.TryGetValue(elementType, out var result))
+            {
+                return result;
+            }
+            Func<Microsoft.EntityFrameworkCore.Metadata.IProperty, Maybe<(PropertyInfo, ImmutableArray<PropertyInfo>)>> picker = e => {
+                var annotation = e.FindAnnotation(Annotations.IdNameSourceProperty);
+                if (null == annotation)
+                {
+                    return Maybe.Nothing;
+                }
+                var a = Annotations.IdNameSourcePropertyAnnotation.Unpack(annotation.Value as string);
+                return (a.SourceNameProperty, a.AdditionalIndexProperties).Just();
+            };
+            return _idNameSourceProperties.GetOrAdd(elementType, etype => dbContext
+                .Model
+                .FindEntityType(etype)
+                .GetProperties()
+                .MaybePick(picker));
+        }
+
+        /// <summary>
+        /// Unredlying repository context.
+        /// </summary>
+        [Obsolete("Use EFCoreContext property instead.")]
+        protected readonly DataRepositoryContext _context;
+
+        /// <summary>
+        /// Gets element type handled by the repository.
+        /// </summary>
+        public abstract Type ElementType { get; }
+
+        /// <summary>
+        /// Unredlying repository context.
+        /// </summary>
+        #pragma warning disable 0618
+        public DataRepositoryContext EFCoreContext => _context;
+        #pragma warning restore 0618
+
+        /// <summary>
+        /// Initializes new instance of repository from the specified context.
+        /// </summary>
+        /// <param name="context"></param>
+        public DataRepository(DataRepositoryContext context)
+        {
+            #pragma warning disable 0618
+            _context = context ?? throw new ArgumentNullException(nameof(context));
+            #pragma warning restore 0618
+        }
+
+        public virtual bool GenerateIdNameOnInsert => MaybeIdNameSourceProperty(ElementType, EFCoreContext.DbContext).HasValue;
+
+        public abstract IdNameDescription IdNameDescription { get; }
+
+        public virtual IStringDecomposer DecomposeName => DummyStringDecomposition.Decomposer;
     }
 
     public abstract class DataRepository<TData> : DataRepository, IDataRepository<TData>
         where TData : class
     {
-        protected readonly DataRepositoryContext _context;
+        public static IdNameDescription GetIdNameDescription(Type elementType, DbContext dbContext, IStringDecomposer decomposer)
+        {
+            Maybe<IdNameDescription> desc;
+            if (!_idNameDesciptionCache.TryGetValue(elementType, out desc))
+            {
+                var maybeSelector = ByIdNameExpressionBuilder.MaybeGetExpression(elementType).As<Expression<Func<TData, string>>>();
+                if (!maybeSelector.TryGetValue(out var selector) || !MaybeIdNameSourceProperty(elementType, dbContext).TryGetValue(out var annotation))
+                {
+                    _idNameDesciptionCache[elementType] = Maybe.Nothing;
+                    desc = Maybe.Nothing;
+                }
+                else
+                {
+                    var d = new IdNameDescription(selector.ExtractProperty(), annotation.Item1, decomposer, annotation.Item2);
+                    _idNameDesciptionCache[elementType] = d.Just();
+                    desc = d.Just();
+                }
+            }
+            if (desc.TryGetValue(out var result))
+            {
+                return result;
+            }
+            throw new InvalidOperationException($"No id name description for {typeof(TData).FullName}.");
+        }
 
         protected virtual ImmutableHashSet<string> SpecialPropertyNames => _defaultSpecialPropertyNames;
 
-        public virtual IQueryable<TData> Items => _context.DbContext.Set<TData>();
+        public virtual IQueryable<TData> Items => EFCoreContext.DbContext.Set<TData>();
 
-        public Type ElementType => typeof(TData);
+        public override Type ElementType => typeof(TData);
 
-        public IDataRepositoryContext Context => _context;
+        public override IdNameDescription IdNameDescription => GetIdNameDescription(ElementType, EFCoreContext.DbContext, DecomposeName);
+
+        public IDataRepositoryContext Context => EFCoreContext;
 
         public IServiceProvider ServiceProvider { get; }
 
         public IDataEventHandlers EventHandlers { get; }
 
         public DataRepository(IServiceProvider serviceProvider, DataRepositoryContext context, IDataEventHandlers eventHandlers = null)
+            : base(context)
         {
             ServiceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
-            _context = context ?? throw new ArgumentNullException(nameof(context));
             EventHandlers = eventHandlers;
         }
 
@@ -86,11 +187,19 @@ namespace NCoreUtils.Data.EntityFrameworkCore
         public virtual async Task<TData> PersistAsync(TData item, CancellationToken cancellationToken = default(CancellationToken))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var dbContext = _context.DbContext;
+            var dbContext = EFCoreContext.DbContext;
             var entry = dbContext.Entry(item);
             if (entry.State == EntityState.Detached)
             {
                 entry = await AttachNewOrUpdateAsync(entry, cancellationToken);
+            }
+            else if (entry.State == EntityState.Added)
+            {
+                await EventHandlers.TriggerInsertAsync(ServiceProvider, this, entry.Entity, cancellationToken);
+            }
+            else if (entry.State == EntityState.Modified)
+            {
+                await EventHandlers.TriggerUpdateAsync(ServiceProvider, this, entry.Entity, cancellationToken);
             }
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             return entry.Entity;
@@ -99,7 +208,7 @@ namespace NCoreUtils.Data.EntityFrameworkCore
         public virtual Task RemoveAsync(TData item, bool force = false, CancellationToken cancellationToken = default(CancellationToken))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var dbContext = _context.DbContext;
+            var dbContext = EFCoreContext.DbContext;
             var entry = dbContext.Entry(item);
             if (entry.State == EntityState.Detached)
             {
@@ -126,7 +235,7 @@ namespace NCoreUtils.Data.EntityFrameworkCore
 
         protected override async Task<EntityEntry<TData>> AttachNewOrUpdateAsync(EntityEntry<TData> entry, CancellationToken cancellationToken)
         {
-            var dbContext = _context.DbContext;
+            var dbContext = EFCoreContext.DbContext;
             if (entry.Entity.Id.CompareTo(default(TId)) > 0)
             {
                 // check whether another instance is already tracked

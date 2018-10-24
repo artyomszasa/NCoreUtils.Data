@@ -13,7 +13,7 @@ namespace NCoreUtils.Data.EntityFrameworkCore
 
         public IAsyncEnumerable<T> ExecuteAsync<T>(Expression expression)
         {
-            return expression.MaybeExtractQueryable(typeof(Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions))
+            return expression.MaybeExtractQueryable(typeof(Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions), typeof(Microsoft.EntityFrameworkCore.RelationalQueryableExtensions))
                 .Bind(queryable => queryable.Provider
                         .Just()
                         .As<IEFAsyncQueryProvider>()
@@ -26,7 +26,7 @@ namespace NCoreUtils.Data.EntityFrameworkCore
 
         public Task<T> ExecuteAsync<T>(Expression expression, CancellationToken cancellationToken)
         {
-            return expression.MaybeExtractQueryable(typeof(Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions))
+            return expression.MaybeExtractQueryable(typeof(Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions), typeof(Microsoft.EntityFrameworkCore.RelationalQueryableExtensions))
                 .Bind(queryable => queryable.Provider
                     .Just()
                     .As<IEFAsyncQueryProvider>()

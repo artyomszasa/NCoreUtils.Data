@@ -1,6 +1,7 @@
 using System;
 using System.Data;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,12 +13,17 @@ namespace NCoreUtils.Data.EntityFrameworkCore
     {
         int _isDisposed;
 
-        IDataTransaction IDataRepositoryContext.CurrentTransaction => CurrentTransaction;
+        IDataTransaction IDataRepositoryContext.CurrentTransaction
+        {
+            [ExcludeFromCodeCoverage]
+            get => CurrentTransaction;
+        }
 
         protected bool IsDisposed
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             [DebuggerStepThrough]
+            [ExcludeFromCodeCoverage]
             get => 0 != _isDisposed;
         }
 
@@ -41,6 +47,7 @@ namespace NCoreUtils.Data.EntityFrameworkCore
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [DebuggerStepThrough]
+        [ExcludeFromCodeCoverage]
         protected void ThrowIfDisposed()
         {
             if (IsDisposed)
