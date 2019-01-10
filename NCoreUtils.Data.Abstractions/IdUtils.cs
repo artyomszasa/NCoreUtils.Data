@@ -38,6 +38,7 @@ namespace NCoreUtils.Data
 
         static readonly ImmutableDictionary<Type, Delegate> _idChecks = new Dictionary<Type, Delegate>
         {
+            { typeof(Guid), new Func<Guid, bool>(id => id != Guid.Empty) },
             { typeof(sbyte), new Func<sbyte, bool>(id => id > 0) },
             { typeof(short), new Func<short, bool>(id => id > 0) },
             { typeof(int), new Func<int, bool>(id => id > 0) },

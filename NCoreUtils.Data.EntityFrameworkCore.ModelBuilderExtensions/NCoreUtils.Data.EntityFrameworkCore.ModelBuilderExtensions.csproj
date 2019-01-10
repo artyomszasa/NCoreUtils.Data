@@ -2,7 +2,7 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <RootNamespace>NCoreUtils.Data</RootNamespace>
-    <VersionPrefix>1.3.0</VersionPrefix>
+    <Version>1.3.1-alpha1</Version>
     <!-- NuGet -->
     <PackageId>NCoreUtils.Data.EntityFrameworkCore.ModelBuilderExtensions</PackageId>
     <Title>$(PackageId)</Title>
@@ -10,6 +10,7 @@
     <Description>Model builder extensions for EntityFrameworkCore.</Description>
     <Copyright>Artyom Antyipin</Copyright>
     <RepositoryUrl>https://github.com/artyomszasa/NCoreUtils.Data.git</RepositoryUrl>
+    <PackageReleaseNotes>Version bump (EF 2.2).</PackageReleaseNotes>
     <!-- Assembly Info -->
     <Product>NCoreUtils</Product>
     <AssemblyName>$(PackageId)</AssemblyName>
@@ -21,7 +22,7 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="2.1.1" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="2.2.1" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\NCoreUtils.Data.Abstractions\NCoreUtils.Data.Abstractions.csproj" />
