@@ -27,6 +27,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NCoreUtils.Data.IdName.Unit
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NCoreUtils.Data.IdName.EntityFrameworkCore.Abstractions", "NCoreUtils.Data.IdName.EntityFrameworkCore.Abstractions\NCoreUtils.Data.IdName.EntityFrameworkCore.Abstractions.csproj", "{E48E0A57-13C0-4089-B422-19147549F48D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NCoreUtils.AspNetCore.Data", "NCoreUtils.AspNetCore.Data\NCoreUtils.AspNetCore.Data.csproj", "{3E5791C8-7DF6-4E8F-BE4A-F950ADB8329C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -184,5 +186,17 @@ Global
 		{E48E0A57-13C0-4089-B422-19147549F48D}.Release|x64.Build.0 = Release|Any CPU
 		{E48E0A57-13C0-4089-B422-19147549F48D}.Release|x86.ActiveCfg = Release|Any CPU
 		{E48E0A57-13C0-4089-B422-19147549F48D}.Release|x86.Build.0 = Release|Any CPU
+		{3E5791C8-7DF6-4E8F-BE4A-F950ADB8329C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3E5791C8-7DF6-4E8F-BE4A-F950ADB8329C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3E5791C8-7DF6-4E8F-BE4A-F950ADB8329C}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{3E5791C8-7DF6-4E8F-BE4A-F950ADB8329C}.Debug|x64.Build.0 = Debug|Any CPU
+		{3E5791C8-7DF6-4E8F-BE4A-F950ADB8329C}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{3E5791C8-7DF6-4E8F-BE4A-F950ADB8329C}.Debug|x86.Build.0 = Debug|Any CPU
+		{3E5791C8-7DF6-4E8F-BE4A-F950ADB8329C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3E5791C8-7DF6-4E8F-BE4A-F950ADB8329C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3E5791C8-7DF6-4E8F-BE4A-F950ADB8329C}.Release|x64.ActiveCfg = Release|Any CPU
+		{3E5791C8-7DF6-4E8F-BE4A-F950ADB8329C}.Release|x64.Build.0 = Release|Any CPU
+		{3E5791C8-7DF6-4E8F-BE4A-F950ADB8329C}.Release|x86.ActiveCfg = Release|Any CPU
+		{3E5791C8-7DF6-4E8F-BE4A-F950ADB8329C}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

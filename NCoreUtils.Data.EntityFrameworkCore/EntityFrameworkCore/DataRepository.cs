@@ -247,6 +247,7 @@ namespace NCoreUtils.Data.EntityFrameworkCore
                     return updatedEntry;
                 }
                 existentEntry.CurrentValues.SetValues(entry.Entity);
+                await PrepareUpdatedEntityAsync(existentEntry, cancellationToken).ConfigureAwait(false);
                 return existentEntry;
             }
             var addedEntry = await dbContext.AddAsync(entry.Entity, cancellationToken).ConfigureAwait(false);
