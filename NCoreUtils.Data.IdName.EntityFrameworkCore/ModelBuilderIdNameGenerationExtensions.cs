@@ -111,7 +111,7 @@ namespace NCoreUtils.Data
             int maxLength = 320)
             where T : class
         {
-            var rel = builder.Metadata.Relational();
+            // var rel = builder.Metadata.Relational();
             var idNameBuilder = builder.Property(idNameSelector).HasMaxLength(maxLength).IsRequired(true).IsUnicode(false);
 
             var descBuilder = new IdNameDescriptionBuilder<T>()

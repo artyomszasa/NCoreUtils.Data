@@ -9,7 +9,7 @@ namespace NCoreUtils.Data
     public class TestPostgresql : TestBase
     {
         public TestPostgresql()
-            : base((conf, builder) => builder.UseNpgsql(conf.GetConnectionString("Psql")))
+            : base((conf, builder) => builder.UseNpgsql("Host=home.artyom.hu; Port=5432; Username=unit; Password=096398f13; Database=unit"))
         { }
 
         [Fact]

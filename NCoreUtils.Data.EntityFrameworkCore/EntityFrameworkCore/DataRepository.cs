@@ -53,7 +53,7 @@ namespace NCoreUtils.Data.EntityFrameworkCore
                 .GetProperties()
                 .MaybePick(picker));
 
-            Maybe<(PropertyInfo, ImmutableArray<PropertyInfo>)> picker(Microsoft.EntityFrameworkCore.Metadata.IProperty e)
+            static Maybe<(PropertyInfo, ImmutableArray<PropertyInfo>)> picker(Microsoft.EntityFrameworkCore.Metadata.IProperty e)
             {
                 var annotation = e.FindAnnotation(Annotations.IdNameSourceProperty);
                 if (null == annotation)
@@ -208,23 +208,30 @@ namespace NCoreUtils.Data.EntityFrameworkCore
 
         public virtual Task RemoveAsync(TData item, bool force = false, CancellationToken cancellationToken = default)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            var dbContext = EFCoreContext.DbContext;
-            var entry = dbContext.Entry(item);
-            if (entry.State == EntityState.Detached)
+            try
             {
-                throw new InvalidOperationException("Trying to remove detached entity.");
+                cancellationToken.ThrowIfCancellationRequested();
+                var dbContext = EFCoreContext.DbContext;
+                var entry = dbContext.Entry(item);
+                if (entry.State == EntityState.Detached)
+                {
+                    throw new InvalidOperationException("Trying to remove detached entity.");
+                }
+                EventHandlers.TriggerDeleteAsync(ServiceProvider, this, entry.Entity, cancellationToken);
+                if (!force && item is IHasState statefullEntity)
+                {
+                    statefullEntity.State = State.Deleted;
+                }
+                else
+                {
+                    dbContext.Remove(item);
+                }
+                return dbContext.SaveChangesAsync(cancellationToken);
             }
-            EventHandlers.TriggerDeleteAsync(ServiceProvider, this, entry.Entity, cancellationToken);
-            if (!force && item is IHasState statefullEntity)
+            catch (Exception exn)
             {
-                statefullEntity.State = State.Deleted;
+                return Task.FromException(exn);
             }
-            else
-            {
-                dbContext.Remove(item);
-            }
-            return dbContext.SaveChangesAsync(cancellationToken);
         }
     }
 

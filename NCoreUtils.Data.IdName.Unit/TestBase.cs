@@ -32,7 +32,8 @@ namespace NCoreUtils.Data
                 .AddEntityFrameworkCoreDataRepository<Item, int>()
                 .AddEntityFrameworkCoreDataRepository<Item2, int>()
                 .AddDataEventHandlers()
-                .AddSqlIdNameGeneration<TestDbContext>()
+                // FIXME
+                // .AddSqlIdNameGeneration<TestDbContext>()
                 .AddSingleton<ISimplifier>(Simplifier.Default)
                 .BuildServiceProvider(true);
             using (var scope = _globalServiceProvider.CreateScope())

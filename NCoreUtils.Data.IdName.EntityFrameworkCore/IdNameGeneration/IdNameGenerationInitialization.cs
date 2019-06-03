@@ -55,7 +55,7 @@ namespace NCoreUtils.Data.IdNameGeneration
                 {
                     var annotation = Annotations.GetIdNameFunctionAnnotation.Unpack(raw);
                     var sql = _generator.Generate(annotation.FunctionSchema, annotation.FunctionName);
-                    _dbContext.Database.ExecuteSqlCommand(sql);
+                    _dbContext.Database.ExecuteSqlRaw(sql);
                     return annotation.Method;
                 });
             }
