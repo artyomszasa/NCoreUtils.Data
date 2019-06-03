@@ -35,15 +35,15 @@ namespace NCoreUtils.Data.EntityFrameworkCore
             throw new InvalidOperationException("Transaction has already been finished.");
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [DebuggerStepThrough]
-        void ThrowIfDisposed()
-        {
-            if (0 != _isDisposed)
-            {
-                throw new ObjectDisposedException(nameof(DataTransaction));
-            }
-        }
+        // [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        // [DebuggerStepThrough]
+        // void ThrowIfDisposed()
+        // {
+        //     if (0 != _isDisposed)
+        //     {
+        //         throw new ObjectDisposedException(nameof(DataTransaction));
+        //     }
+        // }
 
         void CommitImplementation()
         {

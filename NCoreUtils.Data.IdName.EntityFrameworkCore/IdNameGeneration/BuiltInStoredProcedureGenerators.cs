@@ -24,7 +24,7 @@ namespace NCoreUtils.Data.IdNameGeneration
                     generator = CreateGenerator(typeof(PostgresStoredProcedureGenerator));
                     return true;
             }
-            generator = default(IStoredProcedureGenerator);
+            generator = default;
             return false;
         }
     }

@@ -18,7 +18,7 @@ namespace NCoreUtils.AspNetCore.Data
             _httpContextAccessor = httpContextAccessor ?? throw new ArgumentNullException(nameof(httpContextAccessor));
         }
 
-        public async Task HandleAsync(IDataEvent @event, CancellationToken cancellationToken = default(CancellationToken))
+        public async Task HandleAsync(IDataEvent @event, CancellationToken cancellationToken = default)
         {
             var httpContext = _httpContextAccessor.HttpContext;
             if (null != httpContext)

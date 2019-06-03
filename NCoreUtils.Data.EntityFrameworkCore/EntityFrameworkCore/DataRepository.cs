@@ -47,7 +47,14 @@ namespace NCoreUtils.Data.EntityFrameworkCore
             {
                 return result;
             }
-            Func<Microsoft.EntityFrameworkCore.Metadata.IProperty, Maybe<(PropertyInfo, ImmutableArray<PropertyInfo>)>> picker = e => {
+            return _idNameSourceProperties.GetOrAdd(elementType, etype => dbContext
+                .Model
+                .FindEntityType(etype)
+                .GetProperties()
+                .MaybePick(picker));
+
+            Maybe<(PropertyInfo, ImmutableArray<PropertyInfo>)> picker(Microsoft.EntityFrameworkCore.Metadata.IProperty e)
+            {
                 var annotation = e.FindAnnotation(Annotations.IdNameSourceProperty);
                 if (null == annotation)
                 {
@@ -55,12 +62,7 @@ namespace NCoreUtils.Data.EntityFrameworkCore
                 }
                 var a = Annotations.IdNameSourcePropertyAnnotation.Unpack(annotation.Value as string);
                 return (a.SourceNameProperty, a.AdditionalIndexProperties).Just();
-            };
-            return _idNameSourceProperties.GetOrAdd(elementType, etype => dbContext
-                .Model
-                .FindEntityType(etype)
-                .GetProperties()
-                .MaybePick(picker));
+            }
         }
 
         /// <summary>
@@ -104,8 +106,7 @@ namespace NCoreUtils.Data.EntityFrameworkCore
     {
         public static IdNameDescription GetIdNameDescription(Type elementType, DbContext dbContext, IStringDecomposer decomposer)
         {
-            Maybe<IdNameDescription> desc;
-            if (!_idNameDesciptionCache.TryGetValue(elementType, out desc))
+            if (!_idNameDesciptionCache.TryGetValue(elementType, out var desc))
             {
                 var maybeSelector = ByIdNameExpressionBuilder.MaybeGetExpression(elementType).As<Expression<Func<TData, string>>>();
                 if (!maybeSelector.TryGetValue(out var selector) || !MaybeIdNameSourceProperty(elementType, dbContext).TryGetValue(out var annotation))
@@ -150,7 +151,7 @@ namespace NCoreUtils.Data.EntityFrameworkCore
 
         protected abstract Task<EntityEntry<TData>> AttachNewOrUpdateAsync(EntityEntry<TData> entry, CancellationToken cancellationToken);
 
-        protected virtual async Task PrepareUpdatedEntityAsync(EntityEntry<TData> entry, CancellationToken cancellationToken = default(CancellationToken))
+        protected virtual async Task PrepareUpdatedEntityAsync(EntityEntry<TData> entry, CancellationToken cancellationToken = default)
         {
             await EventHandlers.TriggerUpdateAsync(ServiceProvider, this, entry.Entity, cancellationToken);
             // Speciális mezőket nem kell frissíteni...
@@ -171,7 +172,7 @@ namespace NCoreUtils.Data.EntityFrameworkCore
                         }
                         else
                         {
-                            if (ReferenceEquals(null, p.CurrentValue))
+                            if (p.CurrentValue is null)
                             {
                                 p.CurrentValue = originalValues[p.Metadata.Name];
                             }
@@ -181,10 +182,10 @@ namespace NCoreUtils.Data.EntityFrameworkCore
             }
         }
 
-        protected virtual Task PrepareAddedEntityAsync(EntityEntry<TData> entry, CancellationToken cancellationToken = default(CancellationToken))
+        protected virtual Task PrepareAddedEntityAsync(EntityEntry<TData> entry, CancellationToken cancellationToken = default)
             => EventHandlers.TriggerInsertAsync(ServiceProvider, this, entry.Entity, cancellationToken);
 
-        public virtual async Task<TData> PersistAsync(TData item, CancellationToken cancellationToken = default(CancellationToken))
+        public virtual async Task<TData> PersistAsync(TData item, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var dbContext = EFCoreContext.DbContext;
@@ -205,7 +206,7 @@ namespace NCoreUtils.Data.EntityFrameworkCore
             return entry.Entity;
         }
 
-        public virtual Task RemoveAsync(TData item, bool force = false, CancellationToken cancellationToken = default(CancellationToken))
+        public virtual Task RemoveAsync(TData item, bool force = false, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var dbContext = EFCoreContext.DbContext;
@@ -236,7 +237,7 @@ namespace NCoreUtils.Data.EntityFrameworkCore
         protected override async Task<EntityEntry<TData>> AttachNewOrUpdateAsync(EntityEntry<TData> entry, CancellationToken cancellationToken)
         {
             var dbContext = EFCoreContext.DbContext;
-            if (entry.Entity.Id.CompareTo(default(TId)) > 0)
+            if (entry.Entity.Id.CompareTo(default) > 0)
             {
                 // check whether another instance is already tracked
                 var existentEntry = dbContext.ChangeTracker.Entries<TData>().FirstOrDefault(e => e.Entity.Id.Equals(entry.Entity.Id));
@@ -255,7 +256,7 @@ namespace NCoreUtils.Data.EntityFrameworkCore
             return addedEntry;
         }
 
-        public virtual Task<TData> LookupAsync(TId id, CancellationToken cancellationToken = default(CancellationToken))
+        public virtual Task<TData> LookupAsync(TId id, CancellationToken cancellationToken = default)
             => Items.Where(ByIdExpressionBuilder<TData, TId>.CreateFilter(id)).FirstOrDefaultAsync(cancellationToken);
     }
 }

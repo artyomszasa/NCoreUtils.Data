@@ -51,7 +51,7 @@ namespace NCoreUtils.Data.Unit
 
             public IReadOnlyList<IDataEvent> Events => _events;
 
-            public Task HandleAsync(IDataEvent @event, CancellationToken cancellationToken = default(CancellationToken))
+            public Task HandleAsync(IDataEvent @event, CancellationToken cancellationToken = default)
             {
                 _events.Add(@event);
                 return Task.CompletedTask;

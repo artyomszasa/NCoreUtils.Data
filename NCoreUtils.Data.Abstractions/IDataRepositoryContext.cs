@@ -22,6 +22,6 @@ namespace NCoreUtils.Data
         /// <param name="isolationLevel">Isolation level.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Started transaction.</returns>
-        Task<IDataTransaction> BeginTransactionAsync(IsolationLevel isolationLevel, CancellationToken cancellationToken = default(CancellationToken));
+        Task<IDataTransaction> BeginTransactionAsync(IsolationLevel isolationLevel, CancellationToken cancellationToken = default);
     }
 }

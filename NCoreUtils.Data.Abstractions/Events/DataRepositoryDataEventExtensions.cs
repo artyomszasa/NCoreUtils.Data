@@ -26,7 +26,12 @@ namespace NCoreUtils.Data.Events
         /// <param name="repository">Data repository triggering the event.</param>
         /// <param name="entity">Related entity.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        public static Task TriggerUpdateAsync<T>(this IDataEventHandlers handlers, IServiceProvider serviceProvider, IDataRepository<T> repository, T entity, CancellationToken cancellationToken = default(CancellationToken))
+        public static Task TriggerUpdateAsync<T>(
+            this IDataEventHandlers handlers,
+            IServiceProvider serviceProvider,
+            IDataRepository<T> repository,
+            T entity,
+            CancellationToken cancellationToken = default)
             where T : class
         {
             if (handlers == null)
@@ -44,7 +49,12 @@ namespace NCoreUtils.Data.Events
         /// <param name="repository">Data repository triggering the event.</param>
         /// <param name="entity">Related entity.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        public static Task TriggerInsertAsync<T>(this IDataEventHandlers handlers, IServiceProvider serviceProvider, IDataRepository<T> repository, T entity, CancellationToken cancellationToken = default(CancellationToken))
+        public static Task TriggerInsertAsync<T>(
+            this IDataEventHandlers handlers,
+            IServiceProvider serviceProvider,
+            IDataRepository<T> repository,
+            T entity,
+            CancellationToken cancellationToken = default)
             where T : class
         {
             if (handlers == null)
@@ -62,7 +72,12 @@ namespace NCoreUtils.Data.Events
         /// <param name="repository">Data repository triggering the event.</param>
         /// <param name="entity">Related entity.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        public static Task TriggerDeleteAsync<T>(this IDataEventHandlers handlers, IServiceProvider serviceProvider, IDataRepository<T> repository, T entity, CancellationToken cancellationToken = default(CancellationToken))
+        public static Task TriggerDeleteAsync<T>(
+            this IDataEventHandlers handlers,
+            IServiceProvider serviceProvider,
+            IDataRepository<T> repository,
+            T entity,
+            CancellationToken cancellationToken = default)
             where T : class
         {
             if (handlers == null)

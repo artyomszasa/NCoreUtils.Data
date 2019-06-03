@@ -28,7 +28,7 @@ namespace NCoreUtils.Linq
                 Current = await Selector(Source.Current, cancellationToken).ConfigureAwait(false);
                 return true;
             }
-            Current = default(TResult);
+            Current = default;
             return false;
         }
     }

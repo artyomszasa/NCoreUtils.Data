@@ -14,7 +14,7 @@ namespace NCoreUtils.Data.Unit
         }
 
         [Fact]
-        void IdValidation()
+        public void IdValidation()
         {
             Assert.True(IdUtils.IsValidId(1));
             Assert.True(IdUtils.IsValidId((sbyte)1));
@@ -30,7 +30,7 @@ namespace NCoreUtils.Data.Unit
         }
 
         [Fact]
-        void TryGetId()
+        public void TryGetId()
         {
             Assert.True(IdUtils.TryGetIdProperty(typeof(Item), out var prop));
             Assert.Equal(typeof(int), prop.PropertyType);
@@ -39,7 +39,7 @@ namespace NCoreUtils.Data.Unit
         }
 
         [Fact]
-        void TryGetRealId()
+        public void TryGetRealId()
         {
             Assert.True(IdUtils.TryGetRealIdProperty(typeof(Item), out var prop));
             Assert.Equal(typeof(int), prop.PropertyType);
@@ -56,7 +56,7 @@ namespace NCoreUtils.Data.Unit
         }
 
         [Fact]
-        void ExplicitProperties()
+        public void ExplicitProperties()
         {
             var expr = LinqExtensions.ReplaceExplicitProperties(CreateExpression<RealId>());
             Assert.Equal(nameof(RealId.Uid), expr.ExtractProperty().Name);

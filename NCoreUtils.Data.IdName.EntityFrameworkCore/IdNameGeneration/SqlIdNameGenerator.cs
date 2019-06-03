@@ -53,7 +53,7 @@ namespace NCoreUtils.Data.IdNameGeneration
             IQueryable<T> query,
             IdNameDescription idNameDescription,
             string name,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
             where T : class, IHasIdName
         {
             if (name == null)
@@ -118,7 +118,7 @@ namespace NCoreUtils.Data.IdNameGeneration
             IdNameDescription idNameDescription,
             string name,
             object indexValues = null,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
             where T : class, IHasIdName
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -162,7 +162,7 @@ namespace NCoreUtils.Data.IdNameGeneration
             IQueryable<T> directQuery,
             IdNameDescription idNameDescription,
             T entity,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
             where T : class, IHasIdName
         {
             cancellationToken.ThrowIfCancellationRequested();

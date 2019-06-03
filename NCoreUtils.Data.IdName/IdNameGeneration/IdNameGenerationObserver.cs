@@ -14,7 +14,7 @@ namespace NCoreUtils.Data.IdNameGeneration
         {
             static readonly ConcurrentDictionary<Type, Invoker> _cache = new ConcurrentDictionary<Type, Invoker>();
 
-            static Func<Type, Invoker> _factory = type => (Invoker)Activator.CreateInstance(typeof(Invoker<>).MakeGenericType(type), true);
+            static readonly Func<Type, Invoker> _factory = type => (Invoker)Activator.CreateInstance(typeof(Invoker<>).MakeGenericType(type), true);
 
             protected abstract Task DoInvoke(IdNameGenerationObserver observer, IDataEvent dataEvent, CancellationToken cancellationToken);
 
@@ -44,11 +44,11 @@ namespace NCoreUtils.Data.IdNameGeneration
             }
         }
 
-        public Task HandleAsync(IDataEvent @event, CancellationToken cancellationToken = default(CancellationToken))
+        public Task HandleAsync(IDataEvent @event, CancellationToken cancellationToken = default)
         {
             if (DataOperation.Insert == @event.Operation)
             {
-                if (@event.Entity is IHasIdName hasIdName)
+                if (@event.Entity is IHasIdName)
                 {
                     return Invoker.Invoke(this, @event, cancellationToken);
                 }

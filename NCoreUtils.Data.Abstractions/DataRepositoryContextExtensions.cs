@@ -33,7 +33,7 @@ namespace NCoreUtils.Data
         /// <param name="isolationLevel">Isolation level.</param>
         /// <param name="action">Action to perform in a transacted context.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        public static async Task TransactedAsync(this IDataRepositoryContext context, IsolationLevel isolationLevel, Func<Task> action, CancellationToken cancellationToken = default(CancellationToken))
+        public static async Task TransactedAsync(this IDataRepositoryContext context, IsolationLevel isolationLevel, Func<Task> action, CancellationToken cancellationToken = default)
         {
             if (context == null)
             {
@@ -59,7 +59,11 @@ namespace NCoreUtils.Data
         /// <param name="action">Action to perform in a transacted context.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Result of the action.</returns>
-        public static async Task<TResult> TransactedAsync<TResult>(this IDataRepositoryContext context, IsolationLevel isolationLevel, Func<Task<TResult>> action, CancellationToken cancellationToken = default(CancellationToken))
+        public static async Task<TResult> TransactedAsync<TResult>(
+            this IDataRepositoryContext context,
+            IsolationLevel isolationLevel,
+            Func<Task<TResult>> action,
+            CancellationToken cancellationToken = default)
         {
             if (context == null)
             {

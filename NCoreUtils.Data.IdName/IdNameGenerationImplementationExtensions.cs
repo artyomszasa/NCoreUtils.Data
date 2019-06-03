@@ -19,7 +19,7 @@ namespace NCoreUtils.Data
             IdNameDescription idNameDescription,
             string name,
             object indexValues,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
             where T : class, IHasIdName
         {
             if (query == null)
@@ -35,7 +35,7 @@ namespace NCoreUtils.Data
             IServiceProvider serviceProvider,
             IdNameDescription idNameDescription,
             T entity,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
             where T : class, IHasIdName
         {
             if (query == null)

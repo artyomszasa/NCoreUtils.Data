@@ -56,7 +56,7 @@ namespace NCoreUtils.Data.EntityFrameworkCore
             }
         }
 
-        public abstract Task<IDataTransaction> BeginTransactionAsync(IsolationLevel isolationLevel, CancellationToken cancellationToken = default(CancellationToken));
+        public abstract Task<IDataTransaction> BeginTransactionAsync(IsolationLevel isolationLevel, CancellationToken cancellationToken = default);
 
         public void Dispose()
         {
@@ -77,7 +77,7 @@ namespace NCoreUtils.Data.EntityFrameworkCore
 
         protected override void DisposeOnce(bool disposing) => CurrentTransaction?.Dispose();
 
-        public override async Task<IDataTransaction> BeginTransactionAsync(IsolationLevel isolationLevel, CancellationToken cancellationToken = default(CancellationToken))
+        public override async Task<IDataTransaction> BeginTransactionAsync(IsolationLevel isolationLevel, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (null != CurrentTransaction)

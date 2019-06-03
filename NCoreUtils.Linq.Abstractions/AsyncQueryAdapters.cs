@@ -55,8 +55,7 @@ namespace NCoreUtils.Linq
                     return null;
                 }
                 var i = 0;
-                Func<Task<IAsyncQueryProvider>> next = null;
-                next = () =>
+                Task<IAsyncQueryProvider> next()
                 {
                     ++i;
                     if (i >= _adapters.Count)
@@ -64,7 +63,7 @@ namespace NCoreUtils.Linq
                         return Task.FromResult<IAsyncQueryProvider>(null);
                     }
                     return _adapters[i].GetAdapterAsync(next, provider, cancellationToken);
-                };
+                }
                 return await _adapters[0].GetAdapterAsync(next, provider, cancellationToken);
             }
             finally

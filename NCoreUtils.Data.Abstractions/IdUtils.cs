@@ -125,7 +125,7 @@ namespace NCoreUtils.Data
                 idType = entityType.GenericTypeArguments[0];
                 return true;
             }
-            idType = default(Type);
+            idType = default;
             return false;
         }
 
@@ -143,7 +143,7 @@ namespace NCoreUtils.Data
         {
             if (!TryGetIdType(entityType, out var idType))
             {
-                interfaceMapping = default(InterfaceMapping);
+                interfaceMapping = default;
                 return false;
             }
             var interfaceType = typeof(IHasId<>).MakeGenericType(idType);
@@ -167,7 +167,7 @@ namespace NCoreUtils.Data
         {
             if (!TryGetInterfaceMap(entityType, out var interfaceMapping))
             {
-                property = default(PropertyInfo);
+                property = default;
                 return false;
             }
             var index = Array.FindIndex(interfaceMapping.InterfaceMethods, method => StringComparer.InvariantCultureIgnoreCase.Equals("get_Id", method.Name));
@@ -197,7 +197,7 @@ namespace NCoreUtils.Data
                 property = null == attr ? interfaceProperty : entityType.GetProperty(attr.PropertyName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
                 return true;
             }
-            property = default(PropertyInfo);
+            property = default;
             return false;
         }
 

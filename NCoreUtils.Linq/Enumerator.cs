@@ -4,8 +4,10 @@ using System.Collections.Generic;
 
 namespace NCoreUtils.Linq
 {
+    // FIXME: use NCoreUtils.Extensions.Collections
     public static class Enumerator
     {
+
         sealed class SelectEnumerator<TSource, TTarget> : IEnumerator<TTarget>
         {
             readonly IEnumerator<TSource> _source;

@@ -33,7 +33,7 @@ namespace NCoreUtils.Linq
                     return true;
                 }
             }
-            value = default(T);
+            value = default;
             return false;
         }
 
@@ -60,7 +60,7 @@ namespace NCoreUtils.Linq
                 {
                     var curr = enumerator.Current;
                     var currValue = selector(curr);
-                    if (comparer.Compare(maxValue, currValue) < 0)
+                    if (cmp.Compare(maxValue, currValue) < 0)
                     {
                         max = curr;
                         maxValue = currValue;
@@ -93,7 +93,7 @@ namespace NCoreUtils.Linq
                 {
                     var curr = enumerator.Current;
                     var currValue = selector(curr);
-                    if (comparer.Compare(maxValue, currValue) > 0)
+                    if (cmp.Compare(maxValue, currValue) > 0)
                     {
                         max = curr;
                         maxValue = currValue;

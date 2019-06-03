@@ -12,14 +12,14 @@ namespace NCoreUtils.Data.IdNameGeneration
             IdNameDescription idNameDescription,
             string name,
             object indexValues = null,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
             where T : class, IHasIdName;
 
         Task<string> GenerateAsync<T>(
             IQueryable<T> directQuery,
             IdNameDescription idNameDescription,
             T entity,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
             where T : class, IHasIdName;
     }
 }

@@ -30,7 +30,7 @@ namespace NCoreUtils.Data
 
             public GenericObserver(Func<IDataEvent, CancellationToken, Task> observer) => Observer = observer;
 
-            public Task HandleAsync(IDataEvent @event, CancellationToken cancellationToken = default(CancellationToken))
+            public Task HandleAsync(IDataEvent @event, CancellationToken cancellationToken = default)
                 => Observer(@event, cancellationToken);
         }
 
@@ -49,7 +49,7 @@ namespace NCoreUtils.Data
                 Observer = observer;
             }
 
-            public Task HandleAsync(IDataEvent @event, CancellationToken cancellationToken = default(CancellationToken))
+            public Task HandleAsync(IDataEvent @event, CancellationToken cancellationToken = default)
             {
                 if (ObservedOperations.HasFlag(@event.Operation) && @event.EntityType.Equals(ObservedType))
                 {
@@ -72,7 +72,7 @@ namespace NCoreUtils.Data
                 Observer = observer;
             }
 
-            public Task HandleAsync(IDataEvent @event, CancellationToken cancellationToken = default(CancellationToken))
+            public Task HandleAsync(IDataEvent @event, CancellationToken cancellationToken = default)
             {
                 if (ObservedOperations.HasFlag(@event.Operation) && @event is IDataEvent<T> e)
                 {
@@ -94,7 +94,7 @@ namespace NCoreUtils.Data
                 Observer = observer;
             }
 
-            public Task HandleAsync(IDataEvent @event, CancellationToken cancellationToken = default(CancellationToken))
+            public Task HandleAsync(IDataEvent @event, CancellationToken cancellationToken = default)
             {
                 if (@event.Operation == Operation)
                 {
@@ -115,7 +115,7 @@ namespace NCoreUtils.Data
                 Observer = observer;
             }
 
-            public Task HandleAsync(IDataEvent @event, CancellationToken cancellationToken = default(CancellationToken))
+            public Task HandleAsync(IDataEvent @event, CancellationToken cancellationToken = default)
             {
                 if (@event is TEvent e)
                 {

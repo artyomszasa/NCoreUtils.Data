@@ -54,7 +54,7 @@ namespace NCoreUtils.Data
         /// </summary>
         /// <param name="event">Data event.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        public async Task HandleAsync(IDataEvent @event, CancellationToken cancellationToken = default(CancellationToken))
+        public async Task HandleAsync(IDataEvent @event, CancellationToken cancellationToken = default)
         {
             if (await IsHandled(@event, cancellationToken))
             {

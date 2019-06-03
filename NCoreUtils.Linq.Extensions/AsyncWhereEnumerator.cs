@@ -32,7 +32,7 @@ namespace NCoreUtils.Linq
                     return true;
                 }
             }
-            Current = default(T);
+            Current = default;
             return false;
         }
     }

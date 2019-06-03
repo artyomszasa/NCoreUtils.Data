@@ -14,7 +14,7 @@ namespace NCoreUtils.Linq
         public DelayedAsyncEnumerator(Func<CancellationToken, Task<IAsyncEnumerator<T>>> factory)
             => _factory = factory;
 
-        public T Current => null == _source ? default(T) : _source.Current;
+        public T Current => null == _source ? default : _source.Current;
 
         public void Dispose() => _source?.Dispose();
 

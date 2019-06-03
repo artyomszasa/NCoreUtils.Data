@@ -22,7 +22,7 @@ namespace NCoreUtils.Data
         /// </summary>
         /// <param name="event">Data event.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        public virtual Task HandleAsync(IDataEvent @event, CancellationToken cancellationToken = default(CancellationToken))
+        public virtual Task HandleAsync(IDataEvent @event, CancellationToken cancellationToken = default)
             => HandleAsync(@event.Operation, @event.Entity, cancellationToken);
     }
 
@@ -71,7 +71,7 @@ namespace NCoreUtils.Data
         /// </summary>
         /// <param name="event">Data event.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        public virtual Task HandleAsync(IDataEvent @event, CancellationToken cancellationToken = default(CancellationToken))
+        public virtual Task HandleAsync(IDataEvent @event, CancellationToken cancellationToken = default)
         {
             if (@event is IDataEvent<T> e)
             {

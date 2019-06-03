@@ -42,7 +42,7 @@ namespace NCoreUtils.Data
         /// <param name="item">Data entity instance to persist.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Updated data entity.</returns>
-        Task<T> PersistAsync(T item, CancellationToken cancellationToken = default(CancellationToken));
+        Task<T> PersistAsync(T item, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Removes data entity from the persistent store. Exception may be thrown if the specified data entity was not
@@ -56,7 +56,7 @@ namespace NCoreUtils.Data
         /// this functionality.
         /// </param>
         /// <param name="cancellationToken">CancellationToken</param>
-        Task RemoveAsync(T item, bool force = false, CancellationToken cancellationToken = default(CancellationToken));
+        Task RemoveAsync(T item, bool force = false, CancellationToken cancellationToken = default);
     }
 
     /// <summary>
@@ -77,6 +77,6 @@ namespace NCoreUtils.Data
         /// Either data entity from persistent store that has the specified business key, <c>null</c> if no such entity
         /// exists.
         /// </returns>
-        Task<TData> LookupAsync(TId id, CancellationToken cancellationToken = default(CancellationToken));
+        Task<TData> LookupAsync(TId id, CancellationToken cancellationToken = default);
     }
 }
