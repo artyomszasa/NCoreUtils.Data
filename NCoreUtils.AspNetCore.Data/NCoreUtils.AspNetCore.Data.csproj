@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>netcoreapp3.0</TargetFramework>
-    <Version>3.0.0-alpha0</Version>
+    <Version>3.0.0-preview9</Version>
     <!-- NuGet -->
     <PackageId>NCoreUtils.AspNetCore.Data</PackageId>
     <Title>$(PackageId)</Title>
@@ -9,7 +9,7 @@
     <Description>Data entity repository ASP.NET Core related extensions.</Description>
     <Copyright>Artyom Antyipin</Copyright>
     <RepositoryUrl>https://github.com/artyomszasa/NCoreUtils.Data.git</RepositoryUrl>
-    <PackageReleaseNotes>Version bump (EF 2.2).</PackageReleaseNotes>
+    <PackageReleaseNotes>Version bump (preview9).</PackageReleaseNotes>
     <!-- Assembly Info -->
     <Product>NCoreUtils</Product>
     <AssemblyName>$(PackageId)</AssemblyName>
@@ -18,11 +18,12 @@
     <OutputType>Library</OutputType>
     <DebugType>portable</DebugType>
     <!-- <GenerateDocumentationFile>true</GenerateDocumentationFile> -->
+    <NoWarn>NU5105</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\NCoreUtils.Data\NCoreUtils.Data.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="3.0.0-preview4-19123-01" />
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 </Project>

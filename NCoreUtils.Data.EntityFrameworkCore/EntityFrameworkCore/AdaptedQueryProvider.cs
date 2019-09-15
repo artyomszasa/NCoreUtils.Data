@@ -1,4 +1,4 @@
-extern alias reactive;
+// extern alias reactive;
 using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
@@ -8,18 +8,28 @@ using IEFAsyncQueryProvider = Microsoft.EntityFrameworkCore.Query.Internal.IAsyn
 using EFQueryableExtensions = Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions;
 using EFRelationalQueryableExtensions = Microsoft.EntityFrameworkCore.RelationalQueryableExtensions;
 using System.Linq;
+using Microsoft.EntityFrameworkCore;
+
+#if NETSTANDARD2_0
+using ValueTask = reactive::System.Threading.Tasks.ValueTask;
+using BoolValueTask = reactive::System.Threading.Tasks.ValueTask<bool>;
+#else
+using ValueTask = System.Threading.Tasks.ValueTask;
+using BoolValueTask = System.Threading.Tasks.ValueTask<bool>;
+#endif
 
 namespace NCoreUtils.Data.EntityFrameworkCore
 {
     class AdaptedQueryProvider : Linq.IAsyncQueryProvider
     {
+        /*
         sealed class EnumeratorAdapter<T> : IAsyncEnumerator<T>
         {
-            readonly reactive::System.Collections.Generic.IAsyncEnumerator<T> _source;
+            readonly IAsyncEnumerator<T> _source;
 
             readonly CancellationToken _cancellationToken;
 
-            public EnumeratorAdapter(reactive::System.Collections.Generic.IAsyncEnumerator<T> source, CancellationToken cancellationToken)
+            public EnumeratorAdapter(IAsyncEnumerator<T> source, CancellationToken cancellationToken)
             {
                 _source = source;
                 _cancellationToken = cancellationToken;
@@ -33,7 +43,7 @@ namespace NCoreUtils.Data.EntityFrameworkCore
                 return default;
             }
 
-            public async ValueTask<bool> MoveNextAsync()
+            public async BoolValueTask MoveNextAsync()
             {
                 if (await _source.MoveNext(_cancellationToken))
                 {
@@ -55,6 +65,7 @@ namespace NCoreUtils.Data.EntityFrameworkCore
             public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
                 => new EnumeratorAdapter<T>(_source.GetEnumerator(), cancellationToken);
         }
+        */
 
         public static AdaptedQueryProvider SharedInstance { get; } = new AdaptedQueryProvider();
 
@@ -62,12 +73,7 @@ namespace NCoreUtils.Data.EntityFrameworkCore
         {
             if (expression.TryExtractQueryable(out var sourceQueryable, typeof(EFQueryableExtensions), typeof(EFRelationalQueryableExtensions)))
             {
-                var q = sourceQueryable.Provider.CreateQuery<T>(expression);
-                // see: Microsoft.EntityFrameworkCore.Extensions.Internal.QueryableExtensions.AsAsyncEnumerable
-                #pragma warning disable EF1001
-                var enumerable = Microsoft.EntityFrameworkCore.Extensions.Internal.QueryableExtensions.AsAsyncEnumerable(q);
-                #pragma warning restore EF1001
-                return new EnumerableAdapter<T>(enumerable);
+                return sourceQueryable.Provider.CreateQuery<T>(expression).AsAsyncEnumerable();
             }
             throw new InvalidOperationException($"Unable to extract EF queryable from {expression}.");
         }
@@ -75,11 +81,11 @@ namespace NCoreUtils.Data.EntityFrameworkCore
         public Task<T> ExecuteAsync<T>(Expression expression, CancellationToken cancellationToken)
         {
             #pragma warning disable EF1001
-            return expression.MaybeExtractQueryable(typeof(Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions), typeof(Microsoft.EntityFrameworkCore.RelationalQueryableExtensions))
+            return expression.MaybeExtractQueryable(typeof(EFQueryableExtensions), typeof(EFRelationalQueryableExtensions))
                 .Bind(queryable => queryable.Provider
                     .Just()
                     .As<IEFAsyncQueryProvider>()
-                    .Map(provider => provider.ExecuteAsync<T>(expression, cancellationToken))
+                    .Map(provider => provider.ExecuteAsync<Task<T>>(expression, cancellationToken))
                 )
                 .TryGetValue(out var result)
                 ? result

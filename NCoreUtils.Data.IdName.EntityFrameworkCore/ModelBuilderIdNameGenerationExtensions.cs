@@ -73,6 +73,8 @@ namespace NCoreUtils.Data
             var uid = Interlocked.Increment(ref _valueSupply);
             var typeBuilder = _moduleBuilder.DefineType($"DbFunctions_{uid}");
             var methodBuilder = typeBuilder.DefineMethod("GetIdNameSuffix", MethodAttributes.Static | MethodAttributes.Public, CallingConventions.Standard, typeof(string), new [] { typeof(string), typeof(string) });
+            methodBuilder.DefineParameter(1, ParameterAttributes.None, "source");
+            methodBuilder.DefineParameter(2, ParameterAttributes.None, "pattern");
             var functionName = $"get_idname_suffix_{uid}";
             methodBuilder.SetCustomAttribute(new CustomAttributeBuilder(_dbFuntionAttributeCtor, new object[] { functionName, schema }));
             {

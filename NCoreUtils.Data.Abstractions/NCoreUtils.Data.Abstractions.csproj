@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>netstandard2.1</TargetFramework>
-    <Version>3.0.0-alpha0</Version>
+    <TargetFrameworks>netstandard2.0;netstandard2.1</TargetFrameworks>
+    <Version>3.0.0-preview9</Version>
     <!-- NuGet -->
     <PackageId>NCoreUtils.Data.Abstractions</PackageId>
     <Title>$(PackageId)</Title>
@@ -19,10 +19,11 @@
     <DebugType>portable</DebugType>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <NoWarn>NU5105</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="NCoreUtils.Extensions.Expressions" Version="1.0.5" />
     <PackageReference Include="NCoreUtils.Maybe" Version="1.0.5" />
-    <PackageReference Include="System.Collections.Immutable" Version="1.6.0-preview5.19224.8" />
+    <PackageReference Include="System.Collections.Immutable" Version="1.6.0-preview9.19421.4" />
   </ItemGroup>
 </Project>

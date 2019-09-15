@@ -1,5 +1,7 @@
+.ionide
 .vscode
 .vs
+
 NCoreUtils*/bin
 NCoreUtils*/obj
 NCoreUtils.Data.IdName.Unit/report
