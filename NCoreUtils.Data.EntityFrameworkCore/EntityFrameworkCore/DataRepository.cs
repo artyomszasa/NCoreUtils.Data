@@ -149,7 +149,7 @@ namespace NCoreUtils.Data.EntityFrameworkCore
             EventHandlers = eventHandlers;
         }
 
-        protected abstract Task<EntityEntry<TData>> AttachNewOrUpdateAsync(EntityEntry<TData> entry, CancellationToken cancellationToken);
+        protected abstract ValueTask<EntityEntry<TData>> AttachNewOrUpdateAsync(EntityEntry<TData> entry, CancellationToken cancellationToken);
 
         protected virtual async Task PrepareUpdatedEntityAsync(EntityEntry<TData> entry, CancellationToken cancellationToken = default)
         {
@@ -182,7 +182,7 @@ namespace NCoreUtils.Data.EntityFrameworkCore
             }
         }
 
-        protected virtual Task PrepareAddedEntityAsync(EntityEntry<TData> entry, CancellationToken cancellationToken = default)
+        protected virtual ValueTask PrepareAddedEntityAsync(EntityEntry<TData> entry, CancellationToken cancellationToken = default)
             => EventHandlers.TriggerInsertAsync(ServiceProvider, this, entry.Entity, cancellationToken);
 
         public virtual async Task<TData> PersistAsync(TData item, CancellationToken cancellationToken = default)
@@ -241,10 +241,16 @@ namespace NCoreUtils.Data.EntityFrameworkCore
     {
         public DataRepository(IServiceProvider serviceProvider, DataRepositoryContext context, IDataEventHandlers eventHandlers = null) : base(serviceProvider, context, eventHandlers) { }
 
-        protected override async Task<EntityEntry<TData>> AttachNewOrUpdateAsync(EntityEntry<TData> entry, CancellationToken cancellationToken)
+
+        protected virtual ValueTask<bool> ShouldUpdateEntity(EntityEntry<TData> entry, CancellationToken cancellationToken)
+        {
+            return new ValueTask<bool>(entry.Entity.Id.CompareTo(default) > 0);
+        }
+
+        protected override async ValueTask<EntityEntry<TData>> AttachNewOrUpdateAsync(EntityEntry<TData> entry, CancellationToken cancellationToken)
         {
             var dbContext = EFCoreContext.DbContext;
-            if (entry.Entity.Id.CompareTo(default) > 0)
+            if (await ShouldUpdateEntity(entry, cancellationToken))
             {
                 // check whether another instance is already tracked
                 var existentEntry = dbContext.ChangeTracker.Entries<TData>().FirstOrDefault(e => e.Entity.Id.Equals(entry.Entity.Id));
@@ -258,9 +264,8 @@ namespace NCoreUtils.Data.EntityFrameworkCore
                 await PrepareUpdatedEntityAsync(existentEntry, cancellationToken).ConfigureAwait(false);
                 return existentEntry;
             }
-            var addedEntry = await dbContext.AddAsync(entry.Entity, cancellationToken).ConfigureAwait(false);
-            await PrepareAddedEntityAsync(addedEntry, cancellationToken);
-            return addedEntry;
+            await PrepareAddedEntityAsync(entry, cancellationToken);
+            return await dbContext.AddAsync(entry.Entity, cancellationToken).ConfigureAwait(false);
         }
 
         public virtual Task<TData> LookupAsync(TId id, CancellationToken cancellationToken = default)

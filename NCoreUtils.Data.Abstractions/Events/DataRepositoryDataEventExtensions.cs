@@ -9,7 +9,7 @@ namespace NCoreUtils.Data.Events
     /// </summary>
     public static class DataRepositoryDataEventExtensions
     {
-        static async Task TriggerAsync<T>(IDataEventHandlers handlers, IDataEvent<T> @event, CancellationToken cancellationToken)
+        static async ValueTask TriggerAsync<T>(IDataEventHandlers handlers, IDataEvent<T> @event, CancellationToken cancellationToken)
             where T : class
         {
             foreach (var handler in handlers.Handlers)
@@ -26,7 +26,7 @@ namespace NCoreUtils.Data.Events
         /// <param name="repository">Data repository triggering the event.</param>
         /// <param name="entity">Related entity.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        public static Task TriggerUpdateAsync<T>(
+        public static ValueTask TriggerUpdateAsync<T>(
             this IDataEventHandlers handlers,
             IServiceProvider serviceProvider,
             IDataRepository<T> repository,
@@ -36,7 +36,7 @@ namespace NCoreUtils.Data.Events
         {
             if (handlers == null)
             {
-                return Task.CompletedTask;
+                return default;
             }
             return TriggerAsync(handlers, new DataUpdateEvent<T>(serviceProvider, repository, entity), cancellationToken);
         }
@@ -49,7 +49,7 @@ namespace NCoreUtils.Data.Events
         /// <param name="repository">Data repository triggering the event.</param>
         /// <param name="entity">Related entity.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        public static Task TriggerInsertAsync<T>(
+        public static ValueTask TriggerInsertAsync<T>(
             this IDataEventHandlers handlers,
             IServiceProvider serviceProvider,
             IDataRepository<T> repository,
@@ -59,7 +59,7 @@ namespace NCoreUtils.Data.Events
         {
             if (handlers == null)
             {
-                return Task.CompletedTask;
+                return default;
             }
             return TriggerAsync(handlers, new DataInsertEvent<T>(serviceProvider, repository, entity), cancellationToken);
         }
@@ -72,7 +72,7 @@ namespace NCoreUtils.Data.Events
         /// <param name="repository">Data repository triggering the event.</param>
         /// <param name="entity">Related entity.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        public static Task TriggerDeleteAsync<T>(
+        public static ValueTask TriggerDeleteAsync<T>(
             this IDataEventHandlers handlers,
             IServiceProvider serviceProvider,
             IDataRepository<T> repository,
@@ -82,7 +82,7 @@ namespace NCoreUtils.Data.Events
         {
             if (handlers == null)
             {
-                return Task.CompletedTask;
+                return default;
             }
             return TriggerAsync(handlers, new DataDeleteEvent<T>(serviceProvider, repository, entity), cancellationToken);
         }

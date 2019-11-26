@@ -15,14 +15,14 @@ namespace NCoreUtils.Data
         /// <param name="operation">Operation being performed.</param>
         /// <param name="entity">Data entity the operation being performed on.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        protected virtual Task HandleAsync(DataOperation operation, object entity, CancellationToken cancellationToken) => Task.CompletedTask;
+        protected virtual ValueTask HandleAsync(DataOperation operation, object entity, CancellationToken cancellationToken) => default;
 
         /// <summary>
         /// Performes user defined operation for single data repository related data event.
         /// </summary>
         /// <param name="event">Data event.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        public virtual Task HandleAsync(IDataEvent @event, CancellationToken cancellationToken = default)
+        public virtual ValueTask HandleAsync(IDataEvent @event, CancellationToken cancellationToken = default)
             => HandleAsync(@event.Operation, @event.Entity, cancellationToken);
     }
 
@@ -37,7 +37,7 @@ namespace NCoreUtils.Data
         /// </summary>
         /// <param name="entity">Data entity the operation being performed on.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        protected virtual Task HandleAsync(T entity, CancellationToken cancellationToken) => Task.CompletedTask;
+        protected virtual ValueTask HandleAsync(T entity, CancellationToken cancellationToken) => default;
 
         /// <summary>
         /// Performes user defined operation for single data repository related data event.
@@ -45,7 +45,7 @@ namespace NCoreUtils.Data
         /// <param name="operation">Operation being performed.</param>
         /// <param name="entity">Data entity the operation being performed on.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        protected virtual Task HandleAsync(DataOperation operation, T entity, CancellationToken cancellationToken)
+        protected virtual ValueTask HandleAsync(DataOperation operation, T entity, CancellationToken cancellationToken)
             => HandleAsync(entity, cancellationToken);
 
         /// <summary>
@@ -55,7 +55,7 @@ namespace NCoreUtils.Data
         /// <param name="operation">Operation being performed.</param>
         /// <param name="entity">Data entity the operation being performed on.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        protected virtual Task HandleAsync(IDataRepository<T> repository, DataOperation operation, T entity, CancellationToken cancellationToken)
+        protected virtual ValueTask HandleAsync(IDataRepository<T> repository, DataOperation operation, T entity, CancellationToken cancellationToken)
             => HandleAsync(operation, entity, cancellationToken);
 
         /// <summary>
@@ -63,7 +63,7 @@ namespace NCoreUtils.Data
         /// </summary>
         /// <param name="event">Data event.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        protected virtual Task HandleAsync(IDataEvent<T> @event, CancellationToken cancellationToken)
+        protected virtual ValueTask HandleAsync(IDataEvent<T> @event, CancellationToken cancellationToken)
             => HandleAsync(@event.Repository, @event.Operation, @event.Entity, cancellationToken);
 
         /// <summary>
@@ -71,13 +71,13 @@ namespace NCoreUtils.Data
         /// </summary>
         /// <param name="event">Data event.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        public virtual Task HandleAsync(IDataEvent @event, CancellationToken cancellationToken = default)
+        public virtual ValueTask HandleAsync(IDataEvent @event, CancellationToken cancellationToken = default)
         {
             if (@event is IDataEvent<T> e)
             {
                 return HandleAsync(e, cancellationToken);
             }
-            return Task.CompletedTask;
+            return default;
         }
     }
 }

@@ -51,10 +51,10 @@ namespace NCoreUtils.Data.Unit
 
             public IReadOnlyList<IDataEvent> Events => _events;
 
-            public Task HandleAsync(IDataEvent @event, CancellationToken cancellationToken = default)
+            public ValueTask HandleAsync(IDataEvent @event, CancellationToken cancellationToken = default)
             {
                 _events.Add(@event);
-                return Task.CompletedTask;
+                return default;
             }
         }
 
@@ -208,7 +208,7 @@ namespace NCoreUtils.Data.Unit
             var item = new Item();
             IDataRepository<Item> repository = new Mock<IDataRepository<Item>>().Object;
             var realHandler = new DataEventHandler();
-            Assert.Throws<ArgumentNullException>(() => DataEventFilter.Filter(null, (e, _) => Task.FromResult(e.Operation == DataOperation.Insert)));
+            Assert.Throws<ArgumentNullException>(() => DataEventFilter.Filter(null, (e, _) => new ValueTask<bool>(e.Operation == DataOperation.Insert)));
             Assert.Throws<ArgumentNullException>(() => DataEventFilter.Filter(realHandler, null));
             var handler = DataEventFilter.Filter(realHandler, (e, _) =>
             {
@@ -231,15 +231,15 @@ namespace NCoreUtils.Data.Unit
                         break;
                 }
                 Assert.Same(item, e.Entity);
-                return Task.FromResult(e.Operation == DataOperation.Insert);
+                return new ValueTask<bool>(e.Operation == DataOperation.Insert);
             });
             var serviceProvider = new ServiceCollection().BuildServiceProvider();
             var insertEvent = new DataInsertEvent<Item>(serviceProvider, repository, item);
             var updateEvent = new DataUpdateEvent<Item>(serviceProvider, repository, item);
             var deleteEvent = new DataDeleteEvent<Item>(serviceProvider, repository, item);
-            handler.HandleAsync(insertEvent).Wait();
-            handler.HandleAsync(updateEvent).Wait();
-            handler.HandleAsync(deleteEvent).Wait();
+            handler.HandleAsync(insertEvent).AsTask().Wait();
+            handler.HandleAsync(updateEvent).AsTask().Wait();
+            handler.HandleAsync(deleteEvent).AsTask().Wait();
             var handledCount = realHandler.Events.Count;
             Assert.Equal(1, handledCount);
             Assert.Same(insertEvent, realHandler.Events[0]);
@@ -249,8 +249,8 @@ namespace NCoreUtils.Data.Unit
         public void TestDataRepositoryExtensions()
         {
             Assert.Throws<ArgumentNullException>(() => DataRepositoryExtensions.Lookup<Item, int>(null, 0));
-            Assert.Throws<ArgumentNullException>(() => DataRepositoryExtensions.Persist<Item>(null, new Item()));
-            Assert.Throws<ArgumentNullException>(() => DataRepositoryExtensions.Remove<Item>(null, new Item()));
+            Assert.Throws<ArgumentNullException>(() => DataRepositoryExtensions.Persist(null, new Item()));
+            Assert.Throws<ArgumentNullException>(() => DataRepositoryExtensions.Remove(null, new Item()));
         }
 
         [Fact]

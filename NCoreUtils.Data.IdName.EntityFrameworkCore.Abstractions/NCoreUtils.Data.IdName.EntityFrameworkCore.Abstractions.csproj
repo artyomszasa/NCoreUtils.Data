@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>netstandard2.1</TargetFrameworks>
-    <Version>3.0.0-preview9</Version>
+    <Version>3.0.0</Version>
     <!-- NuGet -->
     <PackageId>NCoreUtils.Data.IdName.EntityFrameworkCore.Abstractions</PackageId>
     <Title>$(PackageId)</Title>

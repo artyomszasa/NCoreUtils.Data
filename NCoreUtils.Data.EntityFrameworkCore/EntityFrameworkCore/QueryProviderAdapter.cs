@@ -9,11 +9,11 @@ namespace NCoreUtils.Data.EntityFrameworkCore
 {
     sealed class QueryProviderAdapter : IAsyncQueryAdapter
     {
-        public Task<IAsyncQueryProvider> GetAdapterAsync(Func<Task<IAsyncQueryProvider>> next, IQueryProvider source, CancellationToken cancellationToken)
+        public ValueTask<IAsyncQueryProvider> GetAdapterAsync(Func<ValueTask<IAsyncQueryProvider>> next, IQueryProvider source, CancellationToken cancellationToken)
         {
             if (source is IEFAsyncQueryProvider)
             {
-                return Task.FromResult<IAsyncQueryProvider>(AdaptedQueryProvider.SharedInstance);
+                return new ValueTask<IAsyncQueryProvider>(AdaptedQueryProvider.SharedInstance);
             }
             return next();
         }

@@ -16,22 +16,22 @@ namespace NCoreUtils.Data.IdNameGeneration
 
             static readonly Func<Type, Invoker> _factory = type => (Invoker)Activator.CreateInstance(typeof(Invoker<>).MakeGenericType(type), true);
 
-            protected abstract Task DoInvoke(IdNameGenerationObserver observer, IDataEvent dataEvent, CancellationToken cancellationToken);
+            protected abstract ValueTask DoInvoke(IdNameGenerationObserver observer, IDataEvent dataEvent, CancellationToken cancellationToken);
 
-            public static Task Invoke(IdNameGenerationObserver observer, IDataEvent dataEvent, CancellationToken cancellationToken)
+            public static ValueTask Invoke(IdNameGenerationObserver observer, IDataEvent dataEvent, CancellationToken cancellationToken)
                 => _cache.GetOrAdd(dataEvent.EntityType, _factory).DoInvoke(observer, dataEvent, cancellationToken);
         }
 
         sealed class Invoker<T> : Invoker
             where T : class, IHasIdName
         {
-            protected override Task DoInvoke(IdNameGenerationObserver observer, IDataEvent dataEvent, CancellationToken cancellationToken)
+            protected override ValueTask DoInvoke(IdNameGenerationObserver observer, IDataEvent dataEvent, CancellationToken cancellationToken)
             {
-                return observer.HandleAsync<T>((IDataEvent<T>)dataEvent, cancellationToken);
+                return observer.HandleAsync((IDataEvent<T>)dataEvent, cancellationToken);
             }
         }
 
-        public async Task HandleAsync<T>(IDataEvent<T> @event, CancellationToken cancellationToken)
+        public async ValueTask HandleAsync<T>(IDataEvent<T> @event, CancellationToken cancellationToken)
             where T : class, IHasIdName
         {
             if (@event.Repository is ISupportsIdNameGeneration generationInfo && generationInfo.GenerateIdNameOnInsert)
@@ -44,7 +44,7 @@ namespace NCoreUtils.Data.IdNameGeneration
             }
         }
 
-        public Task HandleAsync(IDataEvent @event, CancellationToken cancellationToken = default)
+        public ValueTask HandleAsync(IDataEvent @event, CancellationToken cancellationToken = default)
         {
             if (DataOperation.Insert == @event.Operation)
             {
@@ -53,7 +53,7 @@ namespace NCoreUtils.Data.IdNameGeneration
                     return Invoker.Invoke(this, @event, cancellationToken);
                 }
             }
-            return Task.CompletedTask;
+            return default;
         }
     }
 }

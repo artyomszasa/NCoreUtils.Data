@@ -23,6 +23,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NCoreUtils.Data.IdName.Enti
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NCoreUtils.AspNetCore.Data", "NCoreUtils.AspNetCore.Data\NCoreUtils.AspNetCore.Data.csproj", "{3E5791C8-7DF6-4E8F-BE4A-F950ADB8329C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NCoreUtils.Data.Internal", "NCoreUtils.Data.Internal\NCoreUtils.Data.Internal.csproj", "{54CF3A18-90AA-4735-8649-A1AFAE9D5DA8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NCoreUtils.Data.Google.FireStore", "NCoreUtils.Data.Google.FireStore\NCoreUtils.Data.Google.FireStore.csproj", "{0C248CCB-8331-4B00-97DE-E0FFB98D172B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -156,5 +160,29 @@ Global
 		{3E5791C8-7DF6-4E8F-BE4A-F950ADB8329C}.Release|x64.Build.0 = Release|Any CPU
 		{3E5791C8-7DF6-4E8F-BE4A-F950ADB8329C}.Release|x86.ActiveCfg = Release|Any CPU
 		{3E5791C8-7DF6-4E8F-BE4A-F950ADB8329C}.Release|x86.Build.0 = Release|Any CPU
+		{54CF3A18-90AA-4735-8649-A1AFAE9D5DA8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{54CF3A18-90AA-4735-8649-A1AFAE9D5DA8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{54CF3A18-90AA-4735-8649-A1AFAE9D5DA8}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{54CF3A18-90AA-4735-8649-A1AFAE9D5DA8}.Debug|x64.Build.0 = Debug|Any CPU
+		{54CF3A18-90AA-4735-8649-A1AFAE9D5DA8}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{54CF3A18-90AA-4735-8649-A1AFAE9D5DA8}.Debug|x86.Build.0 = Debug|Any CPU
+		{54CF3A18-90AA-4735-8649-A1AFAE9D5DA8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{54CF3A18-90AA-4735-8649-A1AFAE9D5DA8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{54CF3A18-90AA-4735-8649-A1AFAE9D5DA8}.Release|x64.ActiveCfg = Release|Any CPU
+		{54CF3A18-90AA-4735-8649-A1AFAE9D5DA8}.Release|x64.Build.0 = Release|Any CPU
+		{54CF3A18-90AA-4735-8649-A1AFAE9D5DA8}.Release|x86.ActiveCfg = Release|Any CPU
+		{54CF3A18-90AA-4735-8649-A1AFAE9D5DA8}.Release|x86.Build.0 = Release|Any CPU
+		{0C248CCB-8331-4B00-97DE-E0FFB98D172B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0C248CCB-8331-4B00-97DE-E0FFB98D172B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0C248CCB-8331-4B00-97DE-E0FFB98D172B}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{0C248CCB-8331-4B00-97DE-E0FFB98D172B}.Debug|x64.Build.0 = Debug|Any CPU
+		{0C248CCB-8331-4B00-97DE-E0FFB98D172B}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{0C248CCB-8331-4B00-97DE-E0FFB98D172B}.Debug|x86.Build.0 = Debug|Any CPU
+		{0C248CCB-8331-4B00-97DE-E0FFB98D172B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0C248CCB-8331-4B00-97DE-E0FFB98D172B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0C248CCB-8331-4B00-97DE-E0FFB98D172B}.Release|x64.ActiveCfg = Release|Any CPU
+		{0C248CCB-8331-4B00-97DE-E0FFB98D172B}.Release|x64.Build.0 = Release|Any CPU
+		{0C248CCB-8331-4B00-97DE-E0FFB98D172B}.Release|x86.ActiveCfg = Release|Any CPU
+		{0C248CCB-8331-4B00-97DE-E0FFB98D172B}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

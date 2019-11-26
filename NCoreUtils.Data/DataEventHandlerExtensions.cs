@@ -14,6 +14,24 @@ namespace NCoreUtils.Data
     /// </summary>
     public static class DataEventHandlerExtensions
     {
+        sealed class DataEventHandlerFactory : IDataEventHandler
+        {
+            readonly Type _targetHandlerType;
+
+            public DataEventHandlerFactory(Type targetHandlerType)
+            {
+                _targetHandlerType = targetHandlerType;
+            }
+
+            public ValueTask HandleAsync(IDataEvent @event, CancellationToken cancellationToken = default)
+            {
+                var observer = (IDataEventHandler)ActivatorUtilities.CreateInstance(@event.ServiceProvider, _targetHandlerType);
+                return observer.HandleAsync(@event, cancellationToken);
+            }
+
+            public override string ToString() => $"DataEventHandlerFactory({_targetHandlerType})";
+        }
+
         /// <summary>
         /// Adds default implementation of data event handlers.
         /// </summary>
@@ -98,7 +116,7 @@ namespace NCoreUtils.Data
             handler = DataEventHandler.CreateUpdateObserverFrom<TEntity>((_, entity, __) =>
             {
                 observer(entity);
-                return Task.CompletedTask;
+                return default;
             });
             handlers.Add(handler);
             return handlers;
@@ -132,7 +150,7 @@ namespace NCoreUtils.Data
             handler = DataEventHandler.CreateInsertObserverFrom<TEntity>((_, entity, __) =>
             {
                 observer(entity);
-                return Task.CompletedTask;
+                return default;
             });
             handlers.Add(handler);
             return handlers;
@@ -166,7 +184,7 @@ namespace NCoreUtils.Data
             handler = DataEventHandler.CreateDeleteObserverFrom<TEntity>((_, entity, __) =>
             {
                 observer(entity);
-                return Task.CompletedTask;
+                return default;
             });
             handlers.Add(handler);
             return handlers;
@@ -195,7 +213,7 @@ namespace NCoreUtils.Data
         /// <param name="observer">Observer function.</param>
         /// <param name="handler">Created handler.</param>
         /// <returns>Handler collection.</returns>
-        public static IDataEventHandlers ObserveUpdate<TEntity>(this IDataEventHandlers handlers, Func<TEntity, CancellationToken, Task> observer, out IDataEventHandler handler)
+        public static IDataEventHandlers ObserveUpdate<TEntity>(this IDataEventHandlers handlers, Func<TEntity, CancellationToken, ValueTask> observer, out IDataEventHandler handler)
             where TEntity : class
         {
             handler = DataEventHandler.CreateUpdateObserverFrom<TEntity>((_, entity, cancellationToken) => observer(entity, cancellationToken));
@@ -211,7 +229,7 @@ namespace NCoreUtils.Data
         /// <param name="handlers">Handler collection.</param>
         /// <param name="observer">Observer function.</param>
         /// <returns>Handler collection.</returns>
-        public static IDataEventHandlers ObserveUpdate<TEntity>(this IDataEventHandlers handlers, Func<TEntity, CancellationToken, Task> observer)
+        public static IDataEventHandlers ObserveUpdate<TEntity>(this IDataEventHandlers handlers, Func<TEntity, CancellationToken, ValueTask> observer)
             where TEntity : class
             => handlers.ObserveUpdate(observer, out var _);
 
@@ -225,7 +243,7 @@ namespace NCoreUtils.Data
         /// <param name="observer">Observer function.</param>
         /// <param name="handler">Created handler.</param>
         /// <returns>Handler collection.</returns>
-        public static IDataEventHandlers ObserveInsert<TEntity>(this IDataEventHandlers handlers, Func<TEntity, CancellationToken, Task> observer, out IDataEventHandler handler)
+        public static IDataEventHandlers ObserveInsert<TEntity>(this IDataEventHandlers handlers, Func<TEntity, CancellationToken, ValueTask> observer, out IDataEventHandler handler)
             where TEntity : class
         {
             handler = DataEventHandler.CreateInsertObserverFrom<TEntity>((_, entity, cancellationToken) => observer(entity, cancellationToken));
@@ -241,7 +259,7 @@ namespace NCoreUtils.Data
         /// <param name="handlers">Handler collection.</param>
         /// <param name="observer">Observer function.</param>
         /// <returns>Handler collection.</returns>
-        public static IDataEventHandlers ObserveInsert<TEntity>(this IDataEventHandlers handlers, Func<TEntity, CancellationToken, Task> observer)
+        public static IDataEventHandlers ObserveInsert<TEntity>(this IDataEventHandlers handlers, Func<TEntity, CancellationToken, ValueTask> observer)
             where TEntity : class
             => handlers.ObserveInsert(observer, out var _);
 
@@ -255,7 +273,7 @@ namespace NCoreUtils.Data
         /// <param name="observer">Observer function.</param>
         /// <param name="handler">Created handler.</param>
         /// <returns>Handler collection.</returns>
-        public static IDataEventHandlers ObserveDelete<TEntity>(this IDataEventHandlers handlers, Func<TEntity, CancellationToken, Task> observer, out IDataEventHandler handler)
+        public static IDataEventHandlers ObserveDelete<TEntity>(this IDataEventHandlers handlers, Func<TEntity, CancellationToken, ValueTask> observer, out IDataEventHandler handler)
             where TEntity : class
         {
             handler = DataEventHandler.CreateDeleteObserverFrom<TEntity>((_, entity, cancellationToken) => observer(entity, cancellationToken));
@@ -271,7 +289,7 @@ namespace NCoreUtils.Data
         /// <param name="handlers">Handler collection.</param>
         /// <param name="observer">Observer function.</param>
         /// <returns>Handler collection.</returns>
-        public static IDataEventHandlers ObserveDelete<TEntity>(this IDataEventHandlers handlers, Func<TEntity, CancellationToken, Task> observer)
+        public static IDataEventHandlers ObserveDelete<TEntity>(this IDataEventHandlers handlers, Func<TEntity, CancellationToken, ValueTask> observer)
             where TEntity : class
             => handlers.ObserveDelete(observer, out var _);
 
@@ -300,18 +318,9 @@ namespace NCoreUtils.Data
                 .ToList();
             foreach (var type in types)
             {
-                var handler = Create(type);
-                handlers.Add(handler);
+                handlers.Add(new DataEventHandlerFactory(type));
             }
             return handlers;
-
-            IDataEventHandler Create(Type type)
-            {
-                return DataEventHandler.Create((e, token) => {
-                    var observer = (IDataEventHandler)ActivatorUtilities.CreateInstance(e.ServiceProvider, type);
-                    return observer.HandleAsync(e, token);
-                });
-            }
         }
     }
 }

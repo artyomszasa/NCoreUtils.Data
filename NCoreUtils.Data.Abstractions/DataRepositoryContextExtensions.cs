@@ -43,11 +43,9 @@ namespace NCoreUtils.Data
             {
                 throw new ArgumentNullException(nameof(action));
             }
-            using (var tx = await context.BeginTransactionAsync(isolationLevel, cancellationToken))
-            {
-                await action();
-                tx.Commit();
-            }
+            using var tx = await context.BeginTransactionAsync(isolationLevel, cancellationToken);
+            await action();
+            tx.Commit();
         }
 
         /// <summary>
@@ -73,12 +71,10 @@ namespace NCoreUtils.Data
             {
                 throw new ArgumentNullException(nameof(action));
             }
-            using (var tx = await context.BeginTransactionAsync(isolationLevel, cancellationToken))
-            {
-                var result = await action();
-                tx.Commit();
-                return result;
-            }
+            using var tx = await context.BeginTransactionAsync(isolationLevel, cancellationToken);
+            var result = await action();
+            tx.Commit();
+            return result;
         }
 
         /// <summary>
@@ -98,11 +94,9 @@ namespace NCoreUtils.Data
             {
                 throw new ArgumentNullException(nameof(action));
             }
-            using (var tx = context.BeginTransaction(isolationLevel))
-            {
-                action();
-                tx.Commit();
-            }
+            using var tx = context.BeginTransaction(isolationLevel);
+            action();
+            tx.Commit();
         }
 
         /// <summary>
@@ -123,12 +117,10 @@ namespace NCoreUtils.Data
             {
                 throw new ArgumentNullException(nameof(action));
             }
-            using (var tx = context.BeginTransaction(isolationLevel))
-            {
-                var result = action();
-                tx.Commit();
-                return result;
-            }
+            using var tx = context.BeginTransaction(isolationLevel);
+            var result = action();
+            tx.Commit();
+            return result;
         }
     }
 }

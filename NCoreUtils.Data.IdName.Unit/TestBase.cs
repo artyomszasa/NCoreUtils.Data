@@ -36,15 +36,13 @@ namespace NCoreUtils.Data
                 // .AddSqlIdNameGeneration<TestDbContext>()
                 .AddSingleton<ISimplifier>(Simplifier.Default)
                 .BuildServiceProvider(true);
-            using (var scope = _globalServiceProvider.CreateScope())
-            {
-                var dbContext = scope.ServiceProvider.GetRequiredService<TestDbContext>();
-                dbContext.Database.EnsureDeleted();
-                dbContext.Database.EnsureCreated();
+            using var scope = _globalServiceProvider.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<TestDbContext>();
+            dbContext.Database.EnsureDeleted();
+            dbContext.Database.EnsureCreated();
 
-                var dataEventHandlers = scope.ServiceProvider.GetRequiredService<IDataEventHandlers>();
-                dataEventHandlers.AddImplicitObservers();
-            }
+            var dataEventHandlers = scope.ServiceProvider.GetRequiredService<IDataEventHandlers>();
+            dataEventHandlers.AddImplicitObservers();
         }
 
         void IDisposable.Dispose()
@@ -68,18 +66,14 @@ namespace NCoreUtils.Data
 
         protected void Scoped(Action<IServiceProvider> action)
         {
-            using (var scope = _globalServiceProvider.CreateScope())
-            {
-                action(scope.ServiceProvider);
-            }
+            using var scope = _globalServiceProvider.CreateScope();
+            action(scope.ServiceProvider);
         }
 
         protected async Task ScopedAsync(Func<IServiceProvider, CancellationToken, Task> action)
         {
-            using (var scope = _globalServiceProvider.CreateScope())
-            {
-                await action(scope.ServiceProvider, CancellationToken.None);
-            }
+            using var scope = _globalServiceProvider.CreateScope();
+            await action(scope.ServiceProvider, CancellationToken.None);
         }
 
         public virtual Task InsertOne() => ScopedAsync(async (serviceProvider, cancellationToken) =>

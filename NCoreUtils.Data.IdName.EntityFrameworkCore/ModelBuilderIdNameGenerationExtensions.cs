@@ -137,24 +137,14 @@ namespace NCoreUtils.Data
             {
                 var properties = new List<PropertyInfo>{ desc.IdNameProperty };
                 properties.AddRange(desc.AdditionalIndexProperties);
-                Type tupleType;
-                switch (properties.Count)
+                var tupleType = properties.Count switch
                 {
-                    case 2:
-                        tupleType = typeof(Tuple<,>).MakeGenericType(properties.MapToArray(p => p.PropertyType));
-                        break;
-                    case 3:
-                        tupleType = typeof(Tuple<,,>).MakeGenericType(properties.MapToArray(p => p.PropertyType));
-                        break;
-                    case 4:
-                        tupleType = typeof(Tuple<,,,>).MakeGenericType(properties.MapToArray(p => p.PropertyType));
-                        break;
-                    case 5:
-                        tupleType = typeof(Tuple<,,,,>).MakeGenericType(properties.MapToArray(p => p.PropertyType));
-                        break;
-                    default:
-                        throw new InvalidOperationException($"Not supported index property count = {properties.Count}.");
-                }
+                    2 => typeof(Tuple<,>).MakeGenericType(properties.MapToArray(p => p.PropertyType)),
+                    3 => typeof(Tuple<,,>).MakeGenericType(properties.MapToArray(p => p.PropertyType)),
+                    4 => typeof(Tuple<,,,>).MakeGenericType(properties.MapToArray(p => p.PropertyType)),
+                    5 => typeof(Tuple<,,,,>).MakeGenericType(properties.MapToArray(p => p.PropertyType)),
+                    _ => throw new InvalidOperationException($"Not supported index property count = {properties.Count}."),
+                };
                 var eArgs = properties.MapToArray(p => Expression.Property(eArg, p));
                 var members = properties.Select((_, i) => tupleType.GetProperty($"Item{i + 1}")).ToArray();
                 var selector = Expression.Lambda<Func<T, object>>(

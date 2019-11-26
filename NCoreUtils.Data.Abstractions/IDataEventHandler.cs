@@ -14,6 +14,6 @@ namespace NCoreUtils.Data
         /// </summary>
         /// <param name="event">Data event.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        Task HandleAsync(IDataEvent @event, CancellationToken cancellationToken = default);
+        ValueTask HandleAsync(IDataEvent @event, CancellationToken cancellationToken = default);
     }
 }

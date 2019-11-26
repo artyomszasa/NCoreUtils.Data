@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>netcoreapp3.0</TargetFramework>
-    <Version>3.0.0-preview9</Version>
+    <Version>3.0.0</Version>
     <!-- NuGet -->
     <PackageId>NCoreUtils.AspNetCore.Data</PackageId>
     <Title>$(PackageId)</Title>
@@ -9,7 +9,7 @@
     <Description>Data entity repository ASP.NET Core related extensions.</Description>
     <Copyright>Artyom Antyipin</Copyright>
     <RepositoryUrl>https://github.com/artyomszasa/NCoreUtils.Data.git</RepositoryUrl>
-    <PackageReleaseNotes>Version bump (preview9).</PackageReleaseNotes>
+    <PackageReleaseNotes>Version bump.</PackageReleaseNotes>
     <!-- Assembly Info -->
     <Product>NCoreUtils</Product>
     <AssemblyName>$(PackageId)</AssemblyName>

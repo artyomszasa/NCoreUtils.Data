@@ -1,7 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;netstandard2.1</TargetFrameworks>
-    <Version>3.0.0-preview9</Version>
+    <LangVersion>8.0</LangVersion>
+    <Version>3.0.0</Version>
     <!-- NuGet -->
     <PackageId>NCoreUtils.Data.Abstractions</PackageId>
     <Title>$(PackageId)</Title>
@@ -9,7 +10,7 @@
     <Description>Data entity repository abstraction.</Description>
     <Copyright>Artyom Antyipin</Copyright>
     <RepositoryUrl>https://github.com/artyomszasa/NCoreUtils.Data.git</RepositoryUrl>
-    <PackageReleaseNotes>Version bump (EF 2.2).</PackageReleaseNotes>
+    <PackageReleaseNotes>Version bump (EF 3.0).</PackageReleaseNotes>
     <!-- Assembly Info -->
     <Product>NCoreUtils</Product>
     <AssemblyName>$(PackageId)</AssemblyName>
@@ -24,6 +25,9 @@
   <ItemGroup>
     <PackageReference Include="NCoreUtils.Extensions.Expressions" Version="1.0.5" />
     <PackageReference Include="NCoreUtils.Maybe" Version="1.0.5" />
-    <PackageReference Include="System.Collections.Immutable" Version="1.6.0-preview9.19421.4" />
+    <PackageReference Include="System.Collections.Immutable" Version="1.6.0" />
+  </ItemGroup>
+  <ItemGroup Condition=" '$(TargetFramework)' != 'netstandard2.1' ">
+    <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.5.3" />
   </ItemGroup>
 </Project>

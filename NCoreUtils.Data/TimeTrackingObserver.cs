@@ -17,7 +17,7 @@ namespace NCoreUtils.Data
         /// <param name="operation">Actual operation.</param>
         /// <param name="entity">Target entity.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        protected override Task HandleAsync(DataOperation operation, object entity, CancellationToken cancellationToken)
+        protected override ValueTask HandleAsync(DataOperation operation, object entity, CancellationToken cancellationToken)
         {
             if (operation == DataOperation.Insert)
             {
@@ -42,7 +42,7 @@ namespace NCoreUtils.Data
                     obj.Updated = DateTimeOffset.Now.UtcTicks;
                 }
             }
-            return Task.CompletedTask;
+            return default;
         }
     }
 }

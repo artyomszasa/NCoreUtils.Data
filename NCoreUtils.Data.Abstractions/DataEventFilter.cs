@@ -12,15 +12,15 @@ namespace NCoreUtils.Data
     {
         sealed class ExplicitDataEventFilter : DataEventFilter
         {
-            public Func<IDataEvent, CancellationToken, Task<bool>> Predicate { get; }
+            public Func<IDataEvent, CancellationToken, ValueTask<bool>> Predicate { get; }
 
             public ExplicitDataEventFilter(
                 IDataEventHandler handler,
-                Func<IDataEvent, CancellationToken, Task<bool>> predicate)
+                Func<IDataEvent, CancellationToken, ValueTask<bool>> predicate)
                 : base(handler)
                 => Predicate = predicate ?? throw new ArgumentNullException(nameof(predicate));
 
-            protected override Task<bool> IsHandled(IDataEvent @event, CancellationToken cancellationToken)
+            protected override ValueTask<bool> IsHandled(IDataEvent @event, CancellationToken cancellationToken)
                 => Predicate(@event, cancellationToken);
         }
 
@@ -33,7 +33,7 @@ namespace NCoreUtils.Data
         /// <returns>Newly created data event handler.</returns>
         public static DataEventFilter Filter(
             IDataEventHandler handler,
-            Func<IDataEvent, CancellationToken, Task<bool>> predicate)
+            Func<IDataEvent, CancellationToken, ValueTask<bool>> predicate)
             => new ExplicitDataEventFilter(handler, predicate);
 
         /// <summary>
@@ -46,7 +46,7 @@ namespace NCoreUtils.Data
         /// </summary>
         /// <param name="handler">Target handler.</param>
         protected DataEventFilter(IDataEventHandler handler)
-            => Handler = handler ?? throw new System.ArgumentNullException(nameof(handler));
+            => Handler = handler ?? throw new ArgumentNullException(nameof(handler));
 
         /// <summary>
         /// Performes user defined operation for single data repository related data event. Overridden to invoke target
@@ -54,7 +54,7 @@ namespace NCoreUtils.Data
         /// </summary>
         /// <param name="event">Data event.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        public async Task HandleAsync(IDataEvent @event, CancellationToken cancellationToken = default)
+        public async ValueTask HandleAsync(IDataEvent @event, CancellationToken cancellationToken = default)
         {
             if (await IsHandled(@event, cancellationToken))
             {
@@ -70,6 +70,6 @@ namespace NCoreUtils.Data
         /// <returns>
         /// <c>true</c> if the specified data event should be handled, <c>false</c> otherwise.
         /// </returns>
-        protected abstract Task<bool> IsHandled(IDataEvent @event, CancellationToken cancellationToken);
+        protected abstract ValueTask<bool> IsHandled(IDataEvent @event, CancellationToken cancellationToken);
     }
 }
