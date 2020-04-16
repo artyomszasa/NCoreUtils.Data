@@ -11,7 +11,6 @@ namespace NCoreUtils.Data.Google.FireStore.Transformations
         public DocumentPropertySource(string path)
             : base(path)
         {
-
         }
 
         object IValueSource.GetValue(object instance) => GetValue(instance);
