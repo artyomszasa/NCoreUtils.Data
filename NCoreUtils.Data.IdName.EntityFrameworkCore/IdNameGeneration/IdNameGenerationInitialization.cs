@@ -18,7 +18,7 @@ namespace NCoreUtils.Data.IdNameGeneration
 
         readonly IStoredProcedureGenerator _generator;
 
-        public IdNameGenerationInitialization(DbContext dbContext, IStoredProcedureGenerator generator = null)
+        public IdNameGenerationInitialization(DbContext dbContext, IStoredProcedureGenerator? generator = default)
         {
             _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
             if (null == generator)
@@ -33,18 +33,19 @@ namespace NCoreUtils.Data.IdNameGeneration
 
         [ExcludeFromCodeCoverage]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        void ThrowIfNoAnnotation(string packedAnnotation)
+        string ThrowIfNoAnnotation(string? packedAnnotation)
         {
             if (null == packedAnnotation)
             {
                 throw new InvalidOperationException("GetIdFunction annotation not defined on the context.");
             }
+            return packedAnnotation;
         }
 
         public MethodInfo GetGetIdNameSuffixMethod()
         {
-            var packedAnnotation = _dbContext.Model.FindAnnotation(Annotations.GetIdNameFunction).Value as string;
-            ThrowIfNoAnnotation(packedAnnotation);
+            var packedAnnotation0 = _dbContext.Model.FindAnnotation(Annotations.GetIdNameFunction).Value as string;
+            var packedAnnotation = ThrowIfNoAnnotation(packedAnnotation0);
             if (_initializedFunctions.TryGetValue(packedAnnotation, out var method))
             {
                 return method;
@@ -65,6 +66,8 @@ namespace NCoreUtils.Data.IdNameGeneration
     public class IdNameGenerationInitialization<TDbContext> : IdNameGenerationInitialization
         where TDbContext : DbContext
     {
-        public IdNameGenerationInitialization(TDbContext dbContext, IStoredProcedureGenerator generator = null) : base(dbContext, generator) { }
+        public IdNameGenerationInitialization(TDbContext dbContext, IStoredProcedureGenerator? generator = default)
+            : base(dbContext, generator)
+        { }
     }
 }

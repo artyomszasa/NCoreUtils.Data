@@ -19,6 +19,6 @@ namespace NCoreUtils.Data.IdNameGeneration
 
         public DummyStringDecomposition(string input) => MainPart = input ?? throw new ArgumentNullException(nameof(input));
 
-        public string Rebuild(string mainPart, string suffix) => string.IsNullOrEmpty(suffix) ? mainPart : $"{mainPart}-{suffix}";
+        public string Rebuild(string mainPart, string? suffix) => string.IsNullOrEmpty(suffix) ? mainPart : $"{mainPart}-{suffix}";
     }
 }

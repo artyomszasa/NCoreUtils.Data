@@ -39,8 +39,8 @@ namespace NCoreUtils.Data.Google.FireStore
             Provider = new QueryProvider(this, Database);
         }
 
-        Task<IDataTransaction> IDataRepositoryContext.BeginTransactionAsync(IsolationLevel isolationLevel, CancellationToken cancellationToken)
-            => Task.FromResult<IDataTransaction>(BeginTransaction());
+        ValueTask<IDataTransaction> IDataRepositoryContext.BeginTransactionAsync(IsolationLevel isolationLevel, CancellationToken cancellationToken)
+            => new ValueTask<IDataTransaction>(BeginTransaction());
 
         internal bool Unlink(DataTransaction tx)
         {

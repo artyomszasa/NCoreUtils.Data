@@ -9,7 +9,7 @@ namespace NCoreUtils.Data
         public static EntityTypeBuilder<TEntity> HasId<TEntity, TId>(this EntityTypeBuilder<TEntity> builder)
             where TEntity : class, IHasId<TId>
         {
-            var idSelector = LinqExtensions.ReplaceExplicitProperties<Func<TEntity, object>>(e => e.Id);
+            var idSelector = LinqExtensions.ReplaceExplicitProperties<Func<TEntity, object>>(e => e.Id!);
             builder.HasKey(idSelector);
             return builder;
         }

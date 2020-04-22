@@ -13,11 +13,11 @@ namespace NCoreUtils.Data.IdNameGeneration
 
         public string MainPart { get; }
 
-        public string Extension { get; }
+        public string? Extension { get; }
 
         public FileNameDecomposition(string input)
         {
-            if (input == null)
+            if (input is null)
             {
                 throw new ArgumentNullException(nameof(input));
             }
@@ -25,7 +25,7 @@ namespace NCoreUtils.Data.IdNameGeneration
             if (-1 == extensionIndex)
             {
                 MainPart = input;
-                Extension = null;
+                Extension = default;
             }
             else
             {
@@ -34,7 +34,7 @@ namespace NCoreUtils.Data.IdNameGeneration
             }
         }
 
-        public virtual string Rebuild(string mainPart, string suffix)
+        public virtual string Rebuild(string mainPart, string? suffix)
         {
             if (null == Extension)
             {

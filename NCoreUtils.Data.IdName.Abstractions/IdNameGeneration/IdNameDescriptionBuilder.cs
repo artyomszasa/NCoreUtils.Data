@@ -8,11 +8,11 @@ namespace NCoreUtils.Data.IdNameGeneration
 {
     public class IdNameDescriptionBuilder<T>
     {
-        public PropertyInfo IdNameProperty { get; set; }
+        public PropertyInfo? IdNameProperty { get; set; }
 
-        public PropertyInfo NameSourceProperty { get; set; }
+        public PropertyInfo? NameSourceProperty { get; set; }
 
-        public IStringDecomposer Decompose { get; set; }
+        public IStringDecomposer? Decompose { get; set; }
 
         public List<PropertyInfo> AdditionalIndexProperties { get; private set; } = new List<PropertyInfo>();
 
@@ -56,6 +56,6 @@ namespace NCoreUtils.Data.IdNameGeneration
             return this;
         }
 
-        public IdNameDescription Build() => new IdNameDescription(IdNameProperty, NameSourceProperty, Decompose, AdditionalIndexProperties.ToArray());
+        public IdNameDescription Build() => new IdNameDescription(IdNameProperty!, NameSourceProperty!, Decompose!, AdditionalIndexProperties.ToArray());
     }
 }

@@ -1,7 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.1</TargetFrameworks>
-    <Version>3.0.0</Version>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>8.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <Version>3.1.0-alpha0</Version>
     <!-- NuGet -->
     <PackageId>NCoreUtils.Data.IdName.EntityFrameworkCore.Abstractions</PackageId>
     <Title>$(PackageId)</Title>
@@ -9,7 +11,7 @@
     <Description>Optimized SQL based id name generation abstraction for data entity repository abstraction.</Description>
     <Copyright>Artyom Antyipin</Copyright>
     <RepositoryUrl>https://github.com/artyomszasa/NCoreUtils.Data.git</RepositoryUrl>
-    <PackageReleaseNotes>Version bump (EF 2.2).</PackageReleaseNotes>
+    <PackageReleaseNotes></PackageReleaseNotes>
     <!-- Assembly Info -->
     <Product>NCoreUtils</Product>
     <AssemblyName>$(PackageId)</AssemblyName>
@@ -25,6 +27,6 @@
     <ProjectReference Include="..\NCoreUtils.Data.IdName.Abstractions\NCoreUtils.Data.IdName.Abstractions.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="12.0.2" />
+    <PackageReference Include="System.Text.Json" Version="4.7.1" />
   </ItemGroup>
 </Project>

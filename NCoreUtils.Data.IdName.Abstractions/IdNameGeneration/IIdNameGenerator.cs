@@ -11,7 +11,7 @@ namespace NCoreUtils.Data.IdNameGeneration
             IQueryable<T> directQuery,
             IdNameDescription idNameDescription,
             string name,
-            object indexValues = null,
+            object? indexValues = default,
             CancellationToken cancellationToken = default)
             where T : class, IHasIdName;
 

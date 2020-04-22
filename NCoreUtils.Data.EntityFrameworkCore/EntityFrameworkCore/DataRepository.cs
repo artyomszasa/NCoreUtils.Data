@@ -140,9 +140,9 @@ namespace NCoreUtils.Data.EntityFrameworkCore
 
         public IServiceProvider ServiceProvider { get; }
 
-        public IDataEventHandlers EventHandlers { get; }
+        public IDataEventHandlers? EventHandlers { get; }
 
-        public DataRepository(IServiceProvider serviceProvider, DataRepositoryContext context, IDataEventHandlers eventHandlers = null)
+        public DataRepository(IServiceProvider serviceProvider, DataRepositoryContext context, IDataEventHandlers? eventHandlers = default)
             : base(context)
         {
             ServiceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
@@ -239,12 +239,12 @@ namespace NCoreUtils.Data.EntityFrameworkCore
         where TData : class, IHasId<TId>
         where TId : IComparable<TId>
     {
-        public DataRepository(IServiceProvider serviceProvider, DataRepositoryContext context, IDataEventHandlers eventHandlers = null) : base(serviceProvider, context, eventHandlers) { }
+        public DataRepository(IServiceProvider serviceProvider, DataRepositoryContext context, IDataEventHandlers? eventHandlers = default) : base(serviceProvider, context, eventHandlers) { }
 
 
         protected virtual ValueTask<bool> ShouldUpdateEntity(EntityEntry<TData> entry, CancellationToken cancellationToken)
         {
-            return new ValueTask<bool>(entry.Entity.Id.CompareTo(default) > 0);
+            return new ValueTask<bool>(entry.Entity.Id.CompareTo(default!) > 0);
         }
 
         protected override async ValueTask<EntityEntry<TData>> AttachNewOrUpdateAsync(EntityEntry<TData> entry, CancellationToken cancellationToken)

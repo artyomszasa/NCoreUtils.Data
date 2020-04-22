@@ -14,7 +14,7 @@ namespace NCoreUtils.Data
         /// <summary>
         /// Gets current transaction. Returns <c>null</c> if no transaction is active.
         /// </summary>
-        IDataTransaction CurrentTransaction { get; }
+        IDataTransaction? CurrentTransaction { get; }
 
         /// <summary>
         /// Starts new transaction.
@@ -22,6 +22,6 @@ namespace NCoreUtils.Data
         /// <param name="isolationLevel">Isolation level.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Started transaction.</returns>
-        Task<IDataTransaction> BeginTransactionAsync(IsolationLevel isolationLevel, CancellationToken cancellationToken = default);
+        ValueTask<IDataTransaction> BeginTransactionAsync(IsolationLevel isolationLevel, CancellationToken cancellationToken = default);
     }
 }

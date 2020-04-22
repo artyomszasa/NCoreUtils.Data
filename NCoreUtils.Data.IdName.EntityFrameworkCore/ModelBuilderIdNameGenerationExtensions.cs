@@ -17,8 +17,8 @@ namespace NCoreUtils.Data
         static readonly string _assemblyName;
         static long _valueSupply;
         static readonly ConstructorInfo _dbFuntionAttributeCtor;
-        static AssemblyBuilder _assemblyBuilder = null;
-        static ModuleBuilder _moduleBuilder = null;
+        static AssemblyBuilder? _assemblyBuilder = null;
+        static ModuleBuilder? _moduleBuilder = null;
 
         static ModelBuilderIdNameGenerationExtensions()
         {
@@ -54,7 +54,7 @@ namespace NCoreUtils.Data
         //     return (functionName, typeBuilder.CreateTypeInfo().AsType().GetMethod(methodBuilder.Name));
         // }
 
-        static (string functionName, MethodInfo method) GenerateGetIdNameSuffixMethod(string schema)
+        static (string functionName, MethodInfo method) GenerateGetIdNameSuffixMethod(string? schema)
         {
             if (null == _assemblyBuilder)
             {
@@ -71,12 +71,12 @@ namespace NCoreUtils.Data
                 }
             }
             var uid = Interlocked.Increment(ref _valueSupply);
-            var typeBuilder = _moduleBuilder.DefineType($"DbFunctions_{uid}");
+            var typeBuilder = _moduleBuilder!.DefineType($"DbFunctions_{uid}");
             var methodBuilder = typeBuilder.DefineMethod("GetIdNameSuffix", MethodAttributes.Static | MethodAttributes.Public, CallingConventions.Standard, typeof(string), new [] { typeof(string), typeof(string) });
             methodBuilder.DefineParameter(1, ParameterAttributes.None, "source");
             methodBuilder.DefineParameter(2, ParameterAttributes.None, "pattern");
             var functionName = $"get_idname_suffix_{uid}";
-            methodBuilder.SetCustomAttribute(new CustomAttributeBuilder(_dbFuntionAttributeCtor, new object[] { functionName, schema }));
+            methodBuilder.SetCustomAttribute(new CustomAttributeBuilder(_dbFuntionAttributeCtor, new object[] { functionName, schema! }));
             {
                 var il = methodBuilder.GetILGenerator();
                 il.Emit(OpCodes.Ldstr, $"{methodBuilder.Name} may not be called at runtime.");
@@ -86,11 +86,11 @@ namespace NCoreUtils.Data
             return (functionName, typeBuilder.CreateTypeInfo().AsType().GetMethod(methodBuilder.Name));
         }
 
-        public static ModelBuilder HasGetIdNameSuffixFunction(this ModelBuilder builder, string schema = null)
+        public static ModelBuilder HasGetIdNameSuffixFunction(this ModelBuilder builder, string? schema = default)
         {
             var (functionName, method) = GenerateGetIdNameSuffixMethod(schema);
             builder
-                .HasAnnotation(Annotations.GetIdNameFunction, new Annotations.GetIdNameFunctionAnnotation(method, schema, functionName).Pack())
+                .HasAnnotation(Annotations.GetIdNameFunction, new Annotations.GetIdNameFunctionAnnotation(method, schema!, functionName).Pack())
                 .HasDbFunction(method);
             return builder;
         }
@@ -109,7 +109,7 @@ namespace NCoreUtils.Data
             this EntityTypeBuilder<T> builder,
             Expression<Func<T, string>> idNameSelector,
             Expression<Func<T, string>> nameSelector,
-            Expression<Func<T, object>> additionalIndexPropertySelector = null,
+            Expression<Func<T, object>>? additionalIndexPropertySelector = default,
             int maxLength = 320)
             where T : class
         {
@@ -170,7 +170,7 @@ namespace NCoreUtils.Data
         public static EntityTypeBuilder<T> HasIdName<T>(
             this EntityTypeBuilder<T> builder,
             Expression<Func<T, string>> nameSelector,
-            Expression<Func<T, object>> additionalIndexPropertySelector = null,
+            Expression<Func<T, object>>? additionalIndexPropertySelector = default,
             int maxLength = 320)
             where T : class, IHasIdName
         {

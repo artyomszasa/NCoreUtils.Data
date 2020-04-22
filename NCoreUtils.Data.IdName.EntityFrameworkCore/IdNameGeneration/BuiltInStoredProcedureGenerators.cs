@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 
 namespace NCoreUtils.Data.IdNameGeneration
 {
@@ -16,7 +17,7 @@ namespace NCoreUtils.Data.IdNameGeneration
             return _cache.GetOrAdd(type, ty => (IStoredProcedureGenerator)Activator.CreateInstance(ty, true));
         }
 
-        public static bool TryGetGenerator(string providerName, out IStoredProcedureGenerator generator)
+        public static bool TryGetGenerator(string providerName, [NotNullWhen(true)] out IStoredProcedureGenerator? generator)
         {
             switch (providerName)
             {

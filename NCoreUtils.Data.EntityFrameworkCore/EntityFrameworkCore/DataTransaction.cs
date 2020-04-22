@@ -16,9 +16,9 @@ namespace NCoreUtils.Data.EntityFrameworkCore
 
         int _isFinished;
 
-        public event EventHandler OnCommit;
+        public event EventHandler? OnCommit;
 
-        public event EventHandler OnRollback;
+        public event EventHandler? OnRollback;
 
         public Guid Guid { get; } = Guid.NewGuid();
 

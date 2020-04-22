@@ -13,19 +13,20 @@ namespace NCoreUtils.Data.IdNameGeneration
 {
     public class IdNameGenerator : IIdNameGenerator
     {
-        class Box<T>
+        private class Box<T>
         {
-            #pragma warning disable 0649
             public T Value;
-            #pragma warning restore 0649
+
+            public Box(T value)
+                => Value = value;
         }
 
         static Expression BoxedContstant(object value, Type type)
         {
             var boxType = typeof(Box<>).MakeGenericType(type);
             var field = boxType.GetField(nameof(Box<int>.Value));
-            var box = Activator.CreateInstance(boxType, true);
-            field.SetValue(box, value);
+            var ctor = boxType.GetConstructor(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, new [] { type }, null);
+            var box = ctor.Invoke(new object[] { value });
             return Expression.Field(Expression.Constant(box, boxType), field);
         }
 
@@ -50,12 +51,12 @@ namespace NCoreUtils.Data.IdNameGeneration
             cancellationToken.ThrowIfCancellationRequested();
             var decomposition = idNameDescription.Decomposer.Decompose(name);
             var simplified = _simplifier.Simplify(decomposition.MainPart);
-            string result = null;
-            for (var index = 0; result == null; ++index)
+            string? result = default;
+            for (var index = 0; result is null; ++index)
             {
-                var candidate = decomposition.Rebuild(simplified, 0 == index ? null : index.ToString());
+                var candidate = decomposition.Rebuild(simplified, 0 == index ? default : index.ToString());
                 var predicate = LinqExtensions.ReplaceExplicitProperties<Func<T, bool>>(e => e.IdName == candidate);
-                if (false == await query.AnyAsync(predicate, cancellationToken))
+                if (!await query.AnyAsync(predicate, cancellationToken))
                 {
                     result = candidate;
                 }
@@ -67,7 +68,7 @@ namespace NCoreUtils.Data.IdNameGeneration
             IQueryable<T> directQuery,
             IdNameDescription idNameDescription,
             string name,
-            object indexValues = null,
+            object? indexValues = default,
             CancellationToken cancellationToken = default)
             where T : class, IHasIdName
         {

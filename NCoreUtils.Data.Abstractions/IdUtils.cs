@@ -15,12 +15,15 @@ namespace NCoreUtils.Data
     /// </summary>
     public static class IdUtils
     {
-        sealed class IdBox<T>
+        private sealed class IdBox<T>
         {
             public T Value;
+
+            public IdBox(T value)
+                => Value = value;
         }
 
-        static class GenericIdCheck<T>
+        private static class GenericIdCheck<T>
         {
             static readonly Func<T, bool> _check;
 
@@ -35,7 +38,7 @@ namespace NCoreUtils.Data
             public static bool IsValid(T id) => _check(id);
         }
 
-        static readonly ImmutableDictionary<Type, Delegate> _idChecks = new Dictionary<Type, Delegate>
+        private static readonly ImmutableDictionary<Type, Delegate> _idChecks = new Dictionary<Type, Delegate>
         {
             { typeof(Guid), new Func<Guid, bool>(id => id != Guid.Empty) },
             { typeof(sbyte), new Func<sbyte, bool>(id => id > 0) },
@@ -109,7 +112,11 @@ namespace NCoreUtils.Data
         /// <c>true</c> if the specified type implements <see cref="NCoreUtils.Data.IHasId{T}" /> and the business
         /// key type has been stored into <paramref name="idType" />, <c>false</c> otherwise.
         /// </returns>
+        #if NETSTANDARD2_1
+        public static bool TryGetIdType(Type entityType, [NotNullWhen(true)] out Type? idType)
+        #else
         public static bool TryGetIdType(Type entityType, out Type idType)
+        #endif
         {
             foreach (var interfaceType in entityType.GetInterfaces())
             {
@@ -124,7 +131,11 @@ namespace NCoreUtils.Data
                 idType = entityType.GenericTypeArguments[0];
                 return true;
             }
+            #if NESTANDARD2_1
             idType = default;
+            #else
+            idType = default!;
+            #endif
             return false;
         }
 
@@ -162,11 +173,19 @@ namespace NCoreUtils.Data
         /// <c>true</c> if the specified type implements <see cref="NCoreUtils.Data.IHasId{T}" /> and the property
         /// has been stored into <paramref name="property" />, <c>false</c> otherwise.
         /// </returns>
+        #if NETSTANDARD2_1
+        public static bool TryGetIdProperty(Type entityType, [NotNullWhen(true)] out PropertyInfo? property)
+        #else
         public static bool TryGetIdProperty(Type entityType, out PropertyInfo property)
+        #endif
         {
             if (!TryGetInterfaceMap(entityType, out var interfaceMapping))
             {
+                #if NETSTANDARD2_1
                 property = default;
+                #else
+                property = default!;
+                #endif
                 return false;
             }
             var index = Array.FindIndex(interfaceMapping.InterfaceMethods, method => StringComparer.InvariantCultureIgnoreCase.Equals("get_Id", method.Name));
@@ -188,7 +207,11 @@ namespace NCoreUtils.Data
         /// <c>true</c> if the specified type implements <see cref="NCoreUtils.Data.IHasId{T}" /> and the property
         /// has been stored into <paramref name="property" />, <c>false</c> otherwise.
         /// </returns>
+        #if NETSTANDARD2_1
+        public static bool TryGetRealIdProperty(Type entityType, [NotNullWhen(true)] out PropertyInfo? property)
+        #else
         public static bool TryGetRealIdProperty(Type entityType, out PropertyInfo property)
+        #endif
         {
             if (TryGetIdProperty(entityType, out var interfaceProperty))
             {
@@ -196,7 +219,11 @@ namespace NCoreUtils.Data
                 property = null == attr ? interfaceProperty : entityType.GetProperty(attr.PropertyName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
                 return true;
             }
+            #if NETSTANDARD2_1
             property = default;
+            #else
+            property = default!;
+            #endif
             return false;
         }
 
@@ -212,7 +239,7 @@ namespace NCoreUtils.Data
             // see: https://github.com/aspnet/EntityFrameworkCore/issues/8909
             // see: https://github.com/aspnet/EntityFrameworkCore/issues/10535
             // instead of constant member access expression must be generated to avoid cache issues.
-            var idBox = new IdBox<TId> { Value = value };
+            var idBox = new IdBox<TId>(value);
             var idExpression = Expression.Field(Expression.Constant(idBox), nameof(IdBox<int>.Value));
             var expressionParameter = Expression.Parameter(typeof(TEntity));
             return LinqExtensions.ReplaceExplicitProperties(Expression.Lambda<Func<TEntity, bool>>(

@@ -4,6 +4,6 @@ namespace NCoreUtils.Data.IdNameGeneration
     {
         string MainPart { get; }
 
-        string Rebuild(string mainPart, string suffix);
+        string Rebuild(string mainPart, string? suffix);
     }
 }

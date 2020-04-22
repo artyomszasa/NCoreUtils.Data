@@ -1,23 +1,113 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
 namespace NCoreUtils.Data.IdNameGeneration
 {
     public static class Annotations
     {
-        public class IdNameSourcePropertyData
+        private class IdNameSourcePropertyDataConverter : JsonConverter<IdNameSourcePropertyData>
         {
-            public string TypeName { get; set; }
+            private static readonly byte[] _binType = Encoding.ASCII.GetBytes("type");
 
-            public string SourcePropertyName { get; set; }
+            private static readonly byte[] _binSource = Encoding.ASCII.GetBytes("source");
 
-            public string[] AdditionalPropertyNames { get; set; }
+            private static readonly byte[] _binOther = Encoding.ASCII.GetBytes("other");
+
+            private static readonly JsonEncodedText _jsonType = JsonEncodedText.Encode("type");
+
+            private static readonly JsonEncodedText _jsonSource = JsonEncodedText.Encode("source");
+
+            private static readonly JsonEncodedText _jsonOther = JsonEncodedText.Encode("other");
+
+            public override IdNameSourcePropertyData Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+            {
+                if (reader.TokenType != JsonTokenType.StartObject)
+                {
+                    throw new InvalidOperationException($"Expected {JsonTokenType.StartObject}, got {reader.TokenType}.");
+                }
+                reader.Read();
+                string? typeName = default;
+                string? sourcePropertyName = default;
+                var additionalPropertyNames = new List<string>();
+                while (reader.TokenType != JsonTokenType.EndObject)
+                {
+                    if (reader.TokenType != JsonTokenType.PropertyName)
+                    {
+                        throw new InvalidOperationException($"Expected {JsonTokenType.PropertyName}, got {reader.TokenType}.");
+                    }
+                    if (reader.ValueSpan == _binType)
+                    {
+                        reader.Read();
+                        typeName = reader.GetString();
+                        reader.Read();
+                    }
+                    else if (reader.ValueSpan == _binSource)
+                    {
+                        reader.Read();
+                        sourcePropertyName = reader.GetString();
+                        reader.Read();
+                    }
+                    else if (reader.ValueSpan == _binOther)
+                    {
+                        reader.Read();
+                        if (reader.TokenType != JsonTokenType.StartArray)
+                        {
+                            throw new InvalidOperationException($"Expected {JsonTokenType.StartArray}, got {reader.TokenType}.");
+                        }
+                        reader.Read();
+                        while (reader.TokenType != JsonTokenType.EndArray)
+                        {
+                            additionalPropertyNames.Add(reader.GetString());
+                            reader.Read();
+                        }
+                        reader.Read();
+                    }
+                }
+                reader.Read();
+                return new IdNameSourcePropertyData(typeName!, sourcePropertyName!, additionalPropertyNames.ToArray());
+            }
+
+            public override void Write(Utf8JsonWriter writer, IdNameSourcePropertyData value, JsonSerializerOptions options)
+            {
+                writer.WriteStartObject();
+                writer.WriteString(_jsonType, value.TypeName);
+                writer.WriteString(_jsonSource, value.SourcePropertyName);
+                writer.WritePropertyName(_jsonOther);
+                writer.WriteStartArray();
+                foreach (var other in value.AdditionalPropertyNames)
+                {
+                    writer.WriteStringValue(other);
+                }
+                writer.WriteEndArray();
+                writer.WriteEndObject();
+            }
         }
 
-        internal static Assembly _generatedAssembly = null;
+        [JsonConverter(typeof(IdNameSourcePropertyDataConverter))]
+        public class IdNameSourcePropertyData
+        {
+            public string TypeName { get; }
+
+            public string SourcePropertyName { get; }
+
+            public string[] AdditionalPropertyNames { get; }
+
+            public IdNameSourcePropertyData(string typeName, string sourcePropertyName, string[] additionalPropertyNames)
+            {
+                TypeName = typeName;
+                SourcePropertyName = sourcePropertyName;
+                AdditionalPropertyNames = additionalPropertyNames;
+            }
+        }
+
+        internal static Assembly? _generatedAssembly = null;
 
         static Type ResolveType(string typeName)
         {
@@ -33,23 +123,23 @@ namespace NCoreUtils.Data.IdNameGeneration
 
         public sealed class IdNameSourcePropertyAnnotation
         {
-            public static IdNameSourcePropertyAnnotation Unpack(string raw)
+            public static IdNameSourcePropertyAnnotation Unpack(string? raw)
             {
                 try
                 {
-                    var data = Newtonsoft.Json.JsonConvert.DeserializeObject<IdNameSourcePropertyData>(raw);
+                    var data = JsonSerializer.Deserialize<IdNameSourcePropertyData>(raw);
                     var ty = ResolveType(data.TypeName);
                     var sourceNameProperty = ty.GetProperty(data.SourcePropertyName, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
                     if (null == sourceNameProperty)
                     {
-                        throw new IdNameGenerationAnnotationException($"Unresolvable property name {sourceNameProperty.Name} for type {ty.FullName} in annotation.");
+                        throw new IdNameGenerationAnnotationException($"Unresolvable property name {data.SourcePropertyName} for type {ty.FullName} in annotation.");
                     }
                     var additionalProperties = data.AdditionalPropertyNames
                         .Select(name => {
                             var property = ty.GetProperty(name, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
                             if (null == property)
                             {
-                                throw new IdNameGenerationAnnotationException($"Unresolvable property name {property.Name} for type {ty.FullName} in annotation.");
+                                throw new IdNameGenerationAnnotationException($"Unresolvable property name {name} for type {ty.FullName} in annotation.");
                             }
                             return property;
                         });
@@ -79,12 +169,11 @@ namespace NCoreUtils.Data.IdNameGeneration
 
             public string Pack()
             {
-                return Newtonsoft.Json.JsonConvert.SerializeObject(new IdNameSourcePropertyData
-                {
-                    TypeName = SourceNameProperty.DeclaringType.AssemblyQualifiedName,
-                    SourcePropertyName = SourceNameProperty.Name,
-                    AdditionalPropertyNames = AdditionalIndexProperties.Select(e => e.Name).ToArray()
-                });
+                return JsonSerializer.Serialize(new IdNameSourcePropertyData(
+                    typeName: SourceNameProperty.DeclaringType.AssemblyQualifiedName,
+                    sourcePropertyName: SourceNameProperty.Name,
+                    additionalPropertyNames: AdditionalIndexProperties.Select(e => e.Name).ToArray()
+                ));
             }
         }
 
@@ -92,7 +181,7 @@ namespace NCoreUtils.Data.IdNameGeneration
         {
             static readonly Regex _regex = new Regex("^(.*)\\|(.*)\\|(.*)\\|(.*)$", RegexOptions.Compiled);
 
-            public static GetIdNameFunctionAnnotation Unpack(string raw)
+            public static GetIdNameFunctionAnnotation Unpack(string? raw)
             {
                 if (string.IsNullOrEmpty(raw))
                 {

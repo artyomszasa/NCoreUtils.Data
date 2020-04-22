@@ -8,9 +8,12 @@ namespace NCoreUtils.Data.EntityFrameworkCore
 {
     partial class DataRepository
     {
-        sealed class IdBox<T>
+        private sealed class IdBox<T>
         {
             public T Value;
+
+            public IdBox(T value)
+                => Value = value;
         }
 
         static class ByIdExpressionBuilder
@@ -44,7 +47,7 @@ namespace NCoreUtils.Data.EntityFrameworkCore
                 {
                     idBoxField = ByIdExpressionBuilder.IdBoxFieldCache.GetOrAdd(typeof(IdBox<TId>), GetIdBoxField);
                 }
-                var idBox = new IdBox<TId> { Value = id };
+                var idBox = new IdBox<TId>(id);
                 var idExpression = Expression.Field(Expression.Constant(idBox, typeof(IdBox<TId>)), idBoxField);
                 var parameterExpression = Expression.Parameter(typeof(TData));
                 return Expression.Lambda<Func<TData, bool>>(

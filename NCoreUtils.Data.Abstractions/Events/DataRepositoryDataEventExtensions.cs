@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -9,7 +10,8 @@ namespace NCoreUtils.Data.Events
     /// </summary>
     public static class DataRepositoryDataEventExtensions
     {
-        static async ValueTask TriggerAsync<T>(IDataEventHandlers handlers, IDataEvent<T> @event, CancellationToken cancellationToken)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static async ValueTask TriggerAsync<T>(IDataEventHandlers handlers, IDataEvent<T> @event, CancellationToken cancellationToken)
             where T : class
         {
             foreach (var handler in handlers.Handlers)
@@ -26,15 +28,16 @@ namespace NCoreUtils.Data.Events
         /// <param name="repository">Data repository triggering the event.</param>
         /// <param name="entity">Related entity.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ValueTask TriggerUpdateAsync<T>(
-            this IDataEventHandlers handlers,
+            this IDataEventHandlers? handlers,
             IServiceProvider serviceProvider,
             IDataRepository<T> repository,
             T entity,
             CancellationToken cancellationToken = default)
             where T : class
         {
-            if (handlers == null)
+            if (handlers is null)
             {
                 return default;
             }
@@ -49,15 +52,16 @@ namespace NCoreUtils.Data.Events
         /// <param name="repository">Data repository triggering the event.</param>
         /// <param name="entity">Related entity.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ValueTask TriggerInsertAsync<T>(
-            this IDataEventHandlers handlers,
+            this IDataEventHandlers? handlers,
             IServiceProvider serviceProvider,
             IDataRepository<T> repository,
             T entity,
             CancellationToken cancellationToken = default)
             where T : class
         {
-            if (handlers == null)
+            if (handlers is null)
             {
                 return default;
             }
@@ -72,15 +76,16 @@ namespace NCoreUtils.Data.Events
         /// <param name="repository">Data repository triggering the event.</param>
         /// <param name="entity">Related entity.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ValueTask TriggerDeleteAsync<T>(
-            this IDataEventHandlers handlers,
+            this IDataEventHandlers? handlers,
             IServiceProvider serviceProvider,
             IDataRepository<T> repository,
             T entity,
             CancellationToken cancellationToken = default)
             where T : class
         {
-            if (handlers == null)
+            if (handlers is null)
             {
                 return default;
             }

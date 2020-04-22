@@ -13,7 +13,7 @@ namespace NCoreUtils.Data.EntityFrameworkCore
     {
         int _isDisposed;
 
-        IDataTransaction IDataRepositoryContext.CurrentTransaction
+        IDataTransaction? IDataRepositoryContext.CurrentTransaction
         {
             [ExcludeFromCodeCoverage]
             get => CurrentTransaction;
@@ -27,7 +27,7 @@ namespace NCoreUtils.Data.EntityFrameworkCore
             get => 0 != _isDisposed;
         }
 
-        public DataTransaction CurrentTransaction { get; protected set; }
+        public DataTransaction? CurrentTransaction { get; protected set; }
 
         public abstract DbContext DbContext { get; }
 
@@ -56,7 +56,7 @@ namespace NCoreUtils.Data.EntityFrameworkCore
             }
         }
 
-        public abstract Task<IDataTransaction> BeginTransactionAsync(IsolationLevel isolationLevel, CancellationToken cancellationToken = default);
+        public abstract ValueTask<IDataTransaction> BeginTransactionAsync(IsolationLevel isolationLevel, CancellationToken cancellationToken = default);
 
         public void Dispose()
         {
@@ -77,7 +77,7 @@ namespace NCoreUtils.Data.EntityFrameworkCore
 
         protected override void DisposeOnce(bool disposing) => CurrentTransaction?.Dispose();
 
-        public override async Task<IDataTransaction> BeginTransactionAsync(IsolationLevel isolationLevel, CancellationToken cancellationToken = default)
+        public override async ValueTask<IDataTransaction> BeginTransactionAsync(IsolationLevel isolationLevel, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (null != CurrentTransaction)

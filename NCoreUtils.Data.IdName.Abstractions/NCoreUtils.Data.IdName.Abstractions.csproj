@@ -1,7 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;netstandard2.1</TargetFrameworks>
-    <Version>3.0.0</Version>
+    <TargetFrameworks>netstandard2.1;netstandard2.0</TargetFrameworks>
+    <LangVersion>8.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <Version>3.1.0-alpha0</Version>
     <!-- NuGet -->
     <PackageId>NCoreUtils.Data.IdName.Abstractions</PackageId>
     <Title>$(PackageId)</Title>
@@ -9,7 +11,7 @@
     <Description>Id name generation abstractions for data entity repository abstraction.</Description>
     <Copyright>Artyom Antyipin</Copyright>
     <RepositoryUrl>https://github.com/artyomszasa/NCoreUtils.Data.git</RepositoryUrl>
-    <PackageReleaseNotes>Version bump (EF 3.0).</PackageReleaseNotes>
+    <PackageReleaseNotes></PackageReleaseNotes>
     <!-- Assembly Info -->
     <Product>NCoreUtils</Product>
     <AssemblyName>$(PackageId)</AssemblyName>

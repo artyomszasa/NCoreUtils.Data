@@ -47,7 +47,7 @@ namespace NCoreUtils.Data
                             }
                             if (!node.Type.IsAssignableFrom(targetPropertyInfo.PropertyType))
                             {
-                                throw new InvalidOperationException($"{dynamicType.FullName}.{attribute.PropertyName} is not compatible with {dynamicType.FullName}.{propertyInfo.Name}.");
+                                throw new InvalidOperationException($"{dynamicType.FullName}.{attribute.PropertyName} is not compatible with {dynamicType.FullName}.{propertyInfo?.Name}.");
                             }
                             return Expression.Property(base.Visit(realExpression), targetPropertyInfo);
                         }

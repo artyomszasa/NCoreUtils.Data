@@ -72,8 +72,8 @@ namespace NCoreUtils.Data.IdNameGeneration
             var decomposition = idNameDescription.Decomposer.Decompose(name);
             var getIdNameSuffix = _initialization.GetGetIdNameSuffixMethod();
             var simplified = _simplifier.Simplify(decomposition.MainPart);
-            var regex = "^" + Regex.Escape(decomposition.Rebuild((simplified), "ŁŁŁ")).Replace("-ŁŁŁ", "(-[0-9]+)?") + "$";
-            var def = decomposition.Rebuild(simplified, null);
+            var regex = "^" + Regex.Escape(decomposition.Rebuild(simplified, "ŁŁŁ")).Replace("-ŁŁŁ", "(-[0-9]+)?") + "$";
+            var def = decomposition.Rebuild(simplified, default);
 
             var eArg = Expression.Parameter(typeof(T));
             var eIfThenElse = Expression.Condition(
@@ -85,7 +85,7 @@ namespace NCoreUtils.Data.IdNameGeneration
                 Expression.Call(getIdNameSuffix, Expression.Property(eArg, idNameDescription.IdNameProperty), BoxedConstant(regex))
             );
             var selector = Expression.Lambda<Func<T, string>>(eIfThenElse, eArg);
-            var rawSuffixes = await NCoreUtils.Linq.QueryableExtensions.ToListAsync(
+            var rawSuffixes = await Linq.QueryableExtensions.ToListAsync(
                 (query ?? _dbContext.Set<T>()).Select(selector).Where(s => s != null),
                 cancellationToken);
             string idName;
@@ -117,7 +117,7 @@ namespace NCoreUtils.Data.IdNameGeneration
             IQueryable<T> directQuery,
             IdNameDescription idNameDescription,
             string name,
-            object indexValues = null,
+            object? indexValues = default,
             CancellationToken cancellationToken = default)
             where T : class, IHasIdName
         {

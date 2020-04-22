@@ -26,9 +26,9 @@ namespace NCoreUtils.Data.IdNameGeneration
             IStringDecomposer decomposer,
             ImmutableArray<PropertyInfo> additionalIndexProperties)
         {
-            IdNameProperty = idNameProperty;
-            NameSourceProperty = nameSourceProperty;
-            Decomposer = decomposer;
+            IdNameProperty = idNameProperty ?? throw new ArgumentNullException(nameof(idNameProperty));
+            NameSourceProperty = nameSourceProperty ?? throw new ArgumentNullException(nameof(nameSourceProperty));
+            Decomposer = decomposer ?? throw new ArgumentNullException(nameof(decomposer));
             AdditionalIndexProperties = additionalIndexProperties.IsDefault ? ImmutableArray<PropertyInfo>.Empty : additionalIndexProperties;
         }
 
