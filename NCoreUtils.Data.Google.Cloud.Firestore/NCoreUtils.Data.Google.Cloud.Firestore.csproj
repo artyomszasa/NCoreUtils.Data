@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>8.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <RootNamespace>NCoreUtils.Data</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Google.Cloud.Firestore" Version="2.0.0-beta02" />
+    <PackageReference Include="NCoreUtils.Extensions.AsyncEnumerable" Version="1.0.0-alpha0" />
+    <PackageReference Include="System.Collections.Immutable" Version="1.7.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\NCoreUtils.Data.Internal\NCoreUtils.Data.Internal.csproj" />
+    <ProjectReference Include="..\NCoreUtils.Data.Mapping\NCoreUtils.Data.Mapping.csproj" />
+  </ItemGroup>
+
+</Project>

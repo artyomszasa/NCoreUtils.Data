@@ -19,7 +19,7 @@
     <!-- Compilation -->
     <OutputType>Library</OutputType>
     <DebugType>portable</DebugType>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- <GenerateDocumentationFile>true</GenerateDocumentationFile> -->
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <NoWarn>NU5105</NoWarn>
   </PropertyGroup>

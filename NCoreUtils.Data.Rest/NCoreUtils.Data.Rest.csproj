@@ -1,15 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <TargetFrameworks>netstandard2.1;netstandard2.0</TargetFrameworks>
     <LangVersion>8.0</LangVersion>
     <Nullable>enable</Nullable>
     <RootNamespace>NCoreUtils.Data</RootNamespace>
+    <Version>3.1.0-alpha0</Version>
   </PropertyGroup>
-
   <ItemGroup>
-    <PackageReference Include="NCoreUtils.Extensions.Collections" Version="1.0.7" />
-    <PackageReference Include="NCoreUtils.Extensions.Expressions" Version="1.0.5" />
+    <ProjectReference Include="..\NCoreUtils.Data.Abstractions\NCoreUtils.Data.Abstractions.csproj" />
   </ItemGroup>
-
+  <ItemGroup>
+    <PackageReference Include="NCoreUtils.AspNetCore.Rest.Client" Version="3.1.0-alpha0" />
+  </ItemGroup>
 </Project>
