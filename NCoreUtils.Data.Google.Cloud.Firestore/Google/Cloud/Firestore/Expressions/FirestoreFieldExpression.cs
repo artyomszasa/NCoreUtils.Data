@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -25,13 +26,16 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Expressions
 
         public override Type Type { get; }
 
+        public ImmutableList<string>? RawPath { get; }
+
         public FieldPath Path { get; }
 
         public Expression Instance { get; }
 
-        public FirestoreFieldExpression(Expression instance, FieldPath path, Type type)
+        private FirestoreFieldExpression(Expression instance, ImmutableList<string>? rawPath, FieldPath path, Type type)
         {
             Instance = instance ?? throw new ArgumentNullException(nameof(instance));
+            RawPath = rawPath;
             Path = path ?? throw new ArgumentNullException(nameof(path));
             Type = type ?? throw new ArgumentNullException(nameof(type));
             if (instance.Type != typeof(DocumentSnapshot))
@@ -40,12 +44,31 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Expressions
             }
         }
 
+        public FirestoreFieldExpression(Expression instance, ImmutableList<string> rawPath, Type type)
+            : this(
+                instance,
+                rawPath ?? throw new ArgumentNullException(nameof(rawPath), "For special paths use overloaded constructor."),
+                new FieldPath(rawPath.ToArray()),
+                type)
+        { }
+
+        public FirestoreFieldExpression(Expression instance, FieldPath specialPath, Type type)
+            : this(instance, default, specialPath, type)
+        { }
+
         public override Expression Reduce()
-            => Call(
+        {
+            if (Path.Equals(FieldPath.DocumentId))
+            {
+                // FIXME: cache property
+                return Property(Instance, "Id");
+            }
+            return Call(
                 Instance,
                 _gmValue.MakeGenericMethod(Type),
                 Constant(Path)
             );
+        }
 
         public override string ToString()
             => $"{Instance}[{Path}]";

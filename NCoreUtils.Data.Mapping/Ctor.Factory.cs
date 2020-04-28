@@ -13,6 +13,7 @@ namespace NCoreUtils.Data
         public static IEnumerable<Ctor> GetSuitableCtors(Type type)
         {
             var properties = type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.FlattenHierarchy);
+            var ctorCtor = typeof(Ctor<>).MakeGenericType(type).GetConstructors(BindingFlags.NonPublic | BindingFlags.Instance).First();
             foreach (var candidate in type.GetConstructors(BindingFlags.Instance | BindingFlags.Public))
             {
                 var parameters = candidate.GetParameters();
@@ -41,7 +42,8 @@ namespace NCoreUtils.Data
                 mappings.Sort();
                 if (!skip)
                 {
-                    yield return (Ctor)Activator.CreateInstance(typeof(Ctor<>).MakeGenericType(type), new object[]
+
+                    yield return (Ctor)ctorCtor.Invoke(new object[]
                     {
                         candidate,
                         mappings

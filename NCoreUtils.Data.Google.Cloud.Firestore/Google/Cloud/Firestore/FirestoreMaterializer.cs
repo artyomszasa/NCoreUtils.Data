@@ -9,7 +9,12 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
     public class FirestoreMaterializer
     {
         protected virtual Func<DocumentSnapshot, T> CompileMaterialization<T>(Expression<Func<DocumentSnapshot, T>> expression)
-            => expression.Compile();
+        {
+            var f = expression.Compile();
+            return (doc) => {
+                return f(doc);
+            };
+        }
 
         public T Materialize<T>(DocumentSnapshot document, Expression<Func<DocumentSnapshot, T>> selector)
             => CompileMaterialization(selector)(document);

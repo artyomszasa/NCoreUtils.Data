@@ -71,7 +71,11 @@ namespace NCoreUtils.Data
         }
 
         public override string ToString()
+        #if NETSTANDARD2_1
             => $"construct:{Type}({string.Join(',', Arguments)})";
+        #else
+            => $"construct:{Type}({string.Join(",", Arguments)})";
+        #endif
 
         // protected override Expression VisitChildren(ExpressionVisitor visitor)
         //     => new CtorExpression(Ctor, visitor.Visit(Arguments));

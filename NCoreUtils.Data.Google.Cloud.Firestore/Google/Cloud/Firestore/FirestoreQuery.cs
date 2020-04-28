@@ -107,6 +107,17 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 Limit
             );
 
+        public FirestoreQuery<T> AddConditions(IEnumerable<FirestoreCondition> conditions)
+            => new FirestoreQuery<T>(
+                Provider,
+                Collection,
+                Selector,
+                Conditions.AddRange(conditions),
+                Ordering,
+                Offset,
+                Limit
+            );
+
         public FirestoreQuery<T> AddOrdering(in FirestoreOrdering ordering)
             => new FirestoreQuery<T>(
                 Provider,
