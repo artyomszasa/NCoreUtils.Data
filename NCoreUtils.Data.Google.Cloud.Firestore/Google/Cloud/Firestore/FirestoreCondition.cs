@@ -17,9 +17,9 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             LessThanOrEqualTo = 6
         }
 
-        static readonly EqualityComparer<FieldPath> _pathComparer = EqualityComparer<FieldPath>.Default;
+        private static readonly EqualityComparer<FieldPath> _pathComparer = EqualityComparer<FieldPath>.Default;
 
-        static readonly string[] _opNames = new []
+        private static readonly string[] _opNames = new []
         {
             "?",
             "@",

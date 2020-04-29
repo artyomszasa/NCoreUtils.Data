@@ -4,10 +4,11 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using Google.Cloud.Firestore;
+using NCoreUtils.Linq;
 
 namespace NCoreUtils.Data.Google.Cloud.Firestore.Expressions
 {
-    public class FirestoreFieldExpression : Expression
+    public class FirestoreFieldExpression : Expression, IExtensionExpression
     {
         private static readonly MethodInfo _gmValue = typeof(DocumentSnapshot)
             .GetMethods(BindingFlags.Public | BindingFlags.Instance)
@@ -72,5 +73,13 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Expressions
 
         public override string ToString()
             => $"{Instance}[{Path}]";
+
+        public Expression AcceptNoReduce(ExpressionVisitor visitor)
+        {
+            var newInstance = visitor.Visit(Instance);
+            return ReferenceEquals(newInstance, Instance)
+                ? this
+                : new FirestoreFieldExpression(newInstance, RawPath, Path, Type);
+        }
     }
 }

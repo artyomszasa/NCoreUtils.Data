@@ -132,7 +132,11 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
         public virtual Task<TData> LookupAsync(string id, CancellationToken cancellationToken = default)
             => ((FirestoreQuery<TData>)Items)
-                .AddCondition(new FirestoreCondition(FieldPath.DocumentId, FirestoreCondition.Op.EqualTo, id))
+                .AddCondition(new FirestoreCondition(
+                    FieldPath.DocumentId,
+                    FirestoreCondition.Op.EqualTo,
+                    Context.Db.Collection(Entity.Name).Document(id)
+                ))
                 .FirstOrDefaultAsync(cancellationToken);
 
         public virtual async Task<TData> PersistAsync(TData item, CancellationToken cancellationToken = default)

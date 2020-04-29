@@ -4,11 +4,11 @@ using System.Reflection;
 
 namespace NCoreUtils.Data
 {
-    public abstract class PropertyMapping : IComparable<PropertyMapping>
+    public abstract class PropertyMapping : IEquatable<PropertyMapping>, IComparable<PropertyMapping>
     {
-        private static Comparer<int> _int32Comparer = Comparer<int>.Default;
+        private static readonly Comparer<int> _int32Comparer = Comparer<int>.Default;
 
-        private static StringComparer _stringComparer = StringComparer.InvariantCulture;
+        private static readonly StringComparer _stringComparer = StringComparer.InvariantCulture;
 
         public class ByCtorParameterMapping : PropertyMapping
         {
@@ -36,12 +36,27 @@ namespace NCoreUtils.Data
 
             public override int CompareTo(PropertyMapping other)
             {
+                if (other is null)
+                {
+                    throw new ArgumentNullException(nameof(other));
+                }
                 if (other is ByCtorParameterMapping that)
                 {
                     return _int32Comparer.Compare(By.Position, that.By.Position);
                 }
                 return -1;
             }
+
+            public override int ComputeHashCode()
+                => HashCode.Combine(0, TargetProperty, By);
+
+            public override bool Equals(PropertyMapping other)
+                => other switch
+                {
+                    null => false,
+                    ByCtorParameterMapping that => TargetProperty.Equals(that.TargetProperty) && By.Equals(that.By),
+                    _ => false
+                };
         }
 
         public class BySetterMapping : PropertyMapping
@@ -67,12 +82,27 @@ namespace NCoreUtils.Data
 
             public override int CompareTo(PropertyMapping other)
             {
+                if (other is null)
+                {
+                    throw new ArgumentNullException(nameof(other));
+                }
                 if (other is BySetterMapping that)
                 {
                     return _stringComparer.Compare(TargetProperty.Name, that.TargetProperty.Name);
                 }
                 return 1;
             }
+
+            public override int ComputeHashCode()
+                => HashCode.Combine(1, TargetProperty);
+
+            public override bool Equals(PropertyMapping other)
+                => other switch
+                {
+                    null => false,
+                    BySetterMapping that => TargetProperty.Equals(that.TargetProperty),
+                    _ => false
+                };
         }
 
         public static ByCtorParameterMapping ByCtorParameter(PropertyInfo targetProperty, ParameterInfo by)
@@ -118,5 +148,15 @@ namespace NCoreUtils.Data
         }
 
         public abstract int CompareTo(PropertyMapping other);
+
+        public abstract int ComputeHashCode();
+
+        public abstract bool Equals(PropertyMapping other);
+
+        public override bool Equals(object? obj)
+            => obj is PropertyMapping other && Equals(other);
+
+        public override int GetHashCode()
+            => ComputeHashCode();
     }
 }

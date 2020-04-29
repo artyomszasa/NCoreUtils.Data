@@ -32,7 +32,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
         protected FirestoreQuery<TElement> ApplyOrdering<TElement, TKey>(FirestoreQuery<TElement> source, Expression<Func<TElement, TKey>> selector, FirestoreOrderingDirection direction)
         {
             var q = Cast(source);
-            var chainedSelector = q.Selector.ChainSimplified(selector);
+            var chainedSelector = q.Selector.ChainSimplified(selector, true);
             if (TryResolvePath(chainedSelector.Body, q.Selector.Parameters[0], out var path))
             {
                 return q.AddOrdering(new FirestoreOrdering(path, direction));
@@ -50,7 +50,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             Query query = db.Collection(source.Collection);
             foreach (var condition in source.Conditions)
             {
-                query = condition.Apply(query);
+                query = condition.Apply(query, source.Collection);
             }
             return query;
         }
@@ -107,7 +107,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
         protected override IQueryable<TElement> ApplyWhere<TElement>(IQueryable<TElement> source, Expression<Func<TElement, bool>> predicate)
         {
             var q = Cast(source);
-            var chainedPredicate = q.Selector.ChainSimplified(predicate);
+            var chainedPredicate = q.Selector.ChainSimplified(predicate, true);
             return q.AddConditions(ExtractConditions(chainedPredicate));
         }
 

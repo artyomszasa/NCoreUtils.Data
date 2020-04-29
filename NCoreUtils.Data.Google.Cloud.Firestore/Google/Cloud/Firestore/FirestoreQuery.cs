@@ -89,7 +89,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             => new FirestoreQuery<TResult>(
                 Provider,
                 Collection,
-                Selector.ChainSimplified(selector),
+                Selector.ChainSimplified(selector, true),
                 Conditions,
                 Ordering,
                 Offset,

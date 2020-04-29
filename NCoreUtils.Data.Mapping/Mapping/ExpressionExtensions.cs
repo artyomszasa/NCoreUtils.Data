@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
 using System.Reflection;
+using NCoreUtils.Linq;
 
 namespace NCoreUtils.Data.Mapping
 {
@@ -87,11 +88,12 @@ namespace NCoreUtils.Data.Mapping
             }
         }
 
-        private sealed class SimplifyVisitor : ExpressionVisitor
+        private sealed class SimplifyVisitor : ExtensionExpressionVisitor
         {
             private readonly IOriginSource _originSource;
 
-            public SimplifyVisitor(IOriginSource originSource)
+            public SimplifyVisitor(IOriginSource originSource, bool keepExtensions = false)
+                : base(keepExtensions)
             {
                 _originSource = originSource ?? throw new ArgumentNullException(nameof(originSource));
             }
@@ -108,26 +110,27 @@ namespace NCoreUtils.Data.Mapping
 
         public static Expression<Func<TSource, TResult>> ChainSimplified<TSource, TInner, TResult>(
             this Expression<Func<TSource, TInner>> source,
-            Expression<Func<TInner, TResult>> selector)
+            Expression<Func<TInner, TResult>> selector,
+            bool keepExtensions = false)
         {
             if (source.Body is CtorExpression ector)
             {
-                var visitor = new SimplifyVisitor(new CtorOriginSource(selector.Parameters[0], ector.Ctor.Properties, ector.Arguments));
+                var visitor = new SimplifyVisitor(new CtorOriginSource(selector.Parameters[0], ector.Ctor.Properties, ector.Arguments), keepExtensions);
                 return Expression.Lambda<Func<TSource, TResult>>(
-                    visitor.Visit(selector.Body).SubstituteParameter(selector.Parameters[0], source.Body),
+                    visitor.Visit(selector.Body).SubstituteParameter(selector.Parameters[0], source.Body, keepExtensions),
                     source.Parameters[0]
                 );
             }
             if (source.Body is NewExpression enew && null != enew.Members && enew.Members.Count == enew.Arguments.Count)
             {
-                var visitor = new SimplifyVisitor(new NewOriginSource(selector.Parameters[0], enew.Members, enew.Arguments));
+                var visitor = new SimplifyVisitor(new NewOriginSource(selector.Parameters[0], enew.Members, enew.Arguments), keepExtensions);
                 return Expression.Lambda<Func<TSource, TResult>>(
-                    visitor.Visit(selector.Body).SubstituteParameter(selector.Parameters[0], source.Body),
+                    visitor.Visit(selector.Body).SubstituteParameter(selector.Parameters[0], source.Body, keepExtensions),
                     source.Parameters[0]
                 );
             }
             return Expression.Lambda<Func<TSource, TResult>>(
-                selector.Body.SubstituteParameter(selector.Parameters[0], source.Body),
+                selector.Body.SubstituteParameter(selector.Parameters[0], source.Body, keepExtensions),
                 source.Parameters[0]
             );
         }

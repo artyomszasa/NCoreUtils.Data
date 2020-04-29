@@ -4,10 +4,11 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Linq.Expressions;
 using NCoreUtils.Data.Mapping;
+using NCoreUtils.Linq;
 
 namespace NCoreUtils.Data
 {
-    public class CtorExpression : Expression
+    public class CtorExpression : Expression, IExtensionExpression
     {
         public Ctor Ctor { get; }
 
@@ -77,7 +78,12 @@ namespace NCoreUtils.Data
             => $"construct:{Type}({string.Join(",", Arguments)})";
         #endif
 
-        // protected override Expression VisitChildren(ExpressionVisitor visitor)
-        //     => new CtorExpression(Ctor, visitor.Visit(Arguments));
+        public Expression AcceptNoReduce(ExpressionVisitor visitor)
+        {
+            var newArguments = visitor.Visit(Arguments);
+            return Arguments.SequenceEqual(newArguments)
+                ? this
+                : new CtorExpression(Ctor, newArguments);
+        }
     }
 }
