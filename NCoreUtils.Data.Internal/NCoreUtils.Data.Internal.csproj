@@ -1,9 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>netstandard2.1;netstandard2.0</TargetFrameworks>
-    <Version>3.1.0-alpha0</Version>
     <LangVersion>8.0</LangVersion>
     <Nullable>enable</Nullable>
+    <Version>3.1.0-alpha1</Version>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\NCoreUtils.Data.Abstractions\NCoreUtils.Data.Abstractions.csproj" />
