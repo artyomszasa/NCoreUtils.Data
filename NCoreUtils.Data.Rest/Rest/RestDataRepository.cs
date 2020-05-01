@@ -2,10 +2,11 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using NCoreUtils.Data.Protocol.Linq;
 
 namespace NCoreUtils.Data.Rest
 {
-    public abstract class DataRepository<TData> : IDataRepository<TData>
+    public abstract class RestDataRepository<TData> : IDataRepository<TData>
     {
         IDataRepositoryContext IDataRepository.Context => Context;
 
@@ -15,7 +16,7 @@ namespace NCoreUtils.Data.Rest
 
         public RestDataRepositoryContext Context { get; }
 
-        public DataRepository(RestDataRepositoryContext context)
+        public RestDataRepository(RestDataRepositoryContext context)
         {
             Context = context ?? throw new ArgumentNullException(nameof(context));
         }
@@ -27,17 +28,14 @@ namespace NCoreUtils.Data.Rest
         public abstract Task RemoveAsync(TData item, bool force = false, CancellationToken cancellationToken = default);
     }
 
-    public class DataRepository<TData, TId> : DataRepository<TData>, IDataRepository<TData, TId>
+    public class RestDataRepository<TData, TId> : RestDataRepository<TData>, IDataRepository<TData, TId>
         where TData : IHasId<TId>
     {
-
-
-        public override IQueryable<TData> Items => throw new NotImplementedException();
-
+        public override IQueryable<TData> Items => Client.Collection();
 
         public IDataRestClient<TData, TId> Client { get; }
 
-        public DataRepository(RestDataRepositoryContext context, IDataRestClient<TData, TId> client)
+        public RestDataRepository(RestDataRepositoryContext context, IDataRestClient<TData, TId> client)
             : base(context)
         {
             Client = client ?? throw new ArgumentNullException(nameof(client));

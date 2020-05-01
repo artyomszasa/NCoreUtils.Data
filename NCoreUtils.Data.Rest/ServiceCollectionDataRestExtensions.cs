@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using NCoreUtils.Data.Rest;
@@ -34,6 +35,8 @@ namespace NCoreUtils.Data
 
         private static IServiceCollection AddRestDataRepositoryServices(this IServiceCollection services)
         {
+            services.AddRestClientServices();
+            services.TryAddSingleton(serviceProvider => new DataRestConfiguration(serviceProvider.GetService<DataRestConfigurationBuilder>() ?? new DataRestConfigurationBuilder()));
             services.TryAddSingleton<DataRestClientCache>();
             services.TryAddScoped<IDataRestClientFactory, DataRestClientFactory>();
             services.TryAddScoped(typeof(IDataRestClient<,>), typeof(DataRestClientFactory.DataRestClient<,>));
@@ -48,7 +51,7 @@ namespace NCoreUtils.Data
         }
 
         public static IServiceCollection AddRestDataRepository<TRepository, TData, TId>(this IServiceCollection services, IRestClientConfiguration configuration)
-            where TRepository : DataRepository<TData, TId>
+            where TRepository : RestDataRepository<TData, TId>
             where TData : IHasId<TId>
             => services
                 .AddRestDataRepositoryServices()
@@ -57,5 +60,23 @@ namespace NCoreUtils.Data
                 .AddScoped<TRepository>()
                 .AddScoped<IDataRepository<TData, TId>>(serviceProvider => serviceProvider.GetRequiredService<TRepository>())
                 .AddScoped<IDataRepository<TData>>(serviceProvider => serviceProvider.GetRequiredService<TRepository>());
+
+        public static IServiceCollection AddRestDataRepository<TData, TId>(this IServiceCollection services, IRestClientConfiguration configuration)
+            where TData : IHasId<TId>
+            => services.AddRestDataRepository<RestDataRepository<TData, TId>, TData, TId>(configuration);
+
+        public static IServiceCollection AddRestDataRepository<TRepository, TData, TId>(this IServiceCollection services, string endpoint, string httpClient = RestClientConfiguration.DefaultHttpClient)
+            where TRepository : RestDataRepository<TData, TId>
+            where TData : IHasId<TId>
+            => services.AddRestDataRepository<TRepository, TData, TId>(new RestClientConfiguration { Endpoint = endpoint, HttpClient = httpClient });
+
+        public static IServiceCollection AddRestDataRepository<TData, TId>(this IServiceCollection services, string endpoint, string httpClient = RestClientConfiguration.DefaultHttpClient)
+            where TData : IHasId<TId>
+            => services.AddRestDataRepository<RestDataRepository<TData, TId>, TData, TId>(new RestClientConfiguration { Endpoint = endpoint, HttpClient = httpClient });
+
+        public static IServiceCollection AddRestDataRepository<TRepository, TData, TId>(this IServiceCollection services, IConfiguration configuration)
+            where TRepository : RestDataRepository<TData, TId>
+            where TData : IHasId<TId>
+            => services.AddRestDataRepository<TRepository, TData, TId>(configuration.Get<RestClientConfiguration>() ?? throw new InvalidOperationException($"No REST client configuration found for {typeof(TData)}."));
     }
 }
