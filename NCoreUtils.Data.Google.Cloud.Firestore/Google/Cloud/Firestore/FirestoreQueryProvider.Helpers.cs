@@ -14,6 +14,12 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
         [Obsolete("TryResolveSubpath(...) is an internal mathod, use TryResolvePath(...).")]
         private bool TryResolveSubpath(Expression expression, ParameterExpression document, ImmutableList<string> prefix, [NotNullWhen(true)] out FieldPath? path)
         {
+            // if expression an interface conversion...
+            if (expression is UnaryExpression uexpr && uexpr.NodeType == ExpressionType.Convert)
+            {
+                return TryResolveSubpath(uexpr.Operand, document, prefix, out path);
+            }
+
             // if expression is a property of the known entity.
             if (expression is MemberExpression mexpr
                 && mexpr.Member is PropertyInfo prop

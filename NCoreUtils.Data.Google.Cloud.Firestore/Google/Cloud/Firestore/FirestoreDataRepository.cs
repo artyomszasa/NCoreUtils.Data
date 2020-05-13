@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,6 +13,45 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 {
     public abstract class FirestoreDataRespository : IDataRepository
     {
+        private abstract class ToList
+        {
+            private static readonly ConcurrentDictionary<Type, ToList> _cache = new ConcurrentDictionary<Type, ToList>();
+
+            private static readonly Func<Type, ToList> _factory =
+                type => (ToList)Activator.CreateInstance(typeof(ToList<>).MakeGenericType(type), true)!;
+
+            public static object Convert(object enumerable, Type elementType)
+                => _cache.GetOrAdd(elementType, _factory)
+                    .Convert(enumerable);
+
+            protected abstract object Convert(object enumerable);
+        }
+
+        private sealed class ToList<T> : ToList
+        {
+            protected override object Convert(object enumerable)
+                => ((IEnumerable<T>)enumerable).ToList();
+        }
+
+        private static bool IsEnumerable(Type type, [NotNullWhen(true)] out Type? elementType)
+        {
+            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IEnumerable<>))
+            {
+                elementType = type.GetGenericArguments()[0];
+                return true;
+            }
+            foreach (var itype in type.GetInterfaces())
+            {
+                if (itype.IsGenericType && itype.GetGenericTypeDefinition() == typeof(IEnumerable<>))
+                {
+                    elementType = itype.GetGenericArguments()[0];
+                    return true;
+                }
+            }
+            elementType = default;
+            return false;
+        }
+
         IDataRepositoryContext IDataRepository.Context => Context;
 
         protected FirestoreModel Model { get; }
@@ -51,7 +92,10 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 {
                     d[prop.Name] = prop.Property.GetValue(data, null);
                 }
-                // FIMXE: collections
+                else if (IsEnumerable(prop.Property.PropertyType, out var elementType))
+                {
+                    d[prop.Name] = ToList.Convert(prop.Property.GetValue(data, null), elementType);
+                }
                 else
                 {
                     // fallback to nested entity

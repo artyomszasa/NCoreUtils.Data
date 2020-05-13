@@ -57,6 +57,15 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Expressions
             : this(instance, default, specialPath, type)
         { }
 
+        protected virtual Expression Reduce(Type targetType)
+        {
+            return Call(
+                Instance,
+                _gmValue.MakeGenericMethod(targetType),
+                Constant(Path)
+            );
+        }
+
         public override Expression Reduce()
         {
             if (Path.Equals(FieldPath.DocumentId))
@@ -64,11 +73,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Expressions
                 // FIXME: cache property
                 return Property(Instance, "Id");
             }
-            return Call(
-                Instance,
-                _gmValue.MakeGenericMethod(Type),
-                Constant(Path)
-            );
+            return Reduce(Type);
         }
 
         public override string ToString()

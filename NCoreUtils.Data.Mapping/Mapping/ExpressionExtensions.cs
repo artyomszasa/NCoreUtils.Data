@@ -110,9 +110,10 @@ namespace NCoreUtils.Data.Mapping
 
         public static Expression<Func<TSource, TResult>> ChainSimplified<TSource, TInner, TResult>(
             this Expression<Func<TSource, TInner>> source,
-            Expression<Func<TInner, TResult>> selector,
+            Expression<Func<TInner, TResult>> selector0,
             bool keepExtensions = false)
         {
+            var selector = selector0.ReplaceExplicitProperties();
             if (source.Body is CtorExpression ector)
             {
                 var visitor = new SimplifyVisitor(new CtorOriginSource(selector.Parameters[0], ector.Ctor.Properties, ector.Arguments), keepExtensions);

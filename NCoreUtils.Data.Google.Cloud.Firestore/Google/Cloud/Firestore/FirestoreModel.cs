@@ -63,7 +63,10 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                         }
                         return new FirestoreFieldExpression(snapshot, path.Add(pdata.Name), ptype);
                     }
-                    // FIXME: implement collections...
+                    if (CollectionBuilder.TryCreate(ptype, out var collectionBuilder))
+                    {
+                        return new FirestoreCollectionFieldExpression(snapshot, path.Add(pdata.Name), ptype, collectionBuilder);
+                    }
                     // fallback to subentity
                     return GetInitialSelector(ptype, snapshot, path.Add(pdata.Name));
                 })
