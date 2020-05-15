@@ -27,7 +27,18 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             typeof(ushort),
             typeof(int),
             typeof(long),
-            typeof(string)
+            typeof(string),
+            // nullable
+            typeof(bool?),
+            typeof(DateTime?),
+            typeof(DateTimeOffset?),
+            typeof(float?),
+            typeof(double?),
+            typeof(byte?),
+            typeof(short?),
+            typeof(ushort?),
+            typeof(int?),
+            typeof(long?),
         };
 
         private readonly ConcurrentDictionary<Type, LambdaExpression> _initialSelectorCache = new ConcurrentDictionary<Type, LambdaExpression>();

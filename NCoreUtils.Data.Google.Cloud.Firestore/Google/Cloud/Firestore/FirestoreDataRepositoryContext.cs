@@ -74,7 +74,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 LoggerFactory.CreateLogger<FirestoreDataTransaction>(),
                 this,
                 Db);
-            if (tx != Interlocked.CompareExchange(ref _tx, tx, null))
+            if (null != Interlocked.CompareExchange(ref _tx, tx, null))
             {
                 tx.Dispose();
                 throw new InvalidOperationException($"Failed to start a transaction due to concurrency issues.");
