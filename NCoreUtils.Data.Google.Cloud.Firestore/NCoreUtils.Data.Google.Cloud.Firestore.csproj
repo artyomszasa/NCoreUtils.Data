@@ -5,7 +5,7 @@
     <LangVersion>8.0</LangVersion>
     <Nullable>enable</Nullable>
     <RootNamespace>NCoreUtils.Data</RootNamespace>
-    <Version>3.1.0-alpha10</Version>
+    <Version>3.1.0-alpha15</Version>
     <!-- NuGet -->
     <PackageId>NCoreUtils.Data.Google.Cloud.Firestore</PackageId>
     <Title>$(PackageId)</Title>

@@ -4,12 +4,12 @@
     <LangVersion>8.0</LangVersion>
     <Nullable>enable</Nullable>
     <RootNamespace>NCoreUtils.Data</RootNamespace>
-    <Version>3.1.0-alpha9</Version>
+    <Version>3.1.0-alpha13</Version>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\NCoreUtils.Data.Abstractions\NCoreUtils.Data.Abstractions.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="NCoreUtils.AspNetCore.Rest.Client" Version="3.1.0-alpha8" />
+    <PackageReference Include="NCoreUtils.AspNetCore.Rest.Client" Version="3.1.0-alpha9" />
   </ItemGroup>
 </Project>

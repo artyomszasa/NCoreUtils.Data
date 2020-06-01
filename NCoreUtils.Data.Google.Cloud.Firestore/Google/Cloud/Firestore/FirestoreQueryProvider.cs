@@ -63,6 +63,11 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
         protected Query CreateUnboundQuery(FirestoreDb db, FirestoreQuery source)
         {
             var query = CreateFilteredQuery(db, source);
+            if (source.Conditions.Count == 1 && source.Conditions[0].Operation == FirestoreCondition.Op.EqualTo && source.Conditions[0].Path.Equals(FieldPath.DocumentId))
+            {
+                // If the condition is __key__ == xxxx then ordering is ignored completely
+                return query;
+            }
             foreach (var rule in source.Ordering)
             {
                 query = rule.Direction switch

@@ -76,6 +76,10 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                     }
                     if (CollectionBuilder.TryCreate(ptype, out var collectionBuilder))
                     {
+                        // if (TryGetDataEntity(type, out var nestedEntity))
+                        // {
+                        //     // FIXME: array item are not accessible as document --> we have to use firestore converters :( ....
+                        // }
                         return new FirestoreCollectionFieldExpression(snapshot, path.Add(pdata.Name), ptype, collectionBuilder);
                     }
                     // fallback to subentity

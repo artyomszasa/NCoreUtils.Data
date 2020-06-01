@@ -1,5 +1,7 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using Google.Cloud.Firestore;
 
 namespace NCoreUtils.Data.Google.Cloud.Firestore
@@ -14,7 +16,8 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             GreaterThan = 3,
             GreaterThanOrEqualTo = 4,
             LessThan = 5,
-            LessThanOrEqualTo = 6
+            LessThanOrEqualTo = 6,
+            ArrayContainsAny = 7
         }
 
         private static readonly EqualityComparer<FieldPath> _pathComparer = EqualityComparer<FieldPath>.Default;
@@ -30,9 +33,62 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             "<="
         };
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool SafeEq(object a, object b)
+        {
+            if (a is null)
+            {
+                return b is null;
+            }
+            if (b is null)
+            {
+                return false;
+            }
+            return a.Equals(b);
+        }
+
+        private static bool SequenceEqual(IEnumerable a, IEnumerable b)
+        {
+            if (a is null)
+            {
+                return b is null;
+            }
+            if (b is null)
+            {
+                return false;
+            }
+            var ae = a.GetEnumerator();
+            var be = b.GetEnumerator();
+            while (true)
+            {
+                var anext = ae.MoveNext();
+                var bnext = be.MoveNext();
+                if (anext)
+                {
+                    if (bnext)
+                    {
+                        if (!SafeEq(ae.Current, be.Current))
+                        {
+                            return false;
+                        }
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                }
+                else
+                {
+                    return !bnext;
+                }
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool operator==(FirestoreCondition a, FirestoreCondition b)
             => a.Equals(b);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool operator!=(FirestoreCondition a, FirestoreCondition b)
             => !a.Equals(b);
 
@@ -50,9 +106,17 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
         }
 
         public bool Equals(FirestoreCondition other)
-            => _pathComparer.Equals(Path, other.Path)
-                && Operation == other.Operation
+        {
+            if (Operation == Op.ArrayContainsAny)
+            {
+                return other.Operation == Op.ArrayContainsAny
+                    && _pathComparer.Equals(Path, other.Path)
+                    && SequenceEqual((IEnumerable)Value, (IEnumerable)other.Value);
+            }
+            return Operation == other.Operation
+                && _pathComparer.Equals(Path, other.Path)
                 && (Value?.Equals(other.Value) ?? false);
+        }
 
         public override bool Equals(object obj) => obj is FirestoreCondition other && Equals(other);
 

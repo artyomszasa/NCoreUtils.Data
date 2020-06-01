@@ -9,9 +9,9 @@ namespace NCoreUtils.Data
     public abstract class CollectionBuilder
     {
         #if NETSTANDARD2_1
-        public static bool IsCollection(Type collectionType, [NotNullWhen(true)] out Type? elementType)
+        private static bool IsCollection(Type collectionType, [NotNullWhen(true)] out Type? elementType)
         #else
-        public static bool IsCollection(Type collectionType, out Type elementType)
+        private static bool IsCollection(Type collectionType, out Type elementType)
         #endif
         {
             if (collectionType.IsInterface)
@@ -23,7 +23,7 @@ namespace NCoreUtils.Data
                 #endif
                 return false;
             }
-            if (collectionType.GetInterfaces().TryGetFirst(ty => ty.GetGenericTypeDefinition() == typeof(ICollection<>), out var ifaceType))
+            if (collectionType.GetInterfaces().TryGetFirst(ty => ty.IsGenericType && ty.GetGenericTypeDefinition() == typeof(ICollection<>), out var ifaceType))
             {
                 elementType = ifaceType.GetGenericArguments()[0];
                 return true;
@@ -45,6 +45,12 @@ namespace NCoreUtils.Data
             if (IsCollection(collectionType, out var elementType))
             {
                 builder = new MutableCollectionBuilder(elementType, collectionType);
+                return true;
+            }
+            if (collectionType.IsGenericType && collectionType.GetGenericTypeDefinition() == typeof(IReadOnlyList<>))
+            {
+                elementType = collectionType.GetGenericArguments()[0];
+                builder = new ReadOnlyListBuilder(elementType, collectionType);
                 return true;
             }
             #if NETSTANDARD2_1

@@ -35,6 +35,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 FirestoreCondition.Op.GreaterThanOrEqualTo => query.WhereGreaterThanOrEqualTo(condition.Path, AdaptValue(query, collection, condition.Path, condition.Value)),
                 FirestoreCondition.Op.LessThan => query.WhereLessThan(condition.Path, AdaptValue(query, collection, condition.Path, condition.Value)),
                 FirestoreCondition.Op.LessThanOrEqualTo => query.WhereLessThanOrEqualTo(condition.Path, AdaptValue(query, collection, condition.Path, condition.Value)),
+                FirestoreCondition.Op.ArrayContainsAny => query.WhereArrayContainsAny(condition.Path, (System.Collections.IEnumerable)condition.Value),
                 _ => throw new InvalidOperationException($"Invalid condition {condition}."),
             };
     }

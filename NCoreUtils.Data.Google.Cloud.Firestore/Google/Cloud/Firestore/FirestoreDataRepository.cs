@@ -20,17 +20,17 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             private static readonly Func<Type, ToList> _factory =
                 type => (ToList)Activator.CreateInstance(typeof(ToList<>).MakeGenericType(type), true)!;
 
-            public static object Convert(object enumerable, Type elementType)
+            public static object Convert(object enumerable, Type elementType, Func<Type, object, object> populateValue)
                 => _cache.GetOrAdd(elementType, _factory)
-                    .Convert(enumerable);
+                    .Convert(enumerable, populateValue);
 
-            protected abstract object Convert(object enumerable);
+            protected abstract object Convert(object enumerable, Func<Type, object, object> populateValue);
         }
 
         private sealed class ToList<T> : ToList
         {
-            protected override object Convert(object enumerable)
-                => ((IEnumerable<T>)enumerable).ToList();
+            protected override object Convert(object enumerable, Func<Type, object, object> populateValue)
+                => ((IEnumerable<T>)enumerable).Select(v => populateValue(typeof(T), v!)).ToList();
         }
 
         private static bool IsEnumerable(Type type, [NotNullWhen(true)] out Type? elementType)
@@ -74,6 +74,19 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             Model = model ?? throw new ArgumentNullException(nameof(model));
         }
 
+        protected virtual object PopulateValue(Type type, object value)
+        {
+            if (FirestoreModel._primitiveTypes.Contains(type))
+            {
+                return value;
+            }
+            if (IsEnumerable(type, out var elementType))
+            {
+                return ToList.Convert(value, elementType, PopulateValue);
+            }
+            return PopulateDTO(type, value);
+        }
+
         protected virtual Dictionary<string, object> PopulateDTO(Type type, object data)
         {
             if (!Model.TryGetDataEntity(type, out var entity))
@@ -88,19 +101,8 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 {
                     continue;
                 }
-                if (FirestoreModel._primitiveTypes.Contains(prop.Property.PropertyType))
-                {
-                    d[prop.Name] = prop.Property.GetValue(data, null);
-                }
-                else if (IsEnumerable(prop.Property.PropertyType, out var elementType))
-                {
-                    d[prop.Name] = ToList.Convert(prop.Property.GetValue(data, null), elementType);
-                }
-                else
-                {
-                    // fallback to nested entity
-                    d[prop.Name] = PopulateDTO(prop.Property.PropertyType, prop.Property.GetValue(data, null));
-                }
+                var value = PopulateValue(prop.Property.PropertyType, prop.Property.GetValue(data, null));
+                d[prop.Name] = value;
             }
             return d;
         }
@@ -135,7 +137,10 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             var tx = Context.CurrentTransaction;
             if (tx is null)
             {
-                var docref = Context.Db.Collection(Entity.Name).Document();
+                // ID may be user-defined
+                var docref = string.IsNullOrEmpty(item.Id)
+                    ? Context.Db.Collection(Entity.Name).Document()
+                    : Context.Db.Collection(Entity.Name).Document(item.Id);
                 var data = PopulateDTO(typeof(TData), item);
                 var res = await docref.CreateAsync(data, cancellationToken);
                 return docref.Id;
@@ -144,7 +149,10 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             {
                 return await tx.ExecuteAsync(tx =>
                 {
-                    var docref = tx.Database.Collection(Entity.Name).Document();
+                    // ID may be user-defined
+                    var docref = string.IsNullOrEmpty(item.Id)
+                        ? tx.Database.Collection(Entity.Name).Document()
+                        : tx.Database.Collection(Entity.Name).Document(item.Id);
                     var data = PopulateDTO(typeof(TData), item);
                     tx.Create(docref, data);
                     return Task.FromResult(docref.Id);
@@ -154,6 +162,10 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
         protected virtual async Task<string> UpdateAsync(TData item, CancellationToken cancellationToken = default)
         {
+            if (string.IsNullOrEmpty(item.Id))
+            {
+                throw new InvalidOperationException($"Trying to update entity without valid id.");
+            }
             var tx = Context.CurrentTransaction;
             if (tx is null)
             {
@@ -174,6 +186,18 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             }
         }
 
+        /// <summary>
+        /// By default insert is performed if entity has no valid ID. Overriding this method allows replacing this
+        /// behaviour.
+        /// </summary>
+        /// <param name="item">Item being persisted.</param>
+        /// <param name="cancellation">Cancellation token.</param>
+        /// <returns>
+        /// <c>true</c> if insert operation shpuld be performed, <c>false</c> otherwise.
+        /// </returns>
+        protected virtual ValueTask<bool> ShouldInsert(TData item, CancellationToken cancellationToken)
+            => new ValueTask<bool>(string.IsNullOrEmpty(item.Id));
+
         public virtual Task<TData> LookupAsync(string id, CancellationToken cancellationToken = default)
             => ((FirestoreQuery<TData>)Items)
                 .AddCondition(new FirestoreCondition(
@@ -185,16 +209,16 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
         public virtual async Task<TData> PersistAsync(TData item, CancellationToken cancellationToken = default)
         {
-            if (string.IsNullOrEmpty(item.Id))
+            string id;
+            if (await ShouldInsert(item, cancellationToken))
             {
-                var id = await InsertAsync(item, cancellationToken);
-                return await LookupAsync(id, cancellationToken);
+                id = await InsertAsync(item, cancellationToken);
             }
             else
             {
-                await UpdateAsync(item, cancellationToken);
-                return item;
+                id = await UpdateAsync(item, cancellationToken);
             }
+            return await LookupAsync(id, cancellationToken);
         }
 
         public virtual Task RemoveAsync(TData item, bool force = false, CancellationToken cancellationToken = default)

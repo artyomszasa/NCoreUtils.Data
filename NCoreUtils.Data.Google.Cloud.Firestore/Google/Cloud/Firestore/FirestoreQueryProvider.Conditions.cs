@@ -47,6 +47,8 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
         private static readonly MethodInfo _gmContains = GetMethod<IEnumerable<int>, int, bool>(Enumerable.Contains).GetGenericMethodDefinition();
 
+        private static readonly MethodInfo _gmContainsAny = GetMethod<IEnumerable<int>, IEnumerable<int>, bool>(FirestoreQueryableExtensions.ContainsAny).GetGenericMethodDefinition();
+
         private static MethodInfo GetMethod<TArg1, TArg2, TResult>(Func<TArg1, TArg2, TResult> func) => func.Method;
 
         private static FirestoreCondition.Op Reverse(FirestoreCondition.Op op)
@@ -131,6 +133,12 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 case MethodCallExpression methodCall when methodCall.Method.IsGenericMethod && methodCall.Method.GetGenericMethodDefinition().Equals(_gmContains):
                     CreateCondition(
                         FirestoreCondition.Op.ArrayContains,
+                        (ExtractPathOrValue(arg, methodCall.Arguments[0]), ExtractPathOrValue(arg, methodCall.Arguments[1])),
+                        conditions);
+                    break;
+                case MethodCallExpression methodCall when methodCall.Method.IsGenericMethod && methodCall.Method.GetGenericMethodDefinition().Equals(_gmContainsAny):
+                    CreateCondition(
+                        FirestoreCondition.Op.ArrayContainsAny,
                         (ExtractPathOrValue(arg, methodCall.Arguments[0]), ExtractPathOrValue(arg, methodCall.Arguments[1])),
                         conditions);
                     break;
