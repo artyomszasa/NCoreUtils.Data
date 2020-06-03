@@ -89,6 +89,26 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             {
                 return PathOrValue.CreatePath(path);
             }
+            if (expression is NewArrayExpression arrayExpr)
+            {
+                var arrayValue = Array.CreateInstance(arrayExpr.Type.GetElementType(), arrayExpr.Expressions.Count);
+                var i = 0;
+                foreach (var expr in arrayExpr.Expressions)
+                {
+                    if (expr.TryExtractConstant(out var item))
+                    {
+                        arrayValue.SetValue(item, i++);
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+                if (i == arrayValue.Length)
+                {
+                    return PathOrValue.CreateValue(arrayValue);
+                }
+            }
             throw new InvalidOperationException($"Unable to resolve path {expression}.");
         }
 
