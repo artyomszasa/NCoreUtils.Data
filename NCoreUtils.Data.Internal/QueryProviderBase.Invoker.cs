@@ -22,7 +22,11 @@ namespace NCoreUtils.Data.Internal
             static (Type, Type) GetSelectorTypes(Expression expression)
             {
                 var gargs = expression.Type.GetGenericArguments();
+                #if NETSTANDARD2_1
+                return (gargs[0], gargs[^1]);
+                #else
                 return (gargs[0], gargs[gargs.Length - 1]);
+                #endif
             }
 
             public static IQueryable ApplyOfType(QueryProviderBase provider, IQueryable source, Type targetType)

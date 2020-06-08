@@ -18,24 +18,27 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Unit
 
         private readonly IServiceProvider _serviceProvider;
 
-        public TestBase()
+        public TestBase(
+            Action<DataModelBuilder> buildModel,
+            Action<FirestoreConfiguration>? configure = default)
         {
-            // Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", "/etc/google/hydra-hosting.json");
             Environment.SetEnvironmentVariable("FIRESTORE_EMULATOR_HOST", "127.0.0.1:8287");
             var builder = new FirestoreDbBuilder
             {
                 ProjectId = "test",
                 EmulatorDetection = global::Google.Api.Gax.EmulatorDetection.EmulatorOnly
             };
+            var config = new FirestoreConfiguration { ProjectId = "test" };
+            configure?.Invoke(config);
+            var modelBuilder = new DataModelBuilder();
+            buildModel(modelBuilder);
             _serviceProvider = new ServiceCollection()
                 .AddLogging(b => b.ClearProviders().SetMinimumLevel(LogLevel.Debug).AddConsole().AddDebug())
                 .AddSingleton(builder.Build())
-                .AddSingleton(new DataModelBuilder().Entity<SimpleItem>(b =>
-                {
-                    b.SetKey(new [] { b.Property(e => e.Id).Property });
-                }))
-                .AddFirestoreDataRepositoryContext(new FirestoreConfiguration { ProjectId = "hydra-hosting" })
+                .AddSingleton(modelBuilder)
+                .AddFirestoreDataRepositoryContext(config)
                 .AddFirestoreDataRepository<SimpleItem>()
+                .AddFirestoreDataRepository<ComplexItem>()
                 .BuildServiceProvider();
 
         }

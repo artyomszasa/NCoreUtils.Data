@@ -4,7 +4,7 @@
     <LangVersion>8.0</LangVersion>
     <Nullable>enable</Nullable>
     <RootNamespace>NCoreUtils.Data</RootNamespace>
-    <Version>3.1.0-alpha12</Version>
+    <Version>3.1.0-alpha18</Version>
     <!-- NuGet -->
     <PackageId>NCoreUtils.Data.EntityFrameworkCore.ModelBuilderExtensions</PackageId>
     <Title>$(PackageId)</Title>

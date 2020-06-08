@@ -13,5 +13,7 @@ namespace NCoreUtils.Data.Model
         public const string Required = nameof(Required);
 
         public const string Unicode = nameof(Unicode);
+
+        public const string DefaultValue = nameof(DefaultValue);
     }
 }

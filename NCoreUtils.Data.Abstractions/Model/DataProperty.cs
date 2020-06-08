@@ -33,6 +33,9 @@ namespace NCoreUtils.Data.Model
         protected DataProperty(PropertyInfo property, IReadOnlyDictionary<string, object?> data)
             : base(data)
             => Property = property ?? throw new ArgumentNullException(nameof(property));
+
+        public bool TryGetDefaultValue(out object? value)
+            => TryGetValue(CommonMetadata.DefaultValue, out value);
     }
 
     public class DataProperty<T> : DataProperty

@@ -63,6 +63,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
         }
 
         [SuppressMessage("Microsoft.Performance", "CA1801:ReviewUnusedParameters", MessageId = "isolationLevel")]
+        [SuppressMessage("Style", "IDE0060:Remove unused parameter", MessageId = "isolationLevel")]
         public FirestoreDataTransaction BeginTransaction(IsolationLevel isolationLevel)
         {
             var tx0 = Interlocked.CompareExchange(ref _tx, null, null);

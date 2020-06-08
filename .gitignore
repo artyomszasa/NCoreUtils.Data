@@ -4,5 +4,5 @@
 
 NCoreUtils*/bin
 NCoreUtils*/obj
-NCoreUtils.Data.IdName.Unit/report
-NCoreUtils.Data.IdName.Unit/coverage.opencover.xml
+NCoreUtils*Unit/report
+NCoreUtils*Unit/coverage.opencover.xml

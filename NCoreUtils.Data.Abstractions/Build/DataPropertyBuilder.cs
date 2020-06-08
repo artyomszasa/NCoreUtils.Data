@@ -35,6 +35,28 @@ namespace NCoreUtils.Data.Build
 
         public DataPropertyBuilder SetUnicode(bool value = true)
             => SetMetadata(CommonMetadata.Unicode, value);
+
+        public DataPropertyBuilder SetDefaultValue(object? value)
+        {
+            // validation
+            var propertyType = Property.PropertyType;
+            if (value is null)
+            {
+                if (propertyType.IsValueType && !propertyType.IsNullable())
+                {
+                    throw new InvalidOperationException($"null is not a valid value for {Property.PropertyType.Name} {Property.DeclaringType.Name}.{Property.Name}");
+                }
+            }
+            else
+            {
+                var valueType = value.GetType();
+                if (!propertyType.IsAssignableFrom(valueType))
+                {
+                    throw new InvalidOperationException($"{value} is not a valid value for {Property.PropertyType.Name} {Property.DeclaringType.Name}.{Property.Name}");
+                }
+            }
+            return SetMetadata(CommonMetadata.DefaultValue, value);
+        }
     }
 
     public class DataPropertyBuilder<T> : DataPropertyBuilder
@@ -63,5 +85,11 @@ namespace NCoreUtils.Data.Build
 
         public new DataPropertyBuilder<T> SetUnicode(bool value = true)
             => SetMetadata(CommonMetadata.Unicode, value);
+
+        public new DataPropertyBuilder<T> SetDefaultValue(object? value)
+        {
+            base.SetDefaultValue(value);
+            return this;
+        }
     }
 }

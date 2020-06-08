@@ -33,26 +33,9 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 => ((IEnumerable<T>)enumerable).Select(v => populateValue(typeof(T), v!)).ToList();
         }
 
-        private static bool IsEnumerable(Type type, [NotNullWhen(true)] out Type? elementType)
-        {
-            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IEnumerable<>))
-            {
-                elementType = type.GetGenericArguments()[0];
-                return true;
-            }
-            foreach (var itype in type.GetInterfaces())
-            {
-                if (itype.IsGenericType && itype.GetGenericTypeDefinition() == typeof(IEnumerable<>))
-                {
-                    elementType = itype.GetGenericArguments()[0];
-                    return true;
-                }
-            }
-            elementType = default;
-            return false;
-        }
-
         IDataRepositoryContext IDataRepository.Context => Context;
+
+        protected FirestoreConverter Converter { get; }
 
         protected FirestoreModel Model { get; }
 
@@ -72,19 +55,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             Context = context ?? throw new ArgumentNullException(nameof(context));
             QueryProvider = queryProvider ?? throw new ArgumentNullException(nameof(queryProvider));
             Model = model ?? throw new ArgumentNullException(nameof(model));
-        }
-
-        protected virtual object PopulateValue(Type type, object value)
-        {
-            if (FirestoreModel._primitiveTypes.Contains(type))
-            {
-                return value;
-            }
-            if (IsEnumerable(type, out var elementType))
-            {
-                return ToList.Convert(value, elementType, PopulateValue);
-            }
-            return PopulateDTO(type, value);
+            Converter = model.Converter;
         }
 
         protected virtual Dictionary<string, object> PopulateDTO(Type type, object data)
@@ -101,7 +72,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 {
                     continue;
                 }
-                var value = PopulateValue(prop.Property.PropertyType, prop.Property.GetValue(data, null));
+                var value = Converter.ConvertToValue(prop.Property.GetValue(data, null), prop.Property.PropertyType);
                 d[prop.Name] = value;
             }
             return d;

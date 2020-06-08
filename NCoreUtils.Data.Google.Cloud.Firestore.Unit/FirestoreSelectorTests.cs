@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
+using NCoreUtils.Data.Build;
 using NCoreUtils.Linq;
 using Xunit;
 
@@ -10,6 +11,16 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Unit
 {
     public class FirestoreSelectorTests : TestBase
     {
+        private static void BuildModel(DataModelBuilder builder)
+        {
+            builder.Entity<SimpleItem>(b =>
+            {
+                b.SetKey(new [] { b.Property(e => e.Id).Property });
+            });
+        }
+
+        public FirestoreSelectorTests() : base(BuildModel) { }
+
         [Fact]
         public Task SelectPrimitive() => Scoped(async serviceProvider =>
         {

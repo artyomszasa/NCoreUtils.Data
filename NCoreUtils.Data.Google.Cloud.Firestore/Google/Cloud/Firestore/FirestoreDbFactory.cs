@@ -7,11 +7,11 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
     {
         private readonly object _sync = new object();
 
-        private readonly FirestoreConfiguration _configuration;
+        private readonly IFirestoreConfiguration _configuration;
 
         private FirestoreDb? _db;
 
-        public FirestoreDbFactory(FirestoreConfiguration configuration)
+        public FirestoreDbFactory(IFirestoreConfiguration configuration)
             => _configuration = configuration ?? new FirestoreConfiguration();
 
         public FirestoreDb GetOrCreateFirestoreDb()
@@ -22,20 +22,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 {
                     if (null == _db)
                     {
-                        var builder = new FirestoreDbBuilder
-                        {
-                            ProjectId = _configuration.ProjectId,
-                            ConverterRegistry = new ConverterRegistry()
-                        };
-                        foreach (var converter in _configuration.CustomConverters)
-                        {
-                            if (converter.GetType().GetInterfaces().TryGetFirst(t => t.IsGenericType && t.GetGenericTypeDefinition() == typeof(IFirestoreConverter<>), out var ity))
-                            {
-                                var ety = ity.GetGenericArguments()[0];
-                                var madd = typeof(ConverterRegistry).GetMethod(nameof(ConverterRegistry.Add), BindingFlags.Public | BindingFlags.Instance).MakeGenericMethod(ety);
-                                madd.Invoke(builder.ConverterRegistry, new object[] { converter });
-                            }
-                        }
+                        var builder = new FirestoreDbBuilder { ProjectId = _configuration.ProjectId };
                         _db = builder.Build();
                     }
                 }

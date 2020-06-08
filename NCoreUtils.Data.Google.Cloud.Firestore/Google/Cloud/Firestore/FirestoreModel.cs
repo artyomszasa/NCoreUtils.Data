@@ -6,6 +6,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 using Google.Cloud.Firestore;
+using Microsoft.Extensions.Logging;
 using NCoreUtils.Data.Build;
 using NCoreUtils.Data.Google.Cloud.Firestore.Expressions;
 using NCoreUtils.Data.Model;
@@ -43,15 +44,27 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
         private readonly ConcurrentDictionary<Type, LambdaExpression> _initialSelectorCache = new ConcurrentDictionary<Type, LambdaExpression>();
 
+        public IFirestoreConfiguration Configuration { get; }
+
+        public FirestoreConversionOptions ConversionOptions { get; }
+
+        public ILoggerFactory LoggerFactory { get; }
+
         public IReadOnlyDictionary<Type, DataEntity> ByType { get; }
 
-        public FirestoreModel(DataModelBuilder builder)
+        public FirestoreConverter Converter { get; }
+
+        public FirestoreModel(IFirestoreConfiguration configuration, ILoggerFactory loggerFactory, DataModelBuilder builder)
             : base(builder)
         {
+            Configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            ConversionOptions = configuration.ConversionOptions ?? FirestoreConversionOptions.Default;
+            LoggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
             ByType = Entities.ToDictionary(e => e.EntityType);
+            Converter = new FirestoreConverter(LoggerFactory.CreateLogger<FirestoreConverter>(), ConversionOptions, this);
         }
 
-        protected Expression GetInitialSelector(Type type, Expression snapshot, ImmutableList<string> path)
+        protected Expression GetInitialSelector(Type type, Expression snapshot)
         {
             // FIXME: Polymorphism...
             if (!TryGetDataEntity(type, out var entity))
@@ -65,25 +78,12 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 {
                     var ptype = p.TargetProperty.PropertyType;
                     var pdata = entity.Properties.First(e => e.Property == p.TargetProperty);
-                    if (_primitiveTypes.Contains(ptype))
+                    if (entity.Key != null && entity.Key.Count == 1 && entity.Key[0].Property.Equals(p.TargetProperty))
                     {
-                        if (entity.Key != null && entity.Key.Count == 1 && entity.Key[0].Property.Equals(p.TargetProperty))
-                        {
-                            // FIXME: keys on nested entities are not allowed...
-                            return new FirestoreFieldExpression(snapshot, FieldPath.DocumentId, ptype);
-                        }
-                        return new FirestoreFieldExpression(snapshot, path.Add(pdata.Name), ptype);
+                        // FIXME: keys on nested entities are not allowed...
+                        return new FirestoreFieldExpression(Converter, snapshot, FieldPath.DocumentId, ptype);
                     }
-                    if (CollectionBuilder.TryCreate(ptype, out var collectionBuilder))
-                    {
-                        // if (TryGetDataEntity(type, out var nestedEntity))
-                        // {
-                        //     // FIXME: array item are not accessible as document --> we have to use firestore converters :( ....
-                        // }
-                        return new FirestoreCollectionFieldExpression(snapshot, path.Add(pdata.Name), ptype, collectionBuilder);
-                    }
-                    // fallback to subentity
-                    return GetInitialSelector(ptype, snapshot, path.Add(pdata.Name));
+                    return new FirestoreFieldExpression(Converter, snapshot, ImmutableList.Create(pdata.Name), ptype);
                 })
             );
         }
@@ -92,7 +92,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
         {
             var arg = Expression.Parameter(typeof(DocumentSnapshot));
             return Expression.Lambda<Func<DocumentSnapshot, T>>(
-                GetInitialSelector(typeof(T), arg, ImmutableList<string>.Empty),
+                GetInitialSelector(typeof(T), arg),
                 arg
             );
         }
@@ -106,7 +106,11 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             return (Expression<Func<DocumentSnapshot, T>>)_initialSelectorCache.GetOrAdd(typeof(T), _ => GetInitialSelectorNoCache<T>());
         }
 
+        #if NETSTANDARD2_1
         public bool TryGetDataEntity(Type type, [NotNullWhen(true)] out DataEntity? entity)
+        #else
+        public bool TryGetDataEntity(Type type, out DataEntity entity)
+        #endif
             => ByType.TryGetValue(type, out entity);
     }
 }

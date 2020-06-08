@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -63,7 +64,11 @@ namespace NCoreUtils.Data.Internal
             return argType.IsGenericType && argType.GetGenericTypeDefinition().Equals(typeof(Func<,>));
         }
 
+        #if NETSTANDARD2_1
+        static bool TryGetEnumerableElementType(Type type, [NotNullWhen(true)] out Type? elementType)
+        #else
         static bool TryGetEnumerableElementType(Type type, out Type elementType)
+        #endif
         {
             if (TryInterface(type, out elementType))
             {
@@ -85,7 +90,7 @@ namespace NCoreUtils.Data.Internal
                     elementType = type.GetGenericArguments()[0];
                     return true;
                 }
-                elementType = default;
+                elementType = default!;
                 return false;
             }
         }
@@ -135,7 +140,17 @@ namespace NCoreUtils.Data.Internal
 
         protected abstract IAsyncEnumerable<TElement> ExecuteQuery<TElement>(IQueryable<TElement> source);
 
-        protected virtual bool TryExtractQueryableCallArguments(MethodCallExpression expression, out IQueryable source, out IReadOnlyList<Expression> arguments)
+        #if NETSTANDARD2_1
+        protected virtual bool TryExtractQueryableCallArguments(
+            MethodCallExpression expression,
+            [NotNullWhen(true)] out IQueryable? source,
+            [NotNullWhen(true)] out IReadOnlyList<Expression>? arguments)
+        #else
+        protected virtual bool TryExtractQueryableCallArguments(
+            MethodCallExpression expression,
+            out IQueryable source,
+            out IReadOnlyList<Expression> arguments)
+        #endif
         {
             if (expression.Method.DeclaringType.Equals(typeof(Queryable)) && expression.Arguments.Count > 0 && expression.Arguments[0].TryExtractQueryable(out var queryable))
             {
@@ -148,8 +163,13 @@ namespace NCoreUtils.Data.Internal
                 arguments = args;
                 return true;
             }
+            #if NETSTANDARD2_1
             source = default;
             arguments = default;
+            #else
+            source = default!;
+            arguments = default!;
+            #endif
             return false;
         }
 

@@ -4,22 +4,24 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using Google.Cloud.Firestore;
+using Google.Cloud.Firestore.V1;
 using NCoreUtils.Linq;
 
 namespace NCoreUtils.Data.Google.Cloud.Firestore.Expressions
 {
     public class FirestoreFieldExpression : Expression, IExtensionExpression
     {
-        private static readonly MethodInfo _gmValue = typeof(DocumentSnapshot)
-            .GetMethods(BindingFlags.Public | BindingFlags.Instance)
-            .First(m => m.Name == "GetValue" && m.IsGenericMethodDefinition && SingleParameter(m, typeof(FieldPath)));
+        private static readonly MethodInfo _mGetValue;
 
-        private static bool SingleParameter(MethodInfo method, Type type)
-            => method.GetParameters() switch
-            {
-                var ps when ps.Length == 1 && ps[0].ParameterType == type => true,
-                _ => false
-            };
+        private static readonly MethodInfo _gmConvertFromValue;
+
+        static FirestoreFieldExpression()
+        {
+            Expression<Func<DocumentSnapshot, FieldPath, Value>> e0 = (doc, name) => doc.GetValue<Value>(name);
+            _mGetValue = ((MethodCallExpression)e0.Body).Method;
+            Expression<Func<FirestoreConverter, Value, int>> e1 = (converter, value) => converter.ConvertFromValue<int>(value);
+            _gmConvertFromValue = ((MethodCallExpression)e1.Body).Method.GetGenericMethodDefinition();
+        }
 
         public override bool CanReduce => true;
 
@@ -33,9 +35,12 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Expressions
 
         public Expression Instance { get; }
 
-        private FirestoreFieldExpression(Expression instance, ImmutableList<string>? rawPath, FieldPath path, Type type)
+        public FirestoreConverter Converter { get; }
+
+        private FirestoreFieldExpression(FirestoreConverter converter, Expression instance, ImmutableList<string>? rawPath, FieldPath path, Type type)
         {
             Instance = instance ?? throw new ArgumentNullException(nameof(instance));
+            Converter = converter ?? throw new ArgumentNullException(nameof(converter));
             RawPath = rawPath;
             Path = path ?? throw new ArgumentNullException(nameof(path));
             Type = type ?? throw new ArgumentNullException(nameof(type));
@@ -45,24 +50,34 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Expressions
             }
         }
 
-        public FirestoreFieldExpression(Expression instance, ImmutableList<string> rawPath, Type type)
+        public FirestoreFieldExpression(FirestoreConverter converter, Expression instance, ImmutableList<string> rawPath, Type type)
             : this(
+                converter,
                 instance,
                 rawPath ?? throw new ArgumentNullException(nameof(rawPath), "For special paths use overloaded constructor."),
                 new FieldPath(rawPath.ToArray()),
                 type)
         { }
 
-        public FirestoreFieldExpression(Expression instance, FieldPath specialPath, Type type)
-            : this(instance, default, specialPath, type)
+        public FirestoreFieldExpression(FirestoreConverter converter, Expression instance, FieldPath specialPath, Type type)
+            : this(converter, instance, default, specialPath, type)
         { }
 
         protected virtual Expression Reduce(Type targetType)
         {
+            // return Call(
+            //     Instance,
+            //     _gmValue.MakeGenericMethod(targetType),
+            //     Constant(Path)
+            // );
             return Call(
-                Instance,
-                _gmValue.MakeGenericMethod(targetType),
-                Constant(Path)
+                Constant(Converter),
+                _gmConvertFromValue.MakeGenericMethod(targetType),
+                Call(
+                    Instance,
+                    _mGetValue,
+                    Constant(Path)
+                )
             );
         }
 
@@ -84,7 +99,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Expressions
             var newInstance = visitor.Visit(Instance);
             return ReferenceEquals(newInstance, Instance)
                 ? this
-                : new FirestoreFieldExpression(newInstance, RawPath, Path, Type);
+                : new FirestoreFieldExpression(Converter, newInstance, RawPath, Path, Type);
         }
     }
 }

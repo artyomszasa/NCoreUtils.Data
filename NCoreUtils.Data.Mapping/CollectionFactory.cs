@@ -6,7 +6,7 @@ using NCoreUtils.Data.Mapping;
 
 namespace NCoreUtils.Data
 {
-    public abstract class CollectionBuilder
+    public abstract class CollectionFactory
     {
         #if NETSTANDARD2_1
         private static bool IsCollection(Type collectionType, [NotNullWhen(true)] out Type? elementType)
@@ -37,20 +37,20 @@ namespace NCoreUtils.Data
         }
 
         #if NETSTANDARD2_1
-        public static bool TryCreate(Type collectionType, [NotNullWhen(true)] out CollectionBuilder? builder)
+        public static bool TryCreate(Type collectionType, [NotNullWhen(true)] out CollectionFactory? builder)
         #else
-        public static bool TryCreate(Type collectionType, out CollectionBuilder builder)
+        public static bool TryCreate(Type collectionType, out CollectionFactory builder)
         #endif
         {
             if (IsCollection(collectionType, out var elementType))
             {
-                builder = new MutableCollectionBuilder(elementType, collectionType);
+                builder = new MutableCollectionFactory(elementType, collectionType);
                 return true;
             }
             if (collectionType.IsGenericType && collectionType.GetGenericTypeDefinition() == typeof(IReadOnlyList<>))
             {
                 elementType = collectionType.GetGenericArguments()[0];
-                builder = new ReadOnlyListBuilder(elementType, collectionType);
+                builder = new ReadOnlyListFactory(elementType, collectionType);
                 return true;
             }
             #if NETSTANDARD2_1
@@ -65,7 +65,7 @@ namespace NCoreUtils.Data
 
         public Type CollectionType { get; }
 
-        internal CollectionBuilder(Type elementType, Type collectionType)
+        internal CollectionFactory(Type elementType, Type collectionType)
         {
             ElementType = elementType ?? throw new ArgumentNullException(nameof(elementType));
             CollectionType = collectionType ?? throw new ArgumentNullException(nameof(collectionType));
@@ -78,5 +78,7 @@ namespace NCoreUtils.Data
         /// </summary>
         /// <param name="items">Expression representing enumerable source.</param>
         public abstract Expression CreateNewExpression(Expression items);
+
+        public abstract ICollectionBuilder CreateBuilder();
     }
 }

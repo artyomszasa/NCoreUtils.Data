@@ -1,30 +1,30 @@
-using System;
+using System.Collections;
 using System.Collections.Generic;
-using System.Linq.Expressions;
+using System.Linq;
 
 namespace NCoreUtils.Data.Mapping
 {
-    /// <summary>
-    /// <c>IReadOnlyList&lt;T&gt;</c> builder. Uses <c>List&lt;T&gt;</c>.
-    /// </summary>
-    public class ReadOnlyListBuilder : CollectionBuilder
+    public class ReadOnlyListBuilder<T> : ICollectionBuilder<T>
     {
-        private readonly MutableCollectionBuilder _listBuilder;
+        private readonly List<T> _items = new List<T>();
 
-        internal ReadOnlyListBuilder(Type elementType, Type collectionType)
-            : base(elementType, collectionType)
-        {
-            if (!collectionType.Equals(typeof(IReadOnlyList<>).MakeGenericType(elementType)))
-            {
-                throw new InvalidOperationException($"Invalid collection type: {collectionType}.");
-            }
-            _listBuilder = new MutableCollectionBuilder(elementType, typeof(List<>).MakeGenericType(elementType));
-        }
+        void ICollectionBuilder.Add(object value)
+            => Add((T)value);
 
-        public override Expression CreateNewExpression(IEnumerable<Expression> items)
-            => _listBuilder.CreateNewExpression(items);
+        void ICollectionBuilder.AddRange(IEnumerable values)
+            => AddRange(values.Cast<T>());
 
-        public override Expression CreateNewExpression(Expression items)
-            => _listBuilder.CreateNewExpression(items);
+        IEnumerable ICollectionBuilder.Build() => Build();
+
+        IEnumerable<T> ICollectionBuilder<T>.Build() => Build();
+
+        public void Add(T value)
+            => _items.Add(value);
+
+        public void AddRange(IEnumerable<T> values)
+            => _items.AddRange(values);
+
+        public IReadOnlyList<T> Build()
+            => _items.ToArray();
     }
 }
