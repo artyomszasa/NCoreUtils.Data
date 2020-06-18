@@ -4,6 +4,8 @@ using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
 using Google.Cloud.Firestore;
 using NCoreUtils.Data.Google.Cloud.Firestore.Expressions;
 
@@ -11,6 +13,23 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 {
     public partial class FirestoreQueryProvider
     {
+        private sealed class EmptyAsyncEnumerator<T> : IAsyncEnumerator<T>
+        {
+            public T Current => default!;
+
+            public ValueTask DisposeAsync() => default;
+
+            public ValueTask<bool> MoveNextAsync() => default;
+        }
+
+        private sealed class EmptyAsyncEnumerable<T> : IAsyncEnumerable<T>
+        {
+            private static readonly EmptyAsyncEnumerator<T> _enumerator = new EmptyAsyncEnumerator<T>();
+
+            public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
+                => _enumerator;
+        }
+
         [Obsolete("TryResolveSubpath(...) is an internal mathod, use TryResolvePath(...).")]
         private bool TryResolveSubpath(Expression expression, ParameterExpression document, ImmutableList<string> prefix, [NotNullWhen(true)] out FieldPath? path)
         {

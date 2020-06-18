@@ -43,6 +43,8 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             { FirestoreCondition.Op.GreaterThanOrEqualTo, FirestoreCondition.Op.LessThanOrEqualTo },
             { FirestoreCondition.Op.LessThan, FirestoreCondition.Op.GreaterThan },
             { FirestoreCondition.Op.LessThanOrEqualTo, FirestoreCondition.Op.GreaterThanOrEqualTo },
+            { FirestoreCondition.Op.ArrayContains, FirestoreCondition.Op.In },
+            { FirestoreCondition.Op.In, FirestoreCondition.Op.ArrayContains },
         }.ToImmutableDictionary();
 
         private static readonly MethodInfo _gmContains = GetMethod<IEnumerable<int>, int, bool>(Enumerable.Contains).GetGenericMethodDefinition();
@@ -124,6 +126,13 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
         {
             switch (expression)
             {
+                case UnaryExpression un:
+                    if (un.NodeType == ExpressionType.Not && TryResolvePath(un.Operand, arg, out var upath))
+                    {
+                        conditions.Add(new FirestoreCondition(upath, FirestoreCondition.Op.EqualTo, false));
+                        break;
+                    }
+                    throw new NotSupportedException($"Not supported expression {expression}.");
                 case BinaryExpression bin:
                     switch (bin.NodeType)
                     {
@@ -163,6 +172,23 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                         conditions);
                     break;
                 default:
+                    if (expression.Type == typeof(bool))
+                    {
+                        if (expression.TryExtractConstant(out var boxed))
+                        {
+                            var boolValue = (bool)boxed;
+                            if (!boolValue)
+                            {
+                                conditions.Add(FirestoreCondition.AlwaysFalse);
+                            }
+                            break;
+                        }
+                        if (TryResolvePath(expression, arg, out var path))
+                        {
+                            conditions.Add(new FirestoreCondition(path, FirestoreCondition.Op.EqualTo, true));
+                            break;
+                        }
+                    }
                     throw new NotSupportedException($"Not supported expression {expression}.");
             }
         }

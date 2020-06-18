@@ -123,21 +123,33 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             => throw new NotSupportedException("Executing .All(...) would result in querying all entities.");
 
         protected override Task<bool> ExecuteAny<TElement>(IQueryable<TElement> source, CancellationToken cancellationToken)
-            => DbAccessor.ExecuteAsync(async db =>
+        {
+            var q = Cast(source);
+            if (q.IsAlwaysFalse())
             {
-                var query = CreateFilteredQuery(db, Cast(source));
+                return Task.FromResult(false);
+            }
+            return DbAccessor.ExecuteAsync(async db =>
+            {
+                var query = CreateFilteredQuery(db, q);
                 query.Limit(1);
                 var snapshot = await query.GetSnapshotAsync(cancellationToken);
                 return snapshot.Count > 0;
             });
+        }
 
         protected override Task<int> ExecuteCount<TElement>(IQueryable<TElement> source, CancellationToken cancellationToken)
             => throw new NotSupportedException("Executing .Count(...) would result in querying all entities.");
 
         protected override Task<TElement> ExecuteFirst<TElement>(IQueryable<TElement> source, CancellationToken cancellationToken)
-            => DbAccessor.ExecuteAsync(async db =>
+        {
+            var q = Cast(source);
+            if (q.IsAlwaysFalse())
             {
-                var q = Cast(source);
+                throw new InvalidOperationException("Sequence contains no elements.");
+            }
+            return DbAccessor.ExecuteAsync(async db =>
+            {
                 var query = CreateUnboundQuery(db, q);
                 query.Limit(1);
                 var snapshot = await query.GetSnapshotAsync(cancellationToken);
@@ -147,13 +159,19 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 }
                 throw new InvalidOperationException("Sequence contains no elements.");
             });
+        }
 
         protected override Task<TElement> ExecuteFirstOrDefault<TElement>(IQueryable<TElement> source, CancellationToken cancellationToken)
-            => DbAccessor.ExecuteAsync(async db =>
+        {
+            var q = Cast(source);
+            if (q.IsAlwaysFalse())
             {
-                var q = Cast(source);
+                return Task.FromResult<TElement>(default!);
+            }
+            return DbAccessor.ExecuteAsync(async db =>
+            {
                 var query = CreateUnboundQuery(db, q);
-                //query.Limit(1);
+                query.Limit(1);
                 var snapshot = await query.GetSnapshotAsync(cancellationToken);
                 if (snapshot.Count > 0)
                 {
@@ -161,11 +179,17 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 }
                 return default!;
             });
+        }
 
         protected override Task<TElement> ExecuteLast<TElement>(IQueryable<TElement> source, CancellationToken cancellationToken)
-            => DbAccessor.ExecuteAsync(async db =>
+        {
+            var q = Cast(source);
+            if (q.IsAlwaysFalse())
             {
-                var q = Cast(source);
+                throw new InvalidOperationException("Sequence contains no elements.");
+            }
+            return DbAccessor.ExecuteAsync(async db =>
+            {
                 var query = CreateUnboundQuery(db, q.RevertOrdering());
                 query.Limit(1);
                 var snapshot = await query.GetSnapshotAsync(cancellationToken);
@@ -175,11 +199,17 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 }
                 throw new InvalidOperationException("Sequence contains no elements.");
             });
+        }
 
         protected override Task<TElement> ExecuteLastOrDefault<TElement>(IQueryable<TElement> source, CancellationToken cancellationToken)
-            => DbAccessor.ExecuteAsync(async db =>
+        {
+            var q = Cast(source);
+            if (q.IsAlwaysFalse())
             {
-                var q = Cast(source);
+                return Task.FromResult<TElement>(default!);
+            }
+            return DbAccessor.ExecuteAsync(async db =>
+            {
                 var query = CreateUnboundQuery(db, q.RevertOrdering());
                 query.Limit(1);
                 var snapshot = await query.GetSnapshotAsync(cancellationToken);
@@ -189,11 +219,17 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 }
                 return default!;
             });
+        }
 
         protected override Task<TElement> ExecuteSingle<TElement>(IQueryable<TElement> source, CancellationToken cancellationToken)
-            => DbAccessor.ExecuteAsync(async db =>
+        {
+            var q = Cast(source);
+            if (q.IsAlwaysFalse())
             {
-                var q = Cast(source);
+                throw new InvalidOperationException("Sequence contains no elements.");
+            }
+            return DbAccessor.ExecuteAsync(async db =>
+            {
                 var query = CreateUnboundQuery(db, q);
                 query.Limit(2);
                 var snapshot = await query.GetSnapshotAsync(cancellationToken);
@@ -204,11 +240,17 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                     _ => throw new InvalidOperationException("Sequence contains multiple elements."),
                 };
             });
+        }
 
         protected override Task<TElement> ExecuteSingleOrDefault<TElement>(IQueryable<TElement> source, CancellationToken cancellationToken)
-            => DbAccessor.ExecuteAsync(async db =>
+        {
+            var q = Cast(source);
+            if (q.IsAlwaysFalse())
             {
-                var q = Cast(source);
+                return Task.FromResult<TElement>(default!);
+            }
+            return DbAccessor.ExecuteAsync(async db =>
+            {
                 var query = CreateUnboundQuery(db, q);
                 query.Limit(2);
                 var snapshot = await query.GetSnapshotAsync(cancellationToken);
@@ -219,11 +261,17 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                     _ => throw new InvalidOperationException("Sequence contains multiple elements."),
                 };
             });
+        }
 
         protected override IAsyncEnumerable<TElement> ExecuteQuery<TElement>(IQueryable<TElement> source)
-            => new DelayedAsyncEnumerable<TElement>(cancellationToken => new ValueTask<IAsyncEnumerable<TElement>>(DbAccessor.ExecuteAsync(db =>
+        {
+            var q = Cast(source);
+            if (q.IsAlwaysFalse())
             {
-                var q = Cast(source);
+                return new EmptyAsyncEnumerable<TElement>();
+            }
+            return new DelayedAsyncEnumerable<TElement>(cancellationToken => new ValueTask<IAsyncEnumerable<TElement>>(DbAccessor.ExecuteAsync(db =>
+            {
                 var query = CreateUnboundQuery(db, q);
                 if (q.Offset > 0)
                 {
@@ -237,5 +285,6 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 query = query.Select(q.Selector.CollectFirestorePaths().ToArray());
                 return Task.FromResult(Materializer.Materialize(query.StreamAsync(cancellationToken), q.Selector));
             })));
+        }
     }
 }

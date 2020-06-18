@@ -17,7 +17,9 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             GreaterThanOrEqualTo = 4,
             LessThan = 5,
             LessThanOrEqualTo = 6,
-            ArrayContainsAny = 7
+            ArrayContainsAny = 7,
+            In = 8,
+            AlwaysFalse = 9
         }
 
         private static readonly EqualityComparer<FieldPath> _pathComparer = EqualityComparer<FieldPath>.Default;
@@ -30,8 +32,11 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             ">",
             ">=",
             "<",
-            "<="
+            "<=",
+            "in"
         };
+
+        public static FirestoreCondition AlwaysFalse { get; } = new FirestoreCondition(default!, Op.AlwaysFalse, default!);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool SafeEq(object a, object b)
@@ -100,13 +105,24 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
         public FirestoreCondition(FieldPath path, Op operation, object value)
         {
-            Path = path ?? throw new ArgumentNullException(nameof(path));
+            if (operation != Op.AlwaysFalse)
+            {
+                if (path is null)
+                {
+                    throw new ArgumentNullException(nameof(path));
+                }
+            }
+            Path = path;
             Operation = operation;
             Value = value;
         }
 
         public bool Equals(FirestoreCondition other)
         {
+            if (Operation == Op.AlwaysFalse)
+            {
+                return other.Operation == Op.AlwaysFalse;
+            }
             if (Operation == Op.ArrayContainsAny)
             {
                 return other.Operation == Op.ArrayContainsAny
@@ -122,6 +138,9 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
         public override int GetHashCode() => HashCode.Combine(Path, Operation, Value);
 
-        public override string ToString() => $"{{{Path} {_opNames[(int)Operation]} {Value}}}";
+        public override string ToString()
+            => Operation < Op.AlwaysFalse
+                ? $"{{{Path} {_opNames[(int)Operation]} {Value}}}"
+                : "FALSE";
     }
 }
