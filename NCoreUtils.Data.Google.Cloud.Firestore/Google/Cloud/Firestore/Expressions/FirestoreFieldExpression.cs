@@ -13,14 +13,18 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Expressions
     {
         private static readonly MethodInfo _mGetValue;
 
+        private static readonly MethodInfo _mContainsField;
+
         private static readonly MethodInfo _gmConvertFromValue;
 
         static FirestoreFieldExpression()
         {
             Expression<Func<DocumentSnapshot, FieldPath, Value>> e0 = (doc, name) => doc.GetValue<Value>(name);
             _mGetValue = ((MethodCallExpression)e0.Body).Method;
-            Expression<Func<FirestoreConverter, Value, int>> e1 = (converter, value) => converter.ConvertFromValue<int>(value);
-            _gmConvertFromValue = ((MethodCallExpression)e1.Body).Method.GetGenericMethodDefinition();
+            Expression<Func<DocumentSnapshot, FieldPath, bool>> e1 = (doc, name) => doc.ContainsField(name);
+            _mContainsField = ((MethodCallExpression)e1.Body).Method;
+            Expression<Func<FirestoreConverter, Value, int>> e2 = (converter, value) => converter.ConvertFromValue<int>(value);
+            _gmConvertFromValue = ((MethodCallExpression)e2.Body).Method.GetGenericMethodDefinition();
         }
 
         public override bool CanReduce => true;
@@ -65,18 +69,14 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Expressions
 
         protected virtual Expression Reduce(Type targetType)
         {
-            // return Call(
-            //     Instance,
-            //     _gmValue.MakeGenericMethod(targetType),
-            //     Constant(Path)
-            // );
+            var cpath = Constant(Path);
             return Call(
                 Constant(Converter),
                 _gmConvertFromValue.MakeGenericMethod(targetType),
-                Call(
-                    Instance,
-                    _mGetValue,
-                    Constant(Path)
+                Condition(
+                    Call(Instance, _mContainsField, cpath),
+                    Call(Instance, _mGetValue, Constant(Path)),
+                    Constant(new Value { NullValue = default })
                 )
             );
         }

@@ -37,6 +37,15 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             {
                 return customConverter.ConvertToValue(value, sourceType, this);
             }
+            // try nullable
+            if (sourceType.IsNullable(out var elementType))
+            {
+                if (value is null)
+                {
+                    return new Value { NullValue = default };
+                }
+                return ConvertToValue(value, elementType);
+            }
             // try default
             if (TryPrimitiveToValue(value, sourceType, out var result))
             {
@@ -63,6 +72,15 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             if (Options.Converters.TryGetFirst(c => c.CanConvert(targetType), out var customConverter))
             {
                 return customConverter.ConvertFromValue(value, targetType, this);
+            }
+            // try nullable
+            if (targetType.IsNullable(out var elementType))
+            {
+                if (value.ValueTypeCase == Value.ValueTypeOneofCase.NullValue)
+                {
+                    return null;
+                }
+                return ConvertFromValue(value, elementType);
             }
             // try default
             if (TryPrimitiveFromValue(value, targetType, out var result))

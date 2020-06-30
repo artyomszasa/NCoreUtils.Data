@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace NCoreUtils.Data.Mapping
 {
@@ -12,7 +13,7 @@ namespace NCoreUtils.Data.Mapping
             => Add((TElement)value);
 
         void ICollectionBuilder.AddRange(IEnumerable values)
-            => AddRange((IEnumerable<TElement>)values);
+            => AddRange(values.Cast<TElement>());
 
         IEnumerable ICollectionBuilder.Build() => Build();
 

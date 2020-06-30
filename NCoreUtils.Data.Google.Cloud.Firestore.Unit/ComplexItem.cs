@@ -7,6 +7,10 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Unit
     {
         public string Id { get; }
 
+        public int? Nint1 { get; }
+
+        public int? Nint2 { get; }
+
         public decimal Decimal { get; }
 
         public float Float { get; }
@@ -17,14 +21,19 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Unit
 
         public IReadOnlyList<SimpleItem> Collection { get; }
 
-        public ComplexItem(string id, decimal @decimal, float @float, Guid guid, SimpleItem subitem, IReadOnlyList<SimpleItem> collection)
+        public HashSet<SimpleItem> Set { get; }
+
+        public ComplexItem(string id, int? nint1, int? nint2, decimal @decimal, float @float, Guid guid, SimpleItem subitem, IReadOnlyList<SimpleItem> collection, HashSet<SimpleItem> set)
         {
             Id = id;
+            Nint1 = nint1;
+            Nint2 = nint2;
             Decimal = @decimal;
             Float = @float;
             Guid = guid;
             Subitem = subitem;
             Collection = collection;
+            Set = set;
         }
     }
 }
