@@ -83,7 +83,7 @@ namespace NCoreUtils.Data
                 il.Emit(OpCodes.Newobj, typeof(InvalidOperationException).GetConstructor(new [] { typeof(string) }));
                 il.Emit(OpCodes.Throw);
             }
-            return (functionName, typeBuilder.CreateTypeInfo().AsType().GetMethod(methodBuilder.Name));
+            return (functionName, typeBuilder.CreateTypeInfo()!.AsType().GetMethod(methodBuilder.Name));
         }
 
         public static ModelBuilder HasGetIdNameSuffixFunction(this ModelBuilder builder, string? schema = default)

@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using Microsoft.EntityFrameworkCore;
@@ -10,9 +9,15 @@ namespace NCoreUtils.Data.IdNameGeneration
 {
     public class IdNameGenerationInitialization
     {
-        static readonly object _sync = new object();
+        static readonly object _sync;
 
-        static readonly ConcurrentDictionary<string, MethodInfo> _initializedFunctions = new ConcurrentDictionary<string, MethodInfo>();
+        static readonly ConcurrentDictionary<string, MethodInfo> _initializedFunctions;
+
+        static IdNameGenerationInitialization()
+        {
+            _sync = new object();
+            _initializedFunctions = new ConcurrentDictionary<string, MethodInfo>();
+        }
 
         readonly DbContext _dbContext;
 

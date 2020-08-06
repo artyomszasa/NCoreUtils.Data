@@ -7,7 +7,7 @@ using IEFAsyncQueryProvider = Microsoft.EntityFrameworkCore.Query.Internal.IAsyn
 
 namespace NCoreUtils.Data.EntityFrameworkCore
 {
-    sealed class QueryProviderAdapter : IAsyncQueryAdapter
+    internal sealed class QueryProviderAdapter : IAsyncQueryAdapter
     {
         public ValueTask<IAsyncQueryProvider> GetAdapterAsync(Func<ValueTask<IAsyncQueryProvider>> next, IQueryProvider source, CancellationToken cancellationToken)
         {

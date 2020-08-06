@@ -3,7 +3,7 @@ using System.Threading;
 
 namespace NCoreUtils.Data
 {
-    sealed class DataEventHandlers : IDataEventHandlers
+    internal sealed class DataEventHandlers : IDataEventHandlers
     {
         ImmutableList<IDataEventHandler> _handlers = ImmutableList<IDataEventHandler>.Empty;
 

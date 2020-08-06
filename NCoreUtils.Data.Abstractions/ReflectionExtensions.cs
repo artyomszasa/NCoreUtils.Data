@@ -42,9 +42,9 @@ namespace NCoreUtils.Data
             }
             foreach (var itype in type.GetInterfaces())
             {
-                if (type.IsInterface && type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IDictionary<,>))
+                if (itype.IsInterface && itype.IsGenericType && itype.GetGenericTypeDefinition() == typeof(IDictionary<,>))
                 {
-                    var gargs = type.GetGenericArguments();
+                    var gargs = itype.GetGenericArguments();
                     keyType = gargs[0];
                     valueType = gargs[1];
                     return true;

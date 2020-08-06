@@ -30,9 +30,9 @@ namespace NCoreUtils.Data.IdNameGeneration
             return Expression.Field(Expression.Constant(box, boxType), field);
         }
 
-        readonly ISimplifier _simplifier;
+        readonly IStringSimplifier _simplifier;
 
-        public IdNameGenerator(ISimplifier simplifier)
+        public IdNameGenerator(IStringSimplifier simplifier)
         {
             _simplifier = simplifier ?? throw new ArgumentNullException(nameof(simplifier));
         }

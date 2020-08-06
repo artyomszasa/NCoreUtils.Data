@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.Loader;
@@ -29,6 +30,7 @@ namespace NCoreUtils.Data
                 return observer.HandleAsync(@event, cancellationToken);
             }
 
+            [ExcludeFromCodeCoverage]
             public override string ToString() => $"DataEventHandlerFactory({_targetHandlerType})";
         }
 

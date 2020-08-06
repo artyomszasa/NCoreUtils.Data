@@ -254,9 +254,9 @@ namespace NCoreUtils.Data
         /// <typeparam name="T">Type of the data entity being handled by the observer function.</typeparam>
         /// <param name="observer">Data event observer function.</param>
         /// <returns>Newly created data event handler.</returns>
-        public static IDataEventHandler CreateInsertObserver<T>(Func<DataUpdateEvent<T>, CancellationToken, ValueTask> observer)
+        public static IDataEventHandler CreateInsertObserver<T>(Func<DataInsertEvent<T>, CancellationToken, ValueTask> observer)
             where T : class
-            => new OperationObserver<T, DataUpdateEvent<T>>(observer);
+            => new OperationObserver<T, DataInsertEvent<T>>(observer);
 
         /// <summary>
         /// Creates data event handler from the specified function that will be invoked only for the <c>Delete</c>

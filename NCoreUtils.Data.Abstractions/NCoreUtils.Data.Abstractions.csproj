@@ -3,7 +3,7 @@
     <TargetFrameworks>netstandard2.1;netstandard2.0</TargetFrameworks>
     <LangVersion>8.0</LangVersion>
     <Nullable>enable</Nullable>
-    <Version>3.1.0-beta00</Version>
+    <Version>3.1.0</Version>
     <!-- NuGet -->
     <PackageId>NCoreUtils.Data.Abstractions</PackageId>
     <Title>$(PackageId)</Title>
@@ -26,7 +26,7 @@
   <ItemGroup>
     <PackageReference Include="NCoreUtils.Extensions.Expressions" Version="1.0.6" />
     <PackageReference Include="NCoreUtils.Maybe" Version="1.0.5" />
-    <PackageReference Include="System.Collections.Immutable" Version="1.7.0" />
+    <PackageReference Include="System.Collections.Immutable" Version="1.7.1" />
   </ItemGroup>
   <ItemGroup Condition=" '$(TargetFramework)' != 'netstandard2.1' ">
     <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.5.4" />

@@ -42,19 +42,17 @@ namespace NCoreUtils.Data.IdNameGeneration
                     {
                         throw new InvalidOperationException($"Expected {JsonTokenType.PropertyName}, got {reader.TokenType}.");
                     }
-                    if (reader.ValueSpan == _binType)
+                    if (reader.ValueTextEquals(_binType))
                     {
                         reader.Read();
                         typeName = reader.GetString();
-                        reader.Read();
                     }
-                    else if (reader.ValueSpan == _binSource)
+                    else if (reader.ValueTextEquals(_binSource))
                     {
                         reader.Read();
                         sourcePropertyName = reader.GetString();
-                        reader.Read();
                     }
-                    else if (reader.ValueSpan == _binOther)
+                    else if (reader.ValueTextEquals(_binOther))
                     {
                         reader.Read();
                         if (reader.TokenType != JsonTokenType.StartArray)
@@ -67,10 +65,14 @@ namespace NCoreUtils.Data.IdNameGeneration
                             additionalPropertyNames.Add(reader.GetString());
                             reader.Read();
                         }
-                        reader.Read();
                     }
+                    else
+                    {
+                        reader.Read();
+                        reader.Skip();
+                    }
+                    reader.Read();
                 }
-                reader.Read();
                 return new IdNameSourcePropertyData(typeName!, sourcePropertyName!, additionalPropertyNames.ToArray());
             }
 

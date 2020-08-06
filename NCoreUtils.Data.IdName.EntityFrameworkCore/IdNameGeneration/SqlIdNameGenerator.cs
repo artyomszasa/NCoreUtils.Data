@@ -40,9 +40,9 @@ namespace NCoreUtils.Data.IdNameGeneration
 
         readonly DbContext _dbContext;
 
-        readonly ISimplifier _simplifier;
+        readonly IStringSimplifier _simplifier;
 
-        public SqlIdNameGenerator(IdNameGenerationInitialization initialization, DbContext dbContext, ISimplifier simplifier)
+        public SqlIdNameGenerator(IdNameGenerationInitialization initialization, DbContext dbContext, IStringSimplifier simplifier)
         {
             _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
             _simplifier = simplifier ?? throw new ArgumentNullException(nameof(simplifier));
@@ -192,7 +192,7 @@ namespace NCoreUtils.Data.IdNameGeneration
     public class SqlIdNameGenerator<TDbContext> : SqlIdNameGenerator
         where TDbContext : DbContext
     {
-        public SqlIdNameGenerator(IdNameGenerationInitialization initialization, TDbContext dbContext, ISimplifier simplifier)
+        public SqlIdNameGenerator(IdNameGenerationInitialization initialization, TDbContext dbContext, IStringSimplifier simplifier)
             : base(initialization, dbContext, simplifier)
         { }
     }

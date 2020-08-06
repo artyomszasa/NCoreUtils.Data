@@ -1,9 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>netstandard2.1</TargetFramework>
+    <TargetFrameworks>netstandard2.1;netstandard2.0</TargetFrameworks>
     <LangVersion>8.0</LangVersion>
     <Nullable>enable</Nullable>
-    <Version>3.1.0-beta00</Version>
+    <Version>3.1.0</Version>
     <!-- NuGet -->
     <PackageId>NCoreUtils.Data.IdName.EntityFrameworkCore.Abstractions</PackageId>
     <Title>$(PackageId)</Title>
@@ -27,6 +27,6 @@
     <ProjectReference Include="..\NCoreUtils.Data.IdName.Abstractions\NCoreUtils.Data.IdName.Abstractions.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="System.Text.Json" Version="4.7.1" />
+    <PackageReference Include="System.Text.Json" Version="4.7.2" />
   </ItemGroup>
 </Project>

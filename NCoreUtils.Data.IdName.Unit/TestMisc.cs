@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Moq;
 using NCoreUtils.Data.Events;
 using NCoreUtils.Data.IdNameGeneration;
@@ -19,6 +20,32 @@ namespace NCoreUtils.Data.Unit
 {
     public class TestMisc
     {
+        private class DummyDisposable : IDisposable
+        {
+            public void Dispose() { }
+        }
+
+        private class DummyLogger<T> : ILogger<T>
+        {
+            public IDisposable BeginScope<TState>(TState state) => new DummyDisposable();
+
+            public bool IsEnabled(LogLevel logLevel) => false;
+
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
+            { }
+        }
+
+        private class DummyQueryProvider : IQueryProvider
+        {
+            public IQueryable CreateQuery(Expression expression) => throw new NotImplementedException();
+
+            public IQueryable<TElement> CreateQuery<TElement>(Expression expression) => throw new NotImplementedException();
+
+            public object Execute(Expression expression) => throw new NotImplementedException();
+
+            public TResult Execute<TResult>(Expression expression) => throw new NotImplementedException();
+        }
+
         class Box<T>
         {
             public T Value { get; set; }
@@ -91,7 +118,8 @@ namespace NCoreUtils.Data.Unit
         {
             var dbContext = MockDbContext("Npgsql.EntityFrameworkCore.PostgreSQL");
             var initialization = new IdNameGenerationInitialization(dbContext, null);
-            var simplifier = Simplifier.Default;
+            var libicu = new Text.Internal.LibicuResolver(new DummyLogger<Text.Internal.LibicuResolver>()).GetInstance();
+            var simplifier = new StringSimplifier(libicu, '-', RuneSimplifiers.German, RuneSimplifiers.Russian);
 
             var err = Assert.Throws<ArgumentNullException>(() => new SqlIdNameGenerator(null, dbContext, simplifier));
             Assert.Equal("initialization", err.ParamName);
@@ -266,6 +294,21 @@ namespace NCoreUtils.Data.Unit
             Assert.ThrowsAsync<ArgumentNullException>(() => DataRepositoryContextExtensions.TransactedAsync(null, IsolationLevel.Serializable, () => Task.FromResult(2)));
             Assert.ThrowsAsync<ArgumentNullException>(() => DataRepositoryContextExtensions.TransactedAsync(context, IsolationLevel.Serializable, null));
             Assert.ThrowsAsync<ArgumentNullException>(() => DataRepositoryContextExtensions.TransactedAsync(context, IsolationLevel.Serializable, (Func<Task<int>>)null));
+        }
+
+        [Fact]
+        public void TestQueryProviderAdapter()
+        {
+            var adapter = new EntityFrameworkCore.QueryProviderAdapter();
+            var nextCalled = false;
+            Assert.Null(
+                adapter.GetAdapterAsync(() =>
+                {
+                    nextCalled = true;
+                    return default;
+                }, new DummyQueryProvider(), CancellationToken.None).AsTask().Result
+            );
+            Assert.True(nextCalled);
         }
     }
 }

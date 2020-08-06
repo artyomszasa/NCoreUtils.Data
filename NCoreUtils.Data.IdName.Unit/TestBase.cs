@@ -34,7 +34,8 @@ namespace NCoreUtils.Data
                 .AddDataEventHandlers()
                 // FIXME
                 // .AddSqlIdNameGeneration<TestDbContext>()
-                .AddSingleton<ISimplifier>(Simplifier.Default)
+                .AddDefaultStringSimplifier()
+                .AddLibicu()
                 .BuildServiceProvider(true);
             using var scope = _globalServiceProvider.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<TestDbContext>();
@@ -146,7 +147,7 @@ namespace NCoreUtils.Data
                 await Assert.ThrowsAsync<ArgumentNullException>(() => repository.Items.GenerateIdNameAsync(serviceProvider, repo.IdNameDescription, "tesztérték", null, cancellationToken));
                 await Assert.ThrowsAsync<InvalidOperationException>(() => repository.Items.GenerateIdNameAsync(serviceProvider, repo.IdNameDescription, "tesztérték", new { X = 2 }, cancellationToken));
 
-                var nonSqlGenerator = new IdNameGeneration.IdNameGenerator(Simplifier.Default);
+                var nonSqlGenerator = new IdNameGeneration.IdNameGenerator(serviceProvider.GetRequiredService<IStringSimplifier>());
                 nextName = await nonSqlGenerator.GenerateAsync(repository.Items, repo.IdNameDescription, "tesztérték", new { ForeignId = 1 }, CancellationToken.None);
                 await Assert.ThrowsAsync<ArgumentNullException>(() => nonSqlGenerator.GenerateAsync(repository.Items, repo.IdNameDescription, "tesztérték", null, CancellationToken.None));
                 await Assert.ThrowsAsync<InvalidOperationException>(() => nonSqlGenerator.GenerateAsync(repository.Items, repo.IdNameDescription, "tesztérték", new { X = 2 }, CancellationToken.None));
@@ -196,7 +197,7 @@ namespace NCoreUtils.Data
                     () => repository.Items.GenerateIdName(serviceProvider, repo.IdNameDescription, "tesztérték", null)
                 );
                 Assert.Equal("tesztertek-1", nextName);
-                var nonSqlGenerator = new IdNameGeneration.IdNameGenerator(Simplifier.Default);
+                var nonSqlGenerator = new IdNameGeneration.IdNameGenerator(serviceProvider.GetRequiredService<IStringSimplifier>());
                 nextName = nonSqlGenerator.GenerateAsync(repository.Items, repo.IdNameDescription, "tesztérték", null, CancellationToken.None).Result;
                 Assert.Equal("tesztertek-1", nextName);
                 nextName = nonSqlGenerator.GenerateAsync(repository.Items, repo.IdNameDescription, new Item { Name = "tesztérték" }, CancellationToken.None).Result;

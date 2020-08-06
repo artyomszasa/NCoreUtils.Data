@@ -10,7 +10,7 @@ namespace NCoreUtils.Data
     {
         public TestPostgresql()
             : base((conf, builder) => builder.UseNpgsql(
-                "Host=home.artyom.hu; Port=5432; Username=unit; Password=096398f13; Database=unit",
+                "Host=192.168.1.254; Port=5432; Username=unit; Password=096398f13; Database=unit",
                 b => b.SetPostgresVersion(9, 6)
             ))
         { }

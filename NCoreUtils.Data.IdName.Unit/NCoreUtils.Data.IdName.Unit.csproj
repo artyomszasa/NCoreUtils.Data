@@ -16,50 +16,46 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="3.1.3" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.0.1" />
     <PackageReference Include="Moq" Version="4.10.1" />
-    <PackageReference Include="NCoreUtils.Text" Version="2.0.0" />
+    <PackageReference Include="NCoreUtils.Text" Version="3.1.0" />
+    <PackageReference Include="NCoreUtils.Text.Libicu.Loader" Version="3.1.0" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="3.1.3" />
-    <PackageReference Include="System.Text.Json" Version="4.7.1" />
+    <PackageReference Include="System.Text.Json" Version="4.7.2" />
     <PackageReference Include="xunit" Version="2.4.1" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.4.1" />
-    <PackageReference Include="ReportGenerator" Version="4.1.4" PrivateAssets="All" />
-    <PackageReference Include="coverlet.msbuild" Version="2.6.0" />
+    <PackageReference Include="ReportGenerator" Version="4.5.3">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="coverlet.msbuild" Version="2.8.1">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\NCoreUtils.Data.IdName.EntityFrameworkCore\NCoreUtils.Data.IdName.EntityFrameworkCore.csproj" />
     <ProjectReference Include="..\NCoreUtils.Data\NCoreUtils.Data.csproj" />
     <ProjectReference Include="..\NCoreUtils.Data.EntityFrameworkCore\NCoreUtils.Data.EntityFrameworkCore.csproj" />
+    <ProjectReference Include="..\NCoreUtils.Data.InMemory\NCoreUtils.Data.InMemory.csproj" />
   </ItemGroup>
 
-  <Target Name="RunCoverageTests">
+  <!-- **** -->
+  <Target Name="BeforeRunCoverageTests">
     <PropertyGroup>
-      <ReportGeneratorPaths>$([System.IO.Directory]::GetFiles($(NuGetPackageRoot), "ReportGenerator.exe", System.IO.SearchOption.AllDirectories))</ReportGeneratorPaths>
-    </PropertyGroup>
-    <ItemGroup>
-      <ReportGeneratorVersion Include="%(PackageReference.Version)" Condition="%(PackageReference.Identity) == 'ReportGenerator'" />
-    </ItemGroup>
-    <PropertyGroup>
-      <UseReportGeneratorVersion>@(ReportGeneratorVersion)</UseReportGeneratorVersion>
-    </PropertyGroup>
-    <ItemGroup>
-      <ReportGeneratorCandidates Include="$(ReportGeneratorPaths)" />
-      <ReportGeneratorPath Include="%(ReportGeneratorCandidates.Identity)" Condition="$([System.String]::new('%(ReportGeneratorCandidates.Identity)').Contains($(UseReportGeneratorVersion)))" />
-    </ItemGroup>
-    <PropertyGroup>
-      <UseReportGeneratorPath>@(ReportGeneratorPath)</UseReportGeneratorPath>
-    </PropertyGroup>
-    <Message Importance="High" Text="Version = @(ReportGeneratorVersion)" />
-    <Message Importance="High" Text="Candidates = %(ReportGeneratorCandidates.Identity)" />
-    <Message Importance="High" Text="Chosen path = $(UseReportGeneratorPath)" />
-    <PropertyGroup>
-      <CollectCoverage>True</CollectCoverage>
+      <CollectCoverage>true</CollectCoverage>
       <CoverletOutputFormat>opencover</CoverletOutputFormat>
+      <CoverletOutput>$([System.IO.Path]::Combine($(MSBuildProjectDirectory), "coverage.opencover.xml"))</CoverletOutput>
+      <Threshold>0</Threshold>
+      <ThresholdType>line</ThresholdType>
+      <ThresholdStat>total</ThresholdStat>
     </PropertyGroup>
-    <!-- msbuild not integrated this yet...
+  </Target>
+  <Target Name="GenerateReport">
+    <Message Text="Generating report for $(CoverletOutput)" Importance="high" />
+    <ReportGenerator ReportFiles="$(CoverletOutput)" TargetDirectory="report" ReportTypes="Html" VerbosityLevel="Verbose" />
+  </Target>
+  <Target Name="RunCoverageTests" DependsOnTargets="BeforeRunCoverageTests">
     <CallTarget Targets="VSTest" />
-    -->
-    <Exec Command="dotnet test /p:CollectCoverage=true /p:CoverletOutputFormat=opencover /p:Include=&quot;[NCoreUtils.Data*]*&quot; /p:Exclude=&quot;[NCoreUtils.Data.IdName.Unit]*&quot; /p:ParallelizeTestCollections=false" />
-    <Exec Command="mono $(UseReportGeneratorPath) -reports:coverage.opencover.xml -targetdir:report -reporttypes:Html" Condition="'$(OS)' == 'Unix'" />
-    <Exec Command="$(UseReportGeneratorPath) -reports:coverage.opencover.xml -targetdir:report -reporttypes:Html" Condition="'$(OS)' != 'Unix'" />
+    <MSBuild Projects="$(MSBuildProjectFile)" Targets="GenerateReport" Properties="TargetFramework=$(TargetFramework);CoverletOutput=$(CoverletOutput)" />
   </Target>
 </Project>

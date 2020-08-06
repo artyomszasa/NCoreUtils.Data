@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -20,6 +21,7 @@ namespace NCoreUtils.Data.EntityFrameworkCore
 
         public event EventHandler? OnRollback;
 
+        [ExcludeFromCodeCoverage]
         public Guid Guid { get; } = Guid.NewGuid();
 
         public DataTransaction(DataRepositoryContext context, IDbContextTransaction dbTransaction)
@@ -52,7 +54,7 @@ namespace NCoreUtils.Data.EntityFrameworkCore
             _dbTransaction.Commit();
         }
 
-        void RollbackImplemtation()
+        void RollbackImplementation()
         {
             _context.ReleaseTransaction();
             OnRollback?.Invoke(this, EventArgs.Empty);
@@ -79,7 +81,7 @@ namespace NCoreUtils.Data.EntityFrameworkCore
                 {
                     try
                     {
-                        RollbackImplemtation();
+                        RollbackImplementation();
                     }
                     catch { } // TODO: valami loggolás?
                 }
@@ -91,7 +93,7 @@ namespace NCoreUtils.Data.EntityFrameworkCore
         {
             if (0 == Interlocked.CompareExchange(ref _isFinished, 1, 0))
             {
-                RollbackImplemtation();
+                RollbackImplementation();
             }
             else
             {
