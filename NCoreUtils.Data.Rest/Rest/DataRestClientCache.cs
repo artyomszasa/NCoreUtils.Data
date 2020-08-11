@@ -6,7 +6,7 @@ using NCoreUtils.Rest.Internal;
 
 namespace NCoreUtils.Data.Rest
 {
-    public class DataRestClientCache
+    public class DataRestClientCache : IDataRestClientCache
     {
         private readonly object _sync = new object();
 

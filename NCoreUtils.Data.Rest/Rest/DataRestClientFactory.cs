@@ -15,13 +15,13 @@ namespace NCoreUtils.Data.Rest
             { }
         }
 
-        private readonly DataRestClientCache _cache;
+        private readonly IDataRestClientCache _cache;
 
         public ExpressionParser ExpressionParser { get; }
 
         public DataRestConfiguration Configuration { get; }
 
-        public DataRestClientFactory(DataRestClientCache cache, ExpressionParser expressionParser, DataRestConfiguration configuration)
+        public DataRestClientFactory(IDataRestClientCache cache, ExpressionParser expressionParser, DataRestConfiguration configuration)
         {
             _cache = cache;
             ExpressionParser = expressionParser;
@@ -38,7 +38,7 @@ namespace NCoreUtils.Data.Rest
         protected virtual IRestClient CreateRestClient(IHttpRestClient httpRestClient)
             => new DefaultRestClient(ExpressionParser, httpRestClient);
 
-        public IDataRestClient<TData, TId> GetClient<TData, TId>() where TData : IHasId<TId>
+        public virtual IDataRestClient<TData, TId> GetClient<TData, TId>() where TData : IHasId<TId>
             => new DataRestClient<TData, TId>(this);
 
         public IDataRestClient<TData> GetClient<TData>()

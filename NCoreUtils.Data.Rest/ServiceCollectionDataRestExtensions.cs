@@ -37,7 +37,7 @@ namespace NCoreUtils.Data
         {
             services.AddRestClientServices();
             services.TryAddSingleton(serviceProvider => new DataRestConfiguration(serviceProvider.GetService<DataRestConfigurationBuilder>() ?? new DataRestConfigurationBuilder()));
-            services.TryAddSingleton<DataRestClientCache>();
+            services.TryAddSingleton<IDataRestClientCache, DataRestClientCache>();
             services.TryAddScoped<IDataRestClientFactory, DataRestClientFactory>();
             services.TryAddScoped(typeof(IDataRestClient<,>), typeof(DataRestClientFactory.DataRestClient<,>));
             return services;
