@@ -13,7 +13,7 @@ namespace NCoreUtils.Data
                 .AddSingleton<InMemoryDataRepositoryContext>();
         }
 
-        public static IServiceCollection AddInMemoryDataRepository<TData, TId>(this IServiceCollection services, List<TData>? data = default)
+        public static IServiceCollection AddInMemoryDataRepository<TData, TId>(this IServiceCollection services, IList<TData>? data = default)
             where TData : class, IHasId<TId>
             where TId : IEquatable<TId>
         {

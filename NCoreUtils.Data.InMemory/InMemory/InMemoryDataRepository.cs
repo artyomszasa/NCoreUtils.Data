@@ -23,7 +23,7 @@ namespace NCoreUtils.Data.InMemory
     {
         IDataRepositoryContext IDataRepository.Context => Context;
 
-        public List<TData> Data { get; }
+        public IList<TData> Data { get; }
 
         public IQueryable<TData> Items => Data.AsQueryable();
 
@@ -39,7 +39,7 @@ namespace NCoreUtils.Data.InMemory
             IServiceProvider serviceProvider,
             InMemoryDataRepositoryContext context,
             IDataEventHandlers? handlers = default,
-            List<TData>? data = default)
+            IList<TData>? data = default)
         {
             ServiceProvider = serviceProvider;
             Context = context;
