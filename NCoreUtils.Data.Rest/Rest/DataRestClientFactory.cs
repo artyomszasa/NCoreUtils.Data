@@ -1,4 +1,6 @@
 using System;
+using System.Linq;
+using System.Reflection;
 using NCoreUtils.Data.Protocol;
 using NCoreUtils.Rest;
 using NCoreUtils.Rest.Internal;
@@ -14,6 +16,10 @@ namespace NCoreUtils.Data.Rest
                 : base(factory.CreateRestClient(typeof(TData)))
             { }
         }
+
+        private static readonly MethodInfo _getClient = typeof(DataRestClientFactory)
+            .GetMethods(BindingFlags.Public | BindingFlags.Instance)
+            .First(e => e.Name == nameof(GetClient) && e.IsGenericMethodDefinition && e.GetGenericArguments().Length == 2);
 
         private readonly IDataRestClientCache _cache;
 
@@ -42,9 +48,13 @@ namespace NCoreUtils.Data.Rest
             => new DataRestClient<TData, TId>(this);
 
         public IDataRestClient<TData> GetClient<TData>()
-            => (IDataRestClient<TData>)Activator.CreateInstance(typeof(DataRestClient<,>).MakeGenericType(typeof(TData), Configuration[typeof(TData)].IdType), new object[]
-            {
-                this
-            });
+            // => (IDataRestClient<TData>)Activator.CreateInstance(typeof(DataRestClient<,>).MakeGenericType(typeof(TData), Configuration[typeof(TData)].IdType), new object[]
+            // {
+            //     this
+            // });
+        {
+            var m = _getClient.MakeGenericMethod(typeof(TData), Configuration[typeof(TData)].IdType);
+            return (IDataRestClient<TData>)m.Invoke(this, new object[0]);
+        }
     }
 }
