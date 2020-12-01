@@ -35,8 +35,12 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             return true;
         }
 
-        protected IEnumerable CollectionFromValue(Value value, Type targetType, CollectionFactory collectionFactory)
+        protected IEnumerable CollectionFromValue(Value value, Type targetType, CollectionFactory collectionFactory, bool strictMode)
         {
+            if (value.ValueTypeCase == Value.ValueTypeOneofCase.NullValue && !strictMode)
+            {
+                return collectionFactory.CreateBuilder().Build();
+            }
             if (value.ValueTypeCase == Value.ValueTypeOneofCase.ArrayValue)
             {
                 var builder = collectionFactory.CreateBuilder();
@@ -58,5 +62,8 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             }
             throw new InvalidOperationException($"Unable to convert value of type {value.ValueTypeCase} to {targetType}.");
         }
+
+        protected IEnumerable CollectionFromValue(Value value, Type targetType, CollectionFactory collectionFactory)
+            => CollectionFromValue(value, targetType, collectionFactory, true);
     }
 }

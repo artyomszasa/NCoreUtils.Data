@@ -41,11 +41,12 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
             // if expression is a property of the known entity.
             if (expression is MemberExpression mexpr
+                && !(mexpr.Expression is null)
                 && mexpr.Member is PropertyInfo prop
                 && Model.TryGetDataEntity(prop.DeclaringType, out var entity)
                 && entity.Properties.TryGetFirst(d => d.Property.Equals(prop), out var pdata))
             {
-                return TryResolveSubpath(expression, document, prefix.Add(pdata.Name), out path);
+                return TryResolveSubpath(mexpr.Expression, document, prefix.Add(pdata.Name), out path);
             }
             // if expression is firestore field access
             if (expression is FirestoreFieldExpression fieldExpression && fieldExpression.Instance.Equals(document))

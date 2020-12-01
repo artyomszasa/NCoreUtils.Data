@@ -90,7 +90,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             // try as collection
             if (CollectionFactory.TryCreate(targetType, out var collectionFactory))
             {
-                return CollectionFromValue(value, targetType, collectionFactory);
+                return CollectionFromValue(value, targetType, collectionFactory, Options.StrictMode);
             }
             // try as entity
             if (Model.TryGetDataEntity(targetType, out var entity))

@@ -91,6 +91,10 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             {
                 return PathOrValue.CreatePath(path);
             }
+            if (expression is UnaryExpression u && u.NodeType == ExpressionType.Convert)
+            {
+                return ExtractPathOrValue(arg, u.Operand);
+            }
             if (expression is NewArrayExpression arrayExpr)
             {
                 var arrayValue = Array.CreateInstance(arrayExpr.Type.GetElementType(), arrayExpr.Expressions.Count);

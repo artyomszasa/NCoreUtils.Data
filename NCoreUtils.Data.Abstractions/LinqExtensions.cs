@@ -16,7 +16,7 @@ namespace NCoreUtils.Data
 
             protected override Expression VisitMember(MemberExpression node)
             {
-                if (node.Expression.NodeType == ExpressionType.Convert && node.Member is PropertyInfo propertyInfo && propertyInfo.CanRead && null != propertyInfo.GetMethod && propertyInfo.DeclaringType.IsInterface)
+                if (node.Expression != null && node.Expression.NodeType == ExpressionType.Convert && node.Member is PropertyInfo propertyInfo && propertyInfo.CanRead && null != propertyInfo.GetMethod && propertyInfo.DeclaringType.IsInterface)
                 {
                     var unaryExpression = ((UnaryExpression)node.Expression);
                     if (null == unaryExpression.Method)
@@ -54,7 +54,7 @@ namespace NCoreUtils.Data
                         return Expression.Property(base.Visit(realExpression), implementationMethod);
                     }
                 }
-                if (node.Member is PropertyInfo ownProperty && ownProperty.CanRead && null != ownProperty.GetMethod)
+                if (node.Expression != null && node.Member is PropertyInfo ownProperty && ownProperty.CanRead && null != ownProperty.GetMethod)
                 {
                     if (ownProperty.DeclaringType.IsInterface)
                     {
