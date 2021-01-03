@@ -51,6 +51,11 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             {
                 return result;
             }
+            // try as enum
+            if (TryEnumToValue(value, sourceType, out result))
+            {
+                return result;
+            }
             // try as collection
             if (TryCollectionToValue(value, sourceType, out result))
             {
@@ -84,6 +89,11 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             }
             // try default
             if (TryPrimitiveFromValue(value, targetType, out var result))
+            {
+                return result;
+            }
+            // try as enum
+            if (TryEnumFromValue(value, targetType, out result))
             {
                 return result;
             }

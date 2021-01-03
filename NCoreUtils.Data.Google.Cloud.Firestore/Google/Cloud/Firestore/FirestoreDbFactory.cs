@@ -7,12 +7,12 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
     {
         private readonly object _sync = new object();
 
-        private readonly IFirestoreConfiguration _configuration;
-
         private FirestoreDb? _db;
 
+        public IFirestoreConfiguration Configuration { get; }
+
         public FirestoreDbFactory(IFirestoreConfiguration configuration)
-            => _configuration = configuration ?? new FirestoreConfiguration();
+            => Configuration = configuration ?? new FirestoreConfiguration();
 
         public FirestoreDb GetOrCreateFirestoreDb()
         {
@@ -22,7 +22,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 {
                     if (null == _db)
                     {
-                        var builder = new FirestoreDbBuilder { ProjectId = _configuration.ProjectId };
+                        var builder = new FirestoreDbBuilder { ProjectId = Configuration.ProjectId };
                         _db = builder.Build();
                     }
                 }

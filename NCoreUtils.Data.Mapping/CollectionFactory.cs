@@ -9,9 +9,9 @@ namespace NCoreUtils.Data
     public abstract class CollectionFactory
     {
         #if NETSTANDARD2_1
-        private static bool IsCollection(Type collectionType, [NotNullWhen(true)] out Type? elementType)
+        public static bool IsCollection(Type collectionType, [NotNullWhen(true)] out Type? elementType)
         #else
-        private static bool IsCollection(Type collectionType, out Type elementType)
+        public static bool IsCollection(Type collectionType, out Type elementType)
         #endif
         {
             if (collectionType.IsInterface)

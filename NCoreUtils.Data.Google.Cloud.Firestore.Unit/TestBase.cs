@@ -39,6 +39,8 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Unit
                 .AddFirestoreDataRepositoryContext(config)
                 .AddFirestoreDataRepository<SimpleItem>()
                 .AddFirestoreDataRepository<ComplexItem>()
+                .AddFirestoreDataRepository<FirestoreEnumTestBase.EnumItem>()
+                .AddFirestoreDataRepository<FirestoreEnumTestBase.FlagsItem>()
                 .BuildServiceProvider();
 
         }

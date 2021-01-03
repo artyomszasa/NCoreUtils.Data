@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Globalization;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -51,6 +52,10 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
         private static readonly MethodInfo _gmContainsAny = GetMethod<IEnumerable<int>, IEnumerable<int>, bool>(FirestoreQueryableExtensions.ContainsAny).GetGenericMethodDefinition();
 
+        private static readonly MethodInfo _mHasFlag = GetMethod<Enum, bool>(default(NumberStyles).HasFlag);
+
+        private static MethodInfo GetMethod<TArg, TResult>(Func<TArg, TResult> func) => func.Method;
+
         private static MethodInfo GetMethod<TArg1, TArg2, TResult>(Func<TArg1, TArg2, TResult> func) => func.Method;
 
         private static FirestoreCondition.Op Reverse(FirestoreCondition.Op op)
@@ -81,11 +86,59 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             }
         }
 
+        private object PrepareEnumValue(object value, Type enumType)
+        {
+            // value can be either enum or numeric representation --> unify value
+            var v = value.GetType() == enumType ? value : Enum.ToObject(enumType, value);
+            return (Model.Configuration.ConversionOptions ?? FirestoreConversionOptions.Default).EnumHandling switch
+            {
+                FirestoreEnumHandling.AlwaysAsString => enumType.IsDefined(typeof(FlagsAttribute), true)
+                    ? FirestoreConvert.EnumToFlagsString(enumType, v)
+                    : v.ToString(),
+                FirestoreEnumHandling.AsNumberOrNumberArray => ((IConvertible)v).ToInt64(CultureInfo.InvariantCulture),
+                FirestoreEnumHandling.AsSingleNumber => ((IConvertible)v).ToInt64(CultureInfo.InvariantCulture),
+                FirestoreEnumHandling.AsStringOrStringArray => v.ToString(),
+                _ => throw new InvalidOperationException("should never happen")
+            };
+        }
+
+        private PathOrValue HandleEnumValues(PathOrValue source, Type expressionType)
+        {
+            if (source.IsPath)
+            {
+                return source;
+            }
+            if (expressionType.IsEnum)
+            {
+                // source is value which has enum type.
+                if (source.Value is null)
+                {
+                    // no conversion for null values
+                    return source;
+                }
+                return PathOrValue.CreateValue(PrepareEnumValue(source.Value, expressionType));
+            }
+            if (CollectionFactory.IsCollection(expressionType, out var elementType) && elementType.IsEnum)
+            {
+                // source is a colection which elements has enum type.
+                if (source.Value is null || !CollectionFactory.TryCreate(typeof(IReadOnlyList<>).MakeGenericType(elementType), out var factory))
+                {
+                    // no conversion for null values
+                    return source;
+                }
+                var builder = factory.CreateBuilder();
+                builder.AddRange((System.Collections.IEnumerable)source.Value);
+                return PathOrValue.CreateValue(builder.Build());
+            }
+            // not an enum...
+            return source;
+        }
+
         private PathOrValue ExtractPathOrValue(ParameterExpression arg, Expression expression)
         {
             if (expression.TryExtractConstant(out var value))
             {
-                return PathOrValue.CreateValue(value);
+                return HandleEnumValues(PathOrValue.CreateValue(value), expression.Type);
             }
             if (TryResolvePath(expression, arg, out var path))
             {
@@ -93,7 +146,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             }
             if (expression is UnaryExpression u && u.NodeType == ExpressionType.Convert)
             {
-                return ExtractPathOrValue(arg, u.Operand);
+                return HandleEnumValues(ExtractPathOrValue(arg, u.Operand), expression.Type);
             }
             if (expression is NewArrayExpression arrayExpr)
             {
@@ -112,7 +165,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 }
                 if (i == arrayValue.Length)
                 {
-                    return PathOrValue.CreateValue(arrayValue);
+                    return HandleEnumValues(PathOrValue.CreateValue(arrayValue), expression.Type);
                 }
             }
             throw new InvalidOperationException($"Unable to resolve path {expression}.");
@@ -173,6 +226,21 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                     CreateCondition(
                         FirestoreCondition.Op.ArrayContainsAny,
                         (ExtractPathOrValue(arg, methodCall.Arguments[0]), ExtractPathOrValue(arg, methodCall.Arguments[1])),
+                        conditions);
+                    break;
+                case MethodCallExpression methodCall when methodCall.Method == _mHasFlag:
+                    if (!methodCall.Object.Type.IsDefined(typeof(FlagsAttribute), true))
+                    {
+                        throw new InvalidOperationException($"HasFlag cannot be used on non-flags type {methodCall.Object.Type}.");
+                    }
+                    var options = Model.ConversionOptions ?? FirestoreConversionOptions.Default;
+                    if (options.EnumHandling == FirestoreEnumHandling.AlwaysAsString || options.EnumHandling == FirestoreEnumHandling.AsSingleNumber)
+                    {
+                        throw new InvalidOperationException($"To use HasFlag enum handling must be set to either {FirestoreEnumHandling.AsNumberOrNumberArray} or {FirestoreEnumHandling.AsStringOrStringArray}");
+                    }
+                    CreateCondition(
+                        FirestoreCondition.Op.ArrayContains,
+                        (ExtractPathOrValue(arg, methodCall.Object), ExtractPathOrValue(arg, methodCall.Arguments[0])),
                         conditions);
                     break;
                 default:

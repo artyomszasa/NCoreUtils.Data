@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using Google.Cloud.Firestore.V1;
 using Google.Protobuf;
@@ -20,6 +21,18 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             "on",
             "1"
         };
+
+        private static readonly MethodInfo _gmValueToEnum = typeof(FirestoreConvert)
+            .GetMethods(BindingFlags.Static | BindingFlags.Public)
+            .First(m => m.Name == nameof(ToEnum) && m.IsGenericMethodDefinition);
+
+        private static readonly MethodInfo _gmEnumToValue = typeof(FirestoreConvert)
+            .GetMethods(BindingFlags.Static | BindingFlags.Public)
+            .First(m => m.Name == nameof(ToValue) && m.IsGenericMethodDefinition && m.GetParameters().Length == 2 && m.GetParameters()[1].ParameterType == typeof(FirestoreEnumHandling));
+
+        private static readonly MethodInfo _gmEnumToFlagsString = typeof(FirestoreConvert)
+            .GetMethods(BindingFlags.Static | BindingFlags.NonPublic)
+            .First(m => m.Name == nameof(EnumToFlagsString) && m.IsGenericMethodDefinition);
 
         internal static IReadOnlyList<string> ThruthyValues => _truthy;
 
@@ -541,6 +554,70 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             }
         }
 
+        public static TEnum ToEnum<TEnum>(Value value, bool strict)
+            where TEnum : struct, Enum, IConvertible
+        {
+            return (TEnum)Enum.ToObject(typeof(TEnum), Parse(value, strict));
+
+            static long Parse(Value value, bool strict)
+            {
+                return value.ValueTypeCase switch
+                {
+                    Value.ValueTypeOneofCase.ArrayValue => value.ArrayValue
+                        .Values
+                        .Aggregate(0L, (result, v) => result | Parse(v, strict)),
+                    Value.ValueTypeOneofCase.IntegerValue => value.IntegerValue,
+                    Value.ValueTypeOneofCase.StringValue => ParseString(value.StringValue),
+                    Value.ValueTypeOneofCase.BooleanValue when !strict => value.BooleanValue ? 1L : 0L,
+                    Value.ValueTypeOneofCase.NullValue when !strict => 0L,
+                    Value.ValueTypeOneofCase.None when !strict => 0L,
+                    var @case => throw new FirestoreConversionException(typeof(TEnum), @case)
+                };
+            }
+
+            static long ParseString(string source)
+            {
+                if (string.IsNullOrEmpty(source))
+                {
+                    return 0L;
+                }
+                if (-1 == source.IndexOf('|'))
+                {
+                    // single string
+                    #if NETSTANDARD2_1
+                    return Enum.Parse<TEnum>(source, true).ToInt64(CultureInfo.InvariantCulture);
+                    #else
+                    return ((TEnum)Enum.Parse(typeof(TEnum), source, true)).ToInt64(CultureInfo.InvariantCulture);
+                    #endif
+                }
+
+                #if NETSTANDARD2_1
+                return source.Split('|', StringSplitOptions.RemoveEmptyEntries)
+                    .Aggregate(
+                        0L,
+                        (result, s) => Enum.Parse<TEnum>(s, true).ToInt64(CultureInfo.InvariantCulture) | result
+                    );
+                #else
+                return source.Split(new char[] { '|' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Aggregate(
+                        0L,
+                        (result, s) => ((TEnum)Enum.Parse(typeof(TEnum), s, true)).ToInt64(CultureInfo.InvariantCulture) | result
+                    );
+                #endif
+            }
+        }
+
+        public static object ToEnum(Type enumType, Value value, bool strict)
+        {
+            if (!enumType.IsEnum)
+            {
+                throw new ArgumentException($"{enumType} is not an enum.", nameof(enumType));
+            }
+            return _gmValueToEnum
+                .MakeGenericMethod(enumType)
+                .Invoke(null, new object[] { value, strict });
+        }
+
         public static DateTimeOffset ToDateTimeOffset(Value value, bool strict)
         {
             if (strict)
@@ -748,6 +825,102 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 BitConverter.TryWriteBytes(bytes.Slice(12, 4), ints[3]);
                 return new Value { BytesValue = ByteString.CopyFrom(bytes) };
             }
+        }
+
+        internal static string EnumToFlagsString<TEnum>(TEnum value)
+            where TEnum : Enum
+        {
+            return string.Join(
+                #if NETSTANDARD2_1
+                '|',
+                #else
+                "|",
+                #endif
+                Enum.GetValues(typeof(TEnum))
+                    .Cast<TEnum>()
+                    .Where(v => value.HasFlag(v))
+                    .Select(v => v.ToString())
+            );
+        }
+
+        internal static string EnumToFlagsString(Type enumType, object value)
+        {
+            if (!enumType.IsEnum)
+            {
+                throw new ArgumentException($"{enumType} is not an enum.", nameof(enumType));
+            }
+            return (string)_gmEnumToFlagsString
+                .MakeGenericMethod(enumType)
+                .Invoke(null, new object[] { value });
+        }
+
+        public static Value ToValue<TEnum>(TEnum value, FirestoreEnumHandling enumHandling)
+            where TEnum : Enum, IConvertible
+        {
+            return enumHandling switch
+            {
+                FirestoreEnumHandling.AsSingleNumber => ToNumber(value),
+                FirestoreEnumHandling.AsNumberOrNumberArray => typeof(TEnum).IsDefined(typeof(FlagsAttribute), true)
+                    ? ToNumberArray(value)
+                    : ToNumber(value),
+                FirestoreEnumHandling.AlwaysAsString => typeof(TEnum).IsDefined(typeof(FlagsAttribute), true)
+                    ? ToFlagsString(value)
+                    : ToString(value),
+                FirestoreEnumHandling.AsStringOrStringArray => typeof(TEnum).IsDefined(typeof(FlagsAttribute), true)
+                    ? ToStringArray(value)
+                    : ToString(value),
+                _ => throw new InvalidOperationException("should never happen")
+            };
+
+            static Value ToString(TEnum value)
+                => new Value { StringValue = value.ToString() };
+
+            static Value ToFlagsString(TEnum value)
+                => new Value { StringValue = EnumToFlagsString(value) };
+
+            static Value ToStringArray(TEnum value)
+            {
+                var arr = new ArrayValue();
+                foreach (TEnum v in Enum.GetValues(typeof(TEnum)))
+                {
+                    if (value.HasFlag(v))
+                    {
+                        arr.Values.Add(ToString(v));
+                    }
+                }
+                return new Value { ArrayValue = arr };
+            }
+
+            static Value ToNumber(TEnum value)
+                => new Value { IntegerValue = value.ToInt64(CultureInfo.InvariantCulture) };
+
+            static Value ToNumberArray(TEnum value)
+            {
+                var arr = new ArrayValue();
+                foreach (TEnum v in Enum.GetValues(typeof(TEnum)))
+                {
+                    if (value.HasFlag(v))
+                    {
+                        arr.Values.Add(ToNumber(v));
+                    }
+                }
+                return new Value { ArrayValue = arr };
+            }
+        }
+
+        public static Value ToValue(Type enumType, object value, FirestoreEnumHandling enumHandling)
+        {
+            if (!enumType.IsEnum)
+            {
+                throw new ArgumentException($"{enumType} is not an enum.", nameof(enumType));
+            }
+            if (value is null || value.GetType() != enumType)
+            {
+                throw new ArgumentException($"{value} is not an enum of type {enumType}.", nameof(value));
+            }
+            return (Value)_gmEnumToValue
+                .MakeGenericMethod(enumType)
+                .Invoke(null, new object[] { value, enumHandling });
         }
 
         public static Value ToValue(DateTimeOffset value)

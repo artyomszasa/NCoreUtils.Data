@@ -8,6 +8,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
         public static FirestoreConversionOptions Default { get; } = new FirestoreConversionOptions(
             true,
             FirestoreDecimalHandling.AsString,
+            FirestoreEnumHandling.AlwaysAsString,
             new FirestoreValueConverter[0]
         );
 
@@ -15,15 +16,19 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
         public FirestoreDecimalHandling DecimalHandling { get; }
 
+        public FirestoreEnumHandling EnumHandling { get; }
+
         public IReadOnlyList<FirestoreValueConverter> Converters { get; }
 
         public FirestoreConversionOptions(
             bool strictMode,
             FirestoreDecimalHandling decimalHandling,
+            FirestoreEnumHandling enumHandling,
             IReadOnlyList<FirestoreValueConverter> converters)
         {
             StrictMode = strictMode;
             DecimalHandling = decimalHandling;
+            EnumHandling = enumHandling;
             Converters = converters ?? throw new ArgumentNullException(nameof(converters));
         }
     }
