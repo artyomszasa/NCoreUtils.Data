@@ -5,6 +5,7 @@ using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Google.Cloud.Firestore;
+using Microsoft.Extensions.Logging;
 using NCoreUtils.Data.Google.Cloud.Firestore.Expressions;
 using NCoreUtils.Data.Internal;
 using NCoreUtils.Data.Mapping;
@@ -13,17 +14,35 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 {
     public partial class FirestoreQueryProvider : QueryProviderBase
     {
+        protected ILogger Logger { get; }
+
         protected FirestoreModel Model { get; }
 
         protected IFirestoreDbAccessor DbAccessor { get; }
 
         protected FirestoreMaterializer Materializer { get; }
 
-        public FirestoreQueryProvider(FirestoreModel model, IFirestoreDbAccessor dbAccessor, FirestoreMaterializer materializer)
+        public FirestoreQueryProvider(ILogger<FirestoreQueryProvider> logger, FirestoreModel model, IFirestoreDbAccessor dbAccessor, FirestoreMaterializer materializer)
         {
+            Logger = logger ?? throw new ArgumentNullException(nameof(logger));
             Model = model ?? throw new ArgumentNullException(nameof(model));
             DbAccessor = dbAccessor ?? throw new ArgumentNullException(nameof(dbAccessor));
             Materializer = materializer ?? throw new ArgumentNullException(nameof(materializer));
+        }
+
+        protected virtual void LogFirestoreQuery(FirestoreQuery query)
+        {
+            if (Logger.IsEnabled(LogLevel.Debug))
+            {
+                Logger.LogDebug(
+                    "Executing firestore query: {{ Collection = {0}, Conditions = [{1}], Ordering = [{2}], Offset = {3}, Limit = {4} }}.",
+                    query.Collection,
+                    string.Join(", ", query.Conditions),
+                    string.Join(", ", query.Ordering),
+                    query.Offset,
+                    query.Limit
+                );
+            }
         }
 
         protected FirestoreQuery<TElement> Cast<TElement>(IQueryable<TElement> source)
@@ -33,7 +52,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
         {
             var q = Cast(source);
             var chainedSelector = q.Selector.ChainSimplified(selector, true);
-            if (TryResolvePath(chainedSelector.Body, q.Selector.Parameters[0], out var path))
+            if (TryResolvePath(chainedSelector.Body, q.Selector.Parameters[0], out var path, out var _))
             {
                 return q.AddOrdering(new FirestoreOrdering(path, direction));
             }
@@ -133,6 +152,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             {
                 var query = CreateFilteredQuery(db, q);
                 query.Limit(1);
+                LogFirestoreQuery(q);
                 var snapshot = await query.GetSnapshotAsync(cancellationToken);
                 return snapshot.Count > 0;
             });
@@ -152,6 +172,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             {
                 var query = CreateUnboundQuery(db, q);
                 query.Limit(1);
+                LogFirestoreQuery(q);
                 var snapshot = await query.GetSnapshotAsync(cancellationToken);
                 if (snapshot.Count > 0)
                 {
@@ -172,6 +193,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             {
                 var query = CreateUnboundQuery(db, q);
                 query.Limit(1);
+                LogFirestoreQuery(q);
                 var snapshot = await query.GetSnapshotAsync(cancellationToken);
                 if (snapshot.Count > 0)
                 {
@@ -192,6 +214,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             {
                 var query = CreateUnboundQuery(db, q.RevertOrdering());
                 query.Limit(1);
+                LogFirestoreQuery(q);
                 var snapshot = await query.GetSnapshotAsync(cancellationToken);
                 if (snapshot.Count > 0)
                 {
@@ -212,6 +235,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             {
                 var query = CreateUnboundQuery(db, q.RevertOrdering());
                 query.Limit(1);
+                LogFirestoreQuery(q);
                 var snapshot = await query.GetSnapshotAsync(cancellationToken);
                 if (snapshot.Count > 0)
                 {
@@ -232,6 +256,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             {
                 var query = CreateUnboundQuery(db, q);
                 query.Limit(2);
+                LogFirestoreQuery(q);
                 var snapshot = await query.GetSnapshotAsync(cancellationToken);
                 return snapshot.Count switch
                 {
@@ -253,6 +278,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             {
                 var query = CreateUnboundQuery(db, q);
                 query.Limit(2);
+                LogFirestoreQuery(q);
                 var snapshot = await query.GetSnapshotAsync(cancellationToken);
                 return snapshot.Count switch
                 {
@@ -283,6 +309,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 }
                 // apply fields selection
                 query = query.Select(q.Selector.CollectFirestorePaths().ToArray());
+                LogFirestoreQuery(q);
                 return Task.FromResult(Materializer.Materialize(query.StreamAsync(cancellationToken), q.Selector));
             })));
         }

@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using Google.Cloud.Firestore;
 
@@ -33,6 +34,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             ">=",
             "<",
             "<=",
+            "@@",
             "in"
         };
 
@@ -138,9 +140,18 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
         public override int GetHashCode() => HashCode.Combine(Path, Operation, Value);
 
+        private string StringifyValue(object value)
+            => value switch
+            {
+                null => string.Empty,
+                string s => s,
+                IEnumerable enumerable => $"[{string.Join(", ", enumerable.Cast<object>().Select(StringifyValue))}]",
+                var o => o.ToString()
+            };
+
         public override string ToString()
             => Operation < Op.AlwaysFalse
-                ? $"{{{Path} {_opNames[(int)Operation]} {Value}}}"
+                ? $"{{{Path} {_opNames[(int)Operation]} {StringifyValue(Value)}}}"
                 : "FALSE";
     }
 }

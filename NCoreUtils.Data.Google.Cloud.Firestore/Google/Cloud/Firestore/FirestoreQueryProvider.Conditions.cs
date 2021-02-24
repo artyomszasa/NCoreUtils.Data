@@ -5,6 +5,7 @@ using System.Globalization;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using Google.Cloud.Firestore;
 
 namespace NCoreUtils.Data.Google.Cloud.Firestore
@@ -57,6 +58,14 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
         private static MethodInfo GetMethod<TArg, TResult>(Func<TArg, TResult> func) => func.Method;
 
         private static MethodInfo GetMethod<TArg1, TArg2, TResult>(Func<TArg1, TArg2, TResult> func) => func.Method;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool IsNumericType(Type type)
+        {
+            var code = Type.GetTypeCode(type);
+            return code >= TypeCode.SByte && code <= TypeCode.UInt64;
+        }
+
 
         private static FirestoreCondition.Op Reverse(FirestoreCondition.Op op)
             => _conditionReverseMap.TryGetValue(op, out var res) ? res : throw new InvalidOperationException($"Unable to reverse operation {op}.");
@@ -120,37 +129,50 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             }
             if (CollectionFactory.IsCollection(expressionType, out var elementType) && elementType.IsEnum)
             {
+                var targetElementType = (Model.Configuration.ConversionOptions ?? FirestoreConversionOptions.Default).EnumHandling switch
+                {
+                    FirestoreEnumHandling.AlwaysAsString => typeof(string),
+                    FirestoreEnumHandling.AsNumberOrNumberArray => typeof(long),
+                    FirestoreEnumHandling.AsSingleNumber => typeof(long),
+                    FirestoreEnumHandling.AsStringOrStringArray => typeof(string),
+                    _ => throw new InvalidOperationException("should never happen")
+                };
                 // source is a colection which elements has enum type.
-                if (source.Value is null || !CollectionFactory.TryCreate(typeof(IReadOnlyList<>).MakeGenericType(elementType), out var factory))
+                if (source.Value is null || !CollectionFactory.TryCreate(typeof(IReadOnlyList<>).MakeGenericType(targetElementType), out var factory))
                 {
                     // no conversion for null values
                     return source;
                 }
                 var builder = factory.CreateBuilder();
-                builder.AddRange((System.Collections.IEnumerable)source.Value);
+                foreach (var item in (System.Collections.IEnumerable)source.Value)
+                {
+                    builder.Add(PrepareEnumValue(item, elementType));
+                }
                 return PathOrValue.CreateValue(builder.Build());
             }
             // not an enum...
             return source;
         }
 
-        private PathOrValue ExtractPathOrValue(ParameterExpression arg, Expression expression)
+        private PathOrValue ExtractPathOrValue(ParameterExpression arg, Expression expression, out Type? memberType)
         {
             if (expression.TryExtractConstant(out var value))
             {
+                memberType = default;
                 return HandleEnumValues(PathOrValue.CreateValue(value), expression.Type);
             }
-            if (TryResolvePath(expression, arg, out var path))
+            if (TryResolvePath(expression, arg, out var path, out memberType))
             {
                 return PathOrValue.CreatePath(path);
             }
             if (expression is UnaryExpression u && u.NodeType == ExpressionType.Convert)
             {
-                return HandleEnumValues(ExtractPathOrValue(arg, u.Operand), expression.Type);
+                return HandleEnumValues(ExtractPathOrValue(arg, u.Operand, out memberType), expression.Type);
             }
             if (expression is NewArrayExpression arrayExpr)
             {
-                var arrayValue = Array.CreateInstance(arrayExpr.Type.GetElementType(), arrayExpr.Expressions.Count);
+                memberType = arrayExpr.Type.GetElementType();
+                var arrayValue = Array.CreateInstance(memberType, arrayExpr.Expressions.Count);
                 var i = 0;
                 foreach (var expr in arrayExpr.Expressions)
                 {
@@ -171,20 +193,38 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             throw new InvalidOperationException($"Unable to resolve path {expression}.");
         }
 
-        private (PathOrValue Left, PathOrValue Right) ExtractPathOrValue(ParameterExpression arg, BinaryExpression expression)
+        private PathOrValue ExtractPathOrValue(ParameterExpression arg, Expression expression)
+            => ExtractPathOrValue(arg, expression, out var _);
+
+        private (PathOrValue Left, PathOrValue Right) ExtractPathOrValue(ParameterExpression arg, Expression leftSource, Expression rightSource)
         {
-            return (
-                ExtractPathOrValue(arg, expression.Left),
-                ExtractPathOrValue(arg, expression.Right)
-            );
+            var left = ExtractPathOrValue(arg, leftSource, out var tyLeft);
+            var right = ExtractPathOrValue(arg, rightSource, out var tyRight);
+            // consolidate types
+            // if (tyLeft == tyRight)
+            // {
+            //     return (left, right);
+            // }
+            if (!(tyLeft is null) && tyLeft.IsEnum && (tyRight is null || IsNumericType(tyRight) || rightSource.Type.IsArray))
+            {
+                return (HandleEnumValues(left, tyLeft), HandleEnumValues(right, tyLeft));
+            }
+            if (!(tyRight is null) && tyRight.IsEnum && (tyLeft is null || IsNumericType(tyLeft) || leftSource.Type.IsArray))
+            {
+                return (HandleEnumValues(left, tyRight), HandleEnumValues(right, tyRight));
+            }
+            return (left, right);
         }
+
+        private (PathOrValue Left, PathOrValue Right) ExtractPathOrValue(ParameterExpression arg, BinaryExpression expression)
+            => ExtractPathOrValue(arg, expression.Left, expression.Right);
 
         private void ExtractConditions(ParameterExpression arg, List<FirestoreCondition> conditions, Expression expression)
         {
             switch (expression)
             {
                 case UnaryExpression un:
-                    if (un.NodeType == ExpressionType.Not && TryResolvePath(un.Operand, arg, out var upath))
+                    if (un.NodeType == ExpressionType.Not && TryResolvePath(un.Operand, arg, out var upath, out var _))
                     {
                         conditions.Add(new FirestoreCondition(upath, FirestoreCondition.Op.EqualTo, false));
                         break;
@@ -255,7 +295,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                             }
                             break;
                         }
-                        if (TryResolvePath(expression, arg, out var path))
+                        if (TryResolvePath(expression, arg, out var path, out var _))
                         {
                             conditions.Add(new FirestoreCondition(path, FirestoreCondition.Op.EqualTo, true));
                             break;

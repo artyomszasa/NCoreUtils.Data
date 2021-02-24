@@ -31,12 +31,17 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
         }
 
         [Obsolete("TryResolveSubpath(...) is an internal mathod, use TryResolvePath(...).")]
-        private bool TryResolveSubpath(Expression expression, ParameterExpression document, ImmutableList<string> prefix, [NotNullWhen(true)] out FieldPath? path)
+        private bool TryResolveSubpath(
+            Expression expression,
+            ParameterExpression document,
+            ImmutableList<string> prefix,
+            [NotNullWhen(true)] out FieldPath? path,
+            [NotNullWhen(true)] out Type? type)
         {
             // if expression an interface conversion...
             if (expression is UnaryExpression uexpr && uexpr.NodeType == ExpressionType.Convert)
             {
-                return TryResolveSubpath(uexpr.Operand, document, prefix, out path);
+                return TryResolveSubpath(uexpr.Operand, document, prefix, out path, out type);
             }
 
             // if expression is a property of the known entity.
@@ -46,7 +51,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 && Model.TryGetDataEntity(prop.DeclaringType, out var entity)
                 && entity.Properties.TryGetFirst(d => d.Property.Equals(prop), out var pdata))
             {
-                return TryResolveSubpath(mexpr.Expression, document, prefix.Add(pdata.Name), out path);
+                return TryResolveSubpath(mexpr.Expression, document, prefix.Add(pdata.Name), out path, out type);
             }
             // if expression is firestore field access
             if (expression is FirestoreFieldExpression fieldExpression && fieldExpression.Instance.Equals(document))
@@ -56,9 +61,11 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                     throw new InvalidOperationException("Special paths cannot be chained.");
                 }
                 path = prefix.ToFieldPath(fieldExpression.RawPath);
+                type = fieldExpression.Type;
                 return true;
             }
             path = default;
+            type = default;
             return false;
         }
 
@@ -68,18 +75,25 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
         /// </summary>
         /// <param name="expression">Simplified chained expression.</param>
         /// <param name="document">Root expression of the simplified chained Expression.</param>
+        /// <param name="path">On success stores document relative path.</param>
+        /// <param name="type">On success stores effective CLR type of the resolved member.</param>
         /// <returns></returns>
-        protected bool TryResolvePath(Expression expression, ParameterExpression document, [NotNullWhen(true)] out FieldPath? path)
+        protected bool TryResolvePath(
+            Expression expression,
+            ParameterExpression document,
+            [NotNullWhen(true)] out FieldPath? path,
+            [NotNullWhen(true)] out Type? type)
         {
             // simple case --> direct field.
             if (expression is FirestoreFieldExpression fieldExpression && fieldExpression.Instance.Equals(document))
             {
                 path = fieldExpression.Path;
+                type = fieldExpression.Type;
                 return true;
             }
             // complex case --> property of subobject.
             #pragma warning disable CS0618
-            return TryResolveSubpath(expression, document, ImmutableList<string>.Empty, out path);
+            return TryResolveSubpath(expression, document, ImmutableList<string>.Empty, out path, out type);
             #pragma warning restore CS0618
         }
 
