@@ -40,5 +40,8 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 FirestoreOrderingDirection.Ascending => FirestoreOrderingDirection.Descending,
                 _ => FirestoreOrderingDirection.Ascending
             });
+
+        public override string ToString()
+            => $"{Path} {Direction}";
     }
 }

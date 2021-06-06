@@ -62,6 +62,10 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool IsNumericType(Type type)
         {
+            if (type.IsEnum)
+            {
+                return false;
+            }
             var code = Type.GetTypeCode(type);
             return code >= TypeCode.SByte && code <= TypeCode.UInt64;
         }
@@ -158,8 +162,8 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
         {
             if (expression.TryExtractConstant(out var value))
             {
-                memberType = default;
-                return HandleEnumValues(PathOrValue.CreateValue(value), expression.Type);
+                memberType = value?.GetType();
+                return HandleEnumValues(PathOrValue.CreateValue(value!), expression.Type);
             }
             if (TryResolvePath(expression, arg, out var path, out memberType))
             {
