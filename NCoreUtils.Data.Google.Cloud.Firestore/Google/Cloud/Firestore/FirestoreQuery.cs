@@ -58,6 +58,8 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
         IEnumerator IEnumerable.GetEnumerator() => GetBoxedEnumerator();
 
         protected abstract IEnumerator GetBoxedEnumerator();
+
+        public abstract FirestoreQuery ReplaceConditions(ImmutableList<FirestoreCondition> conditions);
     }
 
     public class FirestoreQuery<T> : FirestoreQuery, IOrderedQueryable<T>
@@ -118,6 +120,17 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 Limit
             );
 
+        public override FirestoreQuery ReplaceConditions(ImmutableList<FirestoreCondition> conditions)
+            => new FirestoreQuery<T>(
+                Provider,
+                Collection,
+                Selector,
+                conditions,
+                Ordering,
+                Offset,
+                Limit
+            );
+
         public FirestoreQuery<T> AddOrdering(in FirestoreOrdering ordering)
             => new FirestoreQuery<T>(
                 Provider,
@@ -125,6 +138,20 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 Selector,
                 Conditions,
                 Ordering.Add(ordering),
+                Offset,
+                Limit
+            );
+
+        public FirestoreQuery<T> ReverseOrder()
+            => new FirestoreQuery<T>(
+                Provider,
+                Collection,
+                Selector,
+                Conditions,
+                // TODO: optimize
+                Ordering
+                    .Select(o => new FirestoreOrdering(o.Path, o.Direction == FirestoreOrderingDirection.Ascending ? FirestoreOrderingDirection.Descending : FirestoreOrderingDirection.Ascending))
+                    .ToImmutableList(),
                 Offset,
                 Limit
             );

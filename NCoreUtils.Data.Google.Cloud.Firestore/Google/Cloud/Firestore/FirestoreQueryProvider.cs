@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
@@ -7,6 +9,7 @@ using System.Threading.Tasks;
 using Google.Cloud.Firestore;
 using Microsoft.Extensions.Logging;
 using NCoreUtils.Data.Google.Cloud.Firestore.Expressions;
+using NCoreUtils.Data.Google.Cloud.Firestore.Internal;
 using NCoreUtils.Data.Internal;
 using NCoreUtils.Data.Mapping;
 
@@ -59,19 +62,92 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             throw new InvalidOperationException($"Unable to resolve firestore field path for {selector}.");
         }
 
+        protected virtual bool TryCreateFilteredQuery(
+            FirestoreDb db,
+            FirestoreQuery source,
+#if NETSTANDARD2_1
+            [MaybeNullWhen(false)] out Query query,
+#else
+            out Query query,
+#endif
+            out FirestoreMultiQuery multiQuery)
+        {
+            ValidateQuery(source);
+            if (SplitConditionsIfRequired(source, out multiQuery))
+            {
+                query = default!;
+                return false;
+            }
+            query = db.Collection(source.Collection);
+            foreach (var condition in source.Conditions)
+            {
+                query = condition.Apply(query, source.Collection);
+            }
+            return true;
+        }
+
+        protected virtual bool TryCreateUnboundQuery(
+            FirestoreDb db,
+            FirestoreQuery source,
+#if NETSTANDARD2_1
+            [MaybeNullWhen(false)] out Query query,
+#else
+            out Query query,
+#endif
+            out FirestoreMultiQuery multiQuery)
+        {
+            if (TryCreateFilteredQuery(db, source, out query, out multiQuery))
+            {
+                if (source.Conditions.Count == 1 && source.Conditions[0].Operation == FirestoreCondition.Op.EqualTo && source.Conditions[0].Path.Equals(FieldPath.DocumentId))
+                {
+                    // If the condition is __key__ == xxxx then ordering is ignored completely
+                    return true;
+                }
+                foreach (var rule in source.Ordering)
+                {
+                    query = rule.Direction switch
+                    {
+                        FirestoreOrderingDirection.Ascending => query.OrderBy(rule.Path),
+                        FirestoreOrderingDirection.Descending => query.OrderByDescending(rule.Path),
+                        _ => throw new InvalidOperationException($"Invalid ordering direction {rule.Direction}.")
+                    };
+                }
+                return true;
+            }
+            query = default!;
+            return false;
+        }
+
+        protected virtual IComparer<DocumentSnapshot> CreateDocumentComparer(FirestoreQuery query)
+        {
+            IComparer<DocumentSnapshot>? comparer = default;
+            foreach (var by in query.Ordering)
+            {
+                if (comparer is null)
+                {
+                    comparer = new DocumentSnapshotByKeyComparer(by.Path, by.Direction == FirestoreOrderingDirection.Descending);
+                }
+                else
+                {
+                    comparer = new NestedDocumentSnapshotByKeyComparer(comparer, by.Path, by.Direction == FirestoreOrderingDirection.Descending);
+                }
+            }
+            return comparer ?? DocumentSnapshotByKeyComparer.ById;
+        }
+
         /// <summary>
         /// Creates query from parameter. Only conditions are applied.
         /// </summary>
         /// <param name="source">Source query.</param>
         /// <returns>Firestore query with conditions applied</returns>
+        [Obsolete("TryCreateFilteredQuery should be used")]
         protected Query CreateFilteredQuery(FirestoreDb db, FirestoreQuery source)
         {
-            Query query = db.Collection(source.Collection);
-            foreach (var condition in source.Conditions)
+            if (TryCreateFilteredQuery(db, source, out var query, out var _))
             {
-                query = condition.Apply(query, source.Collection);
+                return query;
             }
-            return query;
+            throw new InvalidOperationException("Query cannot be executed and must be split into multiple queries.");
         }
 
         /// <summary>
@@ -79,24 +155,14 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
         /// </summary>
         /// <param name="source">Source query.</param>
         /// <returns>Firestore query with conditions and ordering applied.</returns>
+        [Obsolete("TryCreateUnboundQuery should be used")]
         protected Query CreateUnboundQuery(FirestoreDb db, FirestoreQuery source)
         {
-            var query = CreateFilteredQuery(db, source);
-            if (source.Conditions.Count == 1 && source.Conditions[0].Operation == FirestoreCondition.Op.EqualTo && source.Conditions[0].Path.Equals(FieldPath.DocumentId))
+            if (TryCreateUnboundQuery(db, source, out var query, out var _))
             {
-                // If the condition is __key__ == xxxx then ordering is ignored completely
                 return query;
             }
-            foreach (var rule in source.Ordering)
-            {
-                query = rule.Direction switch
-                {
-                    FirestoreOrderingDirection.Ascending => query.OrderBy(rule.Path),
-                    FirestoreOrderingDirection.Descending => query.OrderByDescending(rule.Path),
-                    _ => throw new InvalidOperationException($"Invalid ordering direction {rule.Direction}.")
-                };
-            }
-            return query;
+            throw new InvalidOperationException("Query cannot be executed and must be split into multiple queries.");
         }
 
         protected override IQueryable<TResult> ApplyOfType<TElement, TResult>(IQueryable<TElement> source)
@@ -150,143 +216,69 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             }
             return DbAccessor.ExecuteAsync(async db =>
             {
-                var query = CreateFilteredQuery(db, q);
+                if (TryCreateUnboundQuery(db, q, out var query, out var mq))
+                {
+                    return await DoExecuteAny(this, query, q, cancellationToken);
+                }
+                // If query has been split true is returned if any of the split queries returns true.
+                foreach (var q1 in mq.Queries)
+                {
+                    if (!TryCreateUnboundQuery(db, q1, out query, out var _))
+                    {
+                        throw new InvalidOperationException("Should never happen (query has already been splitted).");
+                    }
+                    if (await DoExecuteAny(this, query, q1, cancellationToken))
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            });
+
+            static async Task<bool> DoExecuteAny(FirestoreQueryProvider self, Query query, FirestoreQuery q, CancellationToken cancellationToken)
+            {
                 query.Limit(1);
-                LogFirestoreQuery(q);
+                self.LogFirestoreQuery(q);
                 var snapshot = await query.GetSnapshotAsync(cancellationToken);
                 return snapshot.Count > 0;
-            });
+            }
         }
 
         protected override Task<int> ExecuteCount<TElement>(IQueryable<TElement> source, CancellationToken cancellationToken)
             => throw new NotSupportedException("Executing .Count(...) would result in querying all entities.");
 
         protected override Task<TElement> ExecuteFirst<TElement>(IQueryable<TElement> source, CancellationToken cancellationToken)
-        {
-            var q = Cast(source);
-            if (q.IsAlwaysFalse())
-            {
-                throw new InvalidOperationException("Sequence contains no elements.");
-            }
-            return DbAccessor.ExecuteAsync(async db =>
-            {
-                var query = CreateUnboundQuery(db, q);
-                query.Limit(1);
-                LogFirestoreQuery(q);
-                var snapshot = await query.GetSnapshotAsync(cancellationToken);
-                if (snapshot.Count > 0)
-                {
-                    return Materializer.Materialize(snapshot[0], q.Selector);
-                }
-                throw new InvalidOperationException("Sequence contains no elements.");
-            });
-        }
+            => ExecuteQuery(source.Skip(0).Take(1)).FirstAsync(cancellationToken).AsTask();
 
         protected override Task<TElement> ExecuteFirstOrDefault<TElement>(IQueryable<TElement> source, CancellationToken cancellationToken)
-        {
-            var q = Cast(source);
-            if (q.IsAlwaysFalse())
-            {
-                return Task.FromResult<TElement>(default!);
-            }
-            return DbAccessor.ExecuteAsync(async db =>
-            {
-                var query = CreateUnboundQuery(db, q);
-                query.Limit(1);
-                LogFirestoreQuery(q);
-                var snapshot = await query.GetSnapshotAsync(cancellationToken);
-                if (snapshot.Count > 0)
-                {
-                    return Materializer.Materialize(snapshot[0], q.Selector);
-                }
-                return default!;
-            });
-        }
+            => ExecuteQuery(source.Skip(0).Take(1)).FirstOrDefaultAsync(cancellationToken).AsTask();
 
         protected override Task<TElement> ExecuteLast<TElement>(IQueryable<TElement> source, CancellationToken cancellationToken)
-        {
-            var q = Cast(source);
-            if (q.IsAlwaysFalse())
-            {
-                throw new InvalidOperationException("Sequence contains no elements.");
-            }
-            return DbAccessor.ExecuteAsync(async db =>
-            {
-                var query = CreateUnboundQuery(db, q.RevertOrdering());
-                query.Limit(1);
-                LogFirestoreQuery(q);
-                var snapshot = await query.GetSnapshotAsync(cancellationToken);
-                if (snapshot.Count > 0)
-                {
-                    return Materializer.Materialize(snapshot[0], q.Selector);
-                }
-                throw new InvalidOperationException("Sequence contains no elements.");
-            });
-        }
+            => ExecuteFirst(Cast(source).ReverseOrder(), cancellationToken);
 
         protected override Task<TElement> ExecuteLastOrDefault<TElement>(IQueryable<TElement> source, CancellationToken cancellationToken)
+            => ExecuteFirstOrDefault(Cast(source).ReverseOrder(), cancellationToken);
+
+        protected override async Task<TElement> ExecuteSingle<TElement>(IQueryable<TElement> source, CancellationToken cancellationToken)
         {
-            var q = Cast(source);
-            if (q.IsAlwaysFalse())
+            var items = await ExecuteQuery(source.Skip(0).Take(2)).ToListAsync(cancellationToken);
+            return items.Count switch
             {
-                return Task.FromResult<TElement>(default!);
-            }
-            return DbAccessor.ExecuteAsync(async db =>
-            {
-                var query = CreateUnboundQuery(db, q.RevertOrdering());
-                query.Limit(1);
-                LogFirestoreQuery(q);
-                var snapshot = await query.GetSnapshotAsync(cancellationToken);
-                if (snapshot.Count > 0)
-                {
-                    return Materializer.Materialize(snapshot[0], q.Selector);
-                }
-                return default!;
-            });
+                0 => throw new InvalidOperationException("Sequence contains no elements."),
+                1 => items[0],
+                _ => throw new InvalidOperationException("Sequence contains multiple elements."),
+            };
         }
 
-        protected override Task<TElement> ExecuteSingle<TElement>(IQueryable<TElement> source, CancellationToken cancellationToken)
+        protected override async Task<TElement> ExecuteSingleOrDefault<TElement>(IQueryable<TElement> source, CancellationToken cancellationToken)
         {
-            var q = Cast(source);
-            if (q.IsAlwaysFalse())
+            var items = await ExecuteQuery(source.Skip(0).Take(2)).ToListAsync(cancellationToken);
+            return items.Count switch
             {
-                throw new InvalidOperationException("Sequence contains no elements.");
-            }
-            return DbAccessor.ExecuteAsync(async db =>
-            {
-                var query = CreateUnboundQuery(db, q);
-                query.Limit(2);
-                LogFirestoreQuery(q);
-                var snapshot = await query.GetSnapshotAsync(cancellationToken);
-                return snapshot.Count switch
-                {
-                    0 => throw new InvalidOperationException("Sequence contains no elements."),
-                    1 => Materializer.Materialize(snapshot[0], q.Selector),
-                    _ => throw new InvalidOperationException("Sequence contains multiple elements."),
-                };
-            });
-        }
-
-        protected override Task<TElement> ExecuteSingleOrDefault<TElement>(IQueryable<TElement> source, CancellationToken cancellationToken)
-        {
-            var q = Cast(source);
-            if (q.IsAlwaysFalse())
-            {
-                return Task.FromResult<TElement>(default!);
-            }
-            return DbAccessor.ExecuteAsync(async db =>
-            {
-                var query = CreateUnboundQuery(db, q);
-                query.Limit(2);
-                LogFirestoreQuery(q);
-                var snapshot = await query.GetSnapshotAsync(cancellationToken);
-                return snapshot.Count switch
-                {
-                    0 => default!,
-                    1 => Materializer.Materialize(snapshot[0], q.Selector),
-                    _ => throw new InvalidOperationException("Sequence contains multiple elements."),
-                };
-            });
+                0 => default!,
+                1 => items[0],
+                _ => throw new InvalidOperationException("Sequence contains multiple elements."),
+            };
         }
 
         protected override IAsyncEnumerable<TElement> ExecuteQuery<TElement>(IQueryable<TElement> source)
@@ -298,20 +290,145 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             }
             return new DelayedAsyncEnumerable<TElement>(cancellationToken => new ValueTask<IAsyncEnumerable<TElement>>(DbAccessor.ExecuteAsync(db =>
             {
-                var query = CreateUnboundQuery(db, q);
-                if (q.Offset > 0)
+                IAsyncEnumerable<DocumentSnapshot> stream;
+                if (TryCreateUnboundQuery(db, q, out var query, out var mq))
                 {
-                    query = query.Offset(q.Offset);
+                    if (q.Offset > 0)
+                    {
+                        query = query.Offset(q.Offset);
+                    }
+                    if (q.Limit.HasValue)
+                    {
+                        query = query.Limit(q.Limit.Value);
+                    }
+                    // apply fields selection
+                    query = query.Select(q.Selector.CollectFirestorePaths().ToArray());
+                    LogFirestoreQuery(q);
+                    stream = query.StreamAsync(cancellationToken);
                 }
-                if (q.Limit.HasValue)
+                else
                 {
-                    query = query.Limit(q.Limit.Value);
+                    // when query is split we execute all queries concurrently maintaining order of the results
+                    // offset and limit are applied on the resulting enumeration on the client side.
+                    var enumerators = mq.Queries.MapToArray(q1 =>
+                    {
+                        if (!TryCreateUnboundQuery(db, q1, out var query, out var mq))
+                        {
+                            throw new InvalidOperationException("Should never happen (query has already been splitted).");
+                        }
+                        if (q1.Limit.HasValue)
+                        {
+                            // also include elements to skip as ordering is performed on the client side
+                            query = query.Limit(q1.Offset + q1.Limit.Value);
+                        }
+                        LogFirestoreQuery(q1);
+                        return new PreferchAsyncEnumerator<DocumentSnapshot>(query.StreamAsync(cancellationToken), cancellationToken);
+                    });
+                    stream = MergeStream(enumerators, CreateDocumentComparer(q), q.Offset, q.Limit);
                 }
-                // apply fields selection
-                query = query.Select(q.Selector.CollectFirestorePaths().ToArray());
-                LogFirestoreQuery(q);
-                return Task.FromResult(Materializer.Materialize(query.StreamAsync(cancellationToken), q.Selector));
+                return Task.FromResult(Materializer.Materialize(stream, q.Selector));
             })));
+
+            static async IAsyncEnumerable<DocumentSnapshot> MergeStream(
+                PreferchAsyncEnumerator<DocumentSnapshot>[] enumerators,
+                IComparer<DocumentSnapshot> comparer,
+                int offset,
+                int? limit)
+            {
+                var consumed = 0;
+                var candidates = enumerators.MapToArray(_ => new Maybe<DocumentSnapshot>());
+                while (!limit.HasValue || consumed < offset + limit.Value)
+                {
+                    // fill
+                    for (var i = 0; i < candidates.Length; ++i)
+                    {
+                        candidates[i] = await enumerators[i].GetCurrentAsync();
+                    }
+                    // select
+                    var selectedIndex = -1;
+                    DocumentSnapshot? selectedValue = default;
+                    for (var i = 0; i < candidates.Length; ++i)
+                    {
+                        if (candidates[i].TryGetValue(out var doc))
+                        {
+                            // first candidate or another value "comes earlier"
+                            if (selectedValue is null || -1 == comparer.Compare(doc, selectedValue))
+                            {
+
+                                selectedIndex = i;
+                                selectedValue = doc;
+                            }
+                        }
+                    }
+                    // check out of candidates
+                    if (selectedValue is null)
+                    {
+                        yield break;
+                    }
+                    // consume and yield the value
+                    enumerators[selectedIndex].Consume();
+                    ++consumed;
+                    if (consumed - offset >= 0)
+                    {
+                        yield return selectedValue;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Determines whether conditions of the specified query can be handled within single query. If not creates
+        /// multiple queries with conditions split into multiple queries.
+        /// </summary>
+        /// <param name="query">Query to check.</param>
+        /// <param name="queries">When query must be split the resulting query collection.</param>
+        /// <returns>
+        /// <c>true</c> if query has been split, <c>false</c> otherwise.
+        /// </returns>
+        protected virtual bool SplitConditionsIfRequired(FirestoreQuery query, out FirestoreMultiQuery queries)
+        {
+            if (query.Conditions.TryGetFirst(c => c.Operation == FirestoreCondition.Op.ArrayContainsAny, out var c))
+            {
+                var wrapper = CollectionWrapper.Create(c.Value);
+                if (wrapper.Count > 10)
+                {
+                    // FIXME: pool
+                    var values = new List<object>((wrapper.Count - 1) / 10 + 1);
+                    wrapper.SplitIntoChunks(10, values);
+                    queries = new FirestoreMultiQuery(values.MapToArray(newValue =>
+                    {
+                        var conditions = ImmutableList.CreateBuilder<FirestoreCondition>();
+                        foreach (var condition in query.Conditions)
+                        {
+                            if (condition.Operation == FirestoreCondition.Op.ArrayContainsAny)
+                            {
+                                conditions.Add(new FirestoreCondition(condition.Path, condition.Operation, newValue));
+                            }
+                            else
+                            {
+                                conditions.Add(condition);
+                            }
+                        }
+                        return query.ReplaceConditions(conditions.ToImmutable());
+                    }));
+                    return true;
+                }
+            }
+            queries = default;
+            return false;
+        }
+
+        /// <summary>
+        /// Validates query. Throws on invalid cases (e.g. multiple ContainsAny conditions) so these cases may be
+        /// unhandled in further processing.
+        /// </summary>
+        /// <param name="query">Query to validate.</param>
+        protected virtual void ValidateQuery(FirestoreQuery query)
+        {
+            if (query.Conditions.Count(c => c.Operation == FirestoreCondition.Op.ArrayContainsAny) > 1)
+            {
+                throw new InvalidOperationException("Firestore query may only include single ArrayCOntainsAny condition.");
+            }
         }
     }
 }
