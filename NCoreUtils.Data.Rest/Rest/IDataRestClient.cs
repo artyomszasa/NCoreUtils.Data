@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -18,6 +19,14 @@ namespace NCoreUtils.Data.Rest
 
         Task UpdateAsync(TId id, TData data, CancellationToken cancellationToken = default);
 
-        Task DeleteAsync(TId id, CancellationToken cancellationToken = default);
+        Task DeleteAsync(TId id, bool force, CancellationToken cancellationToken = default);
+
+        [Obsolete("Use DeleteAsync(id, force, cancellationToken) instead.")]
+        Task DeleteAsync(TId id, CancellationToken cancellationToken = default)
+#if NETSTANDARD2_0
+            ;
+#else
+            => DeleteAsync(id, false, cancellationToken);
+#endif
     }
 }

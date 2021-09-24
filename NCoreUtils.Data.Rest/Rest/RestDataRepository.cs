@@ -62,21 +62,22 @@ namespace NCoreUtils.Data.Rest
             return await LookupAsync(id, cancellationToken);
         }
 
-        public override async Task RemoveAsync(TData item, bool force = false, CancellationToken cancellationToken = default)
+        public override Task RemoveAsync(TData item, bool force = false, CancellationToken cancellationToken = default)
         {
             if (!IdUtils.HasValidId(item))
             {
                 throw new InvalidOperationException($"Unable to remove entity without valid id.");
             }
-            if (!force && item is IHasState statefull)
-            {
-                statefull.State = State.Deleted;
-                await Client.UpdateAsync(item.Id, item, cancellationToken);
-            }
-            else
-            {
-                await Client.DeleteAsync(item.Id, cancellationToken);
-            }
+            // if (!force && item is IHasState statefull)
+            // {
+            //     statefull.State = State.Deleted;
+            //     await Client.UpdateAsync(item.Id, item, cancellationToken);
+            // }
+            // else
+            // {
+            //     await Client.DeleteAsync(item.Id, cancellationToken);
+            // }
+            return Client.DeleteAsync(item.Id, force, cancellationToken);
         }
     }
 }
