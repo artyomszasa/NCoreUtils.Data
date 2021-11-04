@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Linq;
 using System.Linq.Expressions;
@@ -58,6 +59,27 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
         private static MethodInfo GetMethod<TArg, TResult>(Func<TArg, TResult> func) => func.Method;
 
         private static MethodInfo GetMethod<TArg1, TArg2, TResult>(Func<TArg1, TArg2, TResult> func) => func.Method;
+
+        private static bool TryExtractNewExpressionAsConstant(Expression expression, [NotNullWhen(true)] out object? value)
+        {
+            if (expression is NewExpression nexp)
+            {
+                var args = new object?[nexp.Arguments.Count];
+                for (var i = 0; i < nexp.Arguments.Count; ++i)
+                {
+                    if (!(nexp.Arguments[i].TryExtractConstant(out var arg) || TryExtractNewExpressionAsConstant(nexp.Arguments[i], out arg)))
+                    {
+                        value = default;
+                        return false;
+                    }
+                    args[i] = arg;
+                }
+                value = nexp.Constructor.Invoke(args);
+                return true;
+            }
+            value = default;
+            return false;
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool IsNumericType(Type type)
@@ -164,6 +186,11 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             {
                 memberType = value?.GetType();
                 return HandleEnumValues(PathOrValue.CreateValue(value!), expression.Type);
+            }
+            if (TryExtractNewExpressionAsConstant(expression, out var newValue))
+            {
+                memberType = value?.GetType();
+                return PathOrValue.CreateValue(newValue);
             }
             if (TryResolvePath(expression, arg, out var path, out memberType))
             {

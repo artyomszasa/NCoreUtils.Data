@@ -65,7 +65,7 @@ namespace NCoreUtils.Data.EntityFrameworkCore
         }
     }
 
-    sealed class DataRepositoryContext<TDbContext> : DataRepositoryContext
+    public sealed class DataRepositoryContext<TDbContext> : DataRepositoryContext
         where TDbContext : DbContext
     {
         readonly TDbContext _dbContext;
