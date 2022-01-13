@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.DependencyInjection;
 using NCoreUtils.Data.Events;
 
 namespace NCoreUtils.Data.IdNameGeneration
@@ -10,11 +10,15 @@ namespace NCoreUtils.Data.IdNameGeneration
     [ImplicitDataEventObserver]
     public class IdNameGenerationObserver : IDataEventHandler
     {
-        abstract class Invoker
+        private abstract class Invoker
         {
-            static readonly ConcurrentDictionary<Type, Invoker> _cache = new ConcurrentDictionary<Type, Invoker>();
+            private static readonly ConcurrentDictionary<Type, Invoker> _cache = new();
 
-            static readonly Func<Type, Invoker> _factory = type => (Invoker)Activator.CreateInstance(typeof(Invoker<>).MakeGenericType(type), true);
+            private static readonly Func<Type, Invoker> _factory = DoCreate;
+
+            [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Both type and type parameter are preserved.")]
+            private static Invoker DoCreate([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] Type type)
+                => (Invoker)Activator.CreateInstance(typeof(Invoker<>).MakeGenericType(type), true)!;
 
             protected abstract ValueTask DoInvoke(IdNameGenerationObserver observer, IDataEvent dataEvent, CancellationToken cancellationToken);
 
@@ -22,7 +26,7 @@ namespace NCoreUtils.Data.IdNameGeneration
                 => _cache.GetOrAdd(dataEvent.EntityType, _factory).DoInvoke(observer, dataEvent, cancellationToken);
         }
 
-        sealed class Invoker<T> : Invoker
+        private sealed class Invoker<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T> : Invoker
             where T : class, IHasIdName
         {
             protected override ValueTask DoInvoke(IdNameGenerationObserver observer, IDataEvent dataEvent, CancellationToken cancellationToken)
@@ -31,7 +35,10 @@ namespace NCoreUtils.Data.IdNameGeneration
             }
         }
 
-        public async ValueTask HandleAsync<T>(IDataEvent<T> @event, CancellationToken cancellationToken)
+        [SuppressMessage("Performance", "CA1822", Justification = "Potential inteface implementation/virtual method.")]
+        public async ValueTask HandleAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T>(
+            IDataEvent<T> @event,
+            CancellationToken cancellationToken)
             where T : class, IHasIdName
         {
             if (@event.Repository is ISupportsIdNameGeneration generationInfo && generationInfo.GenerateIdNameOnInsert)

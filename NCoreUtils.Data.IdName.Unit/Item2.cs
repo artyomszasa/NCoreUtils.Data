@@ -6,8 +6,8 @@ namespace NCoreUtils.Data
 
         public int ForeignId { get; set; }
 
-        public string IdName { get; set; }
+        public string IdName { get; set; } = default!;
 
-        public string Name { get; set; }
+        public string Name { get; set; } = default!;
     }
 }

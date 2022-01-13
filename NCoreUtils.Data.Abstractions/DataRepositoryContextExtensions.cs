@@ -20,7 +20,7 @@ namespace NCoreUtils.Data
         {
             if (context == null)
             {
-                throw new System.ArgumentNullException(nameof(context));
+                throw new ArgumentNullException(nameof(context));
             }
             return context.BeginTransactionAsync(isolationLevel, CancellationToken.None).GetAwaiter().GetResult();
         }

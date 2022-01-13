@@ -9,19 +9,33 @@ namespace NCoreUtils.Data.IdNameGeneration
 {
     public class IdNameGenerationInitialization
     {
-        static readonly object _sync;
+        private static readonly object _sync = new();
 
-        static readonly ConcurrentDictionary<string, MethodInfo> _initializedFunctions;
+        private static readonly ConcurrentDictionary<string, MethodInfo> _initializedFunctions = new();
 
-        static IdNameGenerationInitialization()
+        [ExcludeFromCodeCoverage]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static string ThrowIfNoAnnotation(string? packedAnnotation)
         {
-            _sync = new object();
-            _initializedFunctions = new ConcurrentDictionary<string, MethodInfo>();
+            if (null == packedAnnotation)
+            {
+                throw new InvalidOperationException("GetIdFunction annotation not defined on the context.");
+            }
+            return packedAnnotation;
         }
 
-        readonly DbContext _dbContext;
+        private readonly DbContext _dbContext;
 
-        readonly IStoredProcedureGenerator _generator;
+        private readonly IStoredProcedureGenerator _generator;
+
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Types in annotation should be preserved.")]
+        private MethodInfo DoGetGetIdNameSuffixMethod(string raw)
+        {
+            var annotation = Annotations.GetIdNameFunctionAnnotation.Unpack(raw);
+            var sql = _generator.Generate(annotation.FunctionSchema, annotation.FunctionName);
+            _dbContext.Database.ExecuteSqlRaw(sql);
+            return annotation.Method;
+        }
 
         public IdNameGenerationInitialization(DbContext dbContext, IStoredProcedureGenerator? generator = default)
         {
@@ -36,20 +50,9 @@ namespace NCoreUtils.Data.IdNameGeneration
             _generator = generator;
         }
 
-        [ExcludeFromCodeCoverage]
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        string ThrowIfNoAnnotation(string? packedAnnotation)
-        {
-            if (null == packedAnnotation)
-            {
-                throw new InvalidOperationException("GetIdFunction annotation not defined on the context.");
-            }
-            return packedAnnotation;
-        }
-
         public MethodInfo GetGetIdNameSuffixMethod()
         {
-            var packedAnnotation0 = _dbContext.Model.FindAnnotation(Annotations.GetIdNameFunction).Value as string;
+            var packedAnnotation0 = _dbContext.Model.FindAnnotation(Annotations.GetIdNameFunction)?.Value as string;
             var packedAnnotation = ThrowIfNoAnnotation(packedAnnotation0);
             if (_initializedFunctions.TryGetValue(packedAnnotation, out var method))
             {
@@ -57,13 +60,7 @@ namespace NCoreUtils.Data.IdNameGeneration
             }
             lock (_sync)
             {
-                return _initializedFunctions.GetOrAdd(packedAnnotation, raw =>
-                {
-                    var annotation = Annotations.GetIdNameFunctionAnnotation.Unpack(raw);
-                    var sql = _generator.Generate(annotation.FunctionSchema, annotation.FunctionName);
-                    _dbContext.Database.ExecuteSqlRaw(sql);
-                    return annotation.Method;
-                });
+                return _initializedFunctions.GetOrAdd(packedAnnotation, DoGetGetIdNameSuffixMethod);
             }
         }
     }

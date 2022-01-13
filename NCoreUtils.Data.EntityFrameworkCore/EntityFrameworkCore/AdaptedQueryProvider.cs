@@ -4,93 +4,68 @@ using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
-using IEFAsyncQueryProvider = Microsoft.EntityFrameworkCore.Query.Internal.IAsyncQueryProvider;
+using Microsoft.EntityFrameworkCore;
 using EFQueryableExtensions = Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions;
 using EFRelationalQueryableExtensions = Microsoft.EntityFrameworkCore.RelationalQueryableExtensions;
-using System.Linq;
-using Microsoft.EntityFrameworkCore;
-
-#if NETSTANDARD2_0
-using ValueTask = reactive::System.Threading.Tasks.ValueTask;
-using BoolValueTask = reactive::System.Threading.Tasks.ValueTask<bool>;
+#if NET6_0_OR_GREATER
+using IEFAsyncQueryProvider = Microsoft.EntityFrameworkCore.Query.IAsyncQueryProvider;
 #else
-using ValueTask = System.Threading.Tasks.ValueTask;
-using BoolValueTask = System.Threading.Tasks.ValueTask<bool>;
+using IEFAsyncQueryProvider = Microsoft.EntityFrameworkCore.Query.Internal.IAsyncQueryProvider;
 #endif
+
+#pragma warning disable EF1001
 
 namespace NCoreUtils.Data.EntityFrameworkCore
 {
     class AdaptedQueryProvider : Linq.IAsyncQueryProvider
     {
-        /*
-        sealed class EnumeratorAdapter<T> : IAsyncEnumerator<T>
-        {
-            readonly IAsyncEnumerator<T> _source;
-
-            readonly CancellationToken _cancellationToken;
-
-            public EnumeratorAdapter(IAsyncEnumerator<T> source, CancellationToken cancellationToken)
-            {
-                _source = source;
-                _cancellationToken = cancellationToken;
-            }
-
-            public T Current { get; private set; }
-
-            public ValueTask DisposeAsync()
-            {
-                _source.Dispose();
-                return default;
-            }
-
-            public async BoolValueTask MoveNextAsync()
-            {
-                if (await _source.MoveNext(_cancellationToken))
-                {
-                    Current = _source.Current;
-                    return true;
-                }
-                Current = default;
-                return false;
-            }
-        }
-
-        sealed class EnumerableAdapter<T> : IAsyncEnumerable<T>
-        {
-            readonly reactive::System.Collections.Generic.IAsyncEnumerable<T> _source;
-
-            public EnumerableAdapter(reactive::System.Collections.Generic.IAsyncEnumerable<T> source)
-                => _source = source;
-
-            public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
-                => new EnumeratorAdapter<T>(_source.GetEnumerator(), cancellationToken);
-        }
-        */
-
         public static AdaptedQueryProvider SharedInstance { get; } = new AdaptedQueryProvider();
 
         public IAsyncEnumerable<T> ExecuteEnumerableAsync<T>(Expression expression)
         {
+            // Handle EF Core 6.0
+#if NET6_0_OR_GREATER
+            if (expression.TryExtractQueryProvider(out var queryProvider, typeof(EFQueryableExtensions), typeof(EFRelationalQueryableExtensions)))
+            {
+                return queryProvider.ExecuteAsync<IAsyncEnumerable<T>>(expression);
+            }
+#else
+            // Handle EF Core 3.1
             if (expression.TryExtractQueryable(out var sourceQueryable, typeof(EFQueryableExtensions), typeof(EFRelationalQueryableExtensions)))
             {
-                return sourceQueryable.Provider.CreateQuery<T>(expression).AsAsyncEnumerable();
+                return sourceQueryable.Provider.CreateQuery<T>(expression) switch
+                {
+                    IAsyncEnumerable<T> asyncEnumerable => asyncEnumerable,
+                    var query => query.AsAsyncEnumerable()
+                };
             }
-            throw new InvalidOperationException($"Unable to extract EF queryable from {expression}.");
+#endif
+            throw new InvalidOperationException($"Unable to extract EF query provider from {expression}.");
         }
 
         public Task<T> ExecuteAsync<T>(Expression expression, CancellationToken cancellationToken)
         {
-            #pragma warning disable EF1001
-            return expression.MaybeExtractQueryable(typeof(EFQueryableExtensions), typeof(EFRelationalQueryableExtensions))
-                .Bind(queryable => queryable.Provider
-                    .Just()
-                    .As<IEFAsyncQueryProvider>()
-                    .Map(provider => provider.ExecuteAsync<Task<T>>(expression, cancellationToken))
-                )
-                .TryGetValue(out var result)
-                ? result
-                : throw new InvalidOperationException();
-            #pragma warning restore EF1001
+            // Handle EF Core 6.0
+#if NET6_0_OR_GREATER
+            if (expression.TryExtractQueryProvider(out var queryProvider, typeof(EFQueryableExtensions), typeof(EFRelationalQueryableExtensions)))
+            {
+                return queryProvider.ExecuteAsync<Task<T>>(expression, cancellationToken);
+            }
+            throw new InvalidOperationException($"Unable to extract EF query provider from {expression}.");
+#else
+            // Handle EF Core 3.1
+            if (!expression.TryExtractQueryable(out var queryable, typeof(EFQueryableExtensions), typeof(EFRelationalQueryableExtensions)))
+            {
+                throw new InvalidOperationException($"Unable to extract queryable from {expression}.");
+            }
+            if (queryable.Provider is not IEFAsyncQueryProvider provider)
+            {
+                throw new InvalidOperationException($"Invalid or unhandled EF Core provider of type {queryable.Provider.GetType()}.");
+            }
+            return provider.ExecuteAsync<Task<T>>(expression, cancellationToken);
+#endif
         }
     }
 }
+
+#pragma warning restore EF1001

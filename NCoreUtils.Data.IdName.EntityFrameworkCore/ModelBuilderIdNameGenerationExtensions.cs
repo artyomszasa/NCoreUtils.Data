@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -13,7 +14,7 @@ namespace NCoreUtils.Data
 {
     public static class ModelBuilderIdNameGenerationExtensions
     {
-        static readonly object _sync = new object();
+        static readonly object _sync = new();
         static readonly string _assemblyName;
         static long _valueSupply;
         static readonly ConstructorInfo _dbFuntionAttributeCtor;
@@ -54,7 +55,8 @@ namespace NCoreUtils.Data
         //     return (functionName, typeBuilder.CreateTypeInfo().AsType().GetMethod(methodBuilder.Name));
         // }
 
-        static (string functionName, MethodInfo method) GenerateGetIdNameSuffixMethod(string? schema)
+        [DynamicDependency(DynamicallyAccessedMemberTypes.PublicConstructors, typeof(InvalidOperationException))]
+        private static (string functionName, MethodInfo method) GenerateGetIdNameSuffixMethod(string? schema)
         {
             if (null == _assemblyBuilder)
             {
@@ -80,10 +82,10 @@ namespace NCoreUtils.Data
             {
                 var il = methodBuilder.GetILGenerator();
                 il.Emit(OpCodes.Ldstr, $"{methodBuilder.Name} may not be called at runtime.");
-                il.Emit(OpCodes.Newobj, typeof(InvalidOperationException).GetConstructor(new [] { typeof(string) }));
+                il.Emit(OpCodes.Newobj, typeof(InvalidOperationException).GetConstructor(new [] { typeof(string) })!);
                 il.Emit(OpCodes.Throw);
             }
-            return (functionName, typeBuilder.CreateTypeInfo()!.AsType().GetMethod(methodBuilder.Name));
+            return (functionName, typeBuilder.CreateTypeInfo()!.AsType().GetMethod(methodBuilder.Name)!);
         }
 
         public static ModelBuilder HasGetIdNameSuffixFunction(this ModelBuilder builder, string? schema = default)
@@ -105,6 +107,10 @@ namespace NCoreUtils.Data
         /// <param name="maxLength">Maximum length of the id name field.</param>
         /// <typeparam name="T">Related entity type.</typeparam>
         /// <returns>Entity type builder passed to the method.</returns>
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "All related types should be preserved though entities.")]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(Tuple<,>))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(Tuple<,,>))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(Tuple<,,,>))]
         public static EntityTypeBuilder<T> HasIdName<T>(
             this EntityTypeBuilder<T> builder,
             Expression<Func<T, string>> idNameSelector,
@@ -117,7 +123,7 @@ namespace NCoreUtils.Data
             var idNameBuilder = builder.Property(idNameSelector).HasMaxLength(maxLength).IsRequired(true).IsUnicode(false);
 
             var descBuilder = new IdNameDescriptionBuilder<T>()
-                .SetIdNameProperty(idNameBuilder.Metadata.PropertyInfo)
+                .SetIdNameProperty(idNameBuilder.Metadata.PropertyInfo ?? throw new InvalidOperationException($"Could not gete id name property."))
                 .SetNameSourceProperty(nameSelector)
                 .SetDecompose(DummyStringDecomposition.Decomposer);
             if (null != additionalIndexPropertySelector)
@@ -146,10 +152,10 @@ namespace NCoreUtils.Data
                     _ => throw new InvalidOperationException($"Not supported index property count = {properties.Count}."),
                 };
                 var eArgs = properties.MapToArray(p => Expression.Property(eArg, p));
-                var members = properties.Select((_, i) => tupleType.GetProperty($"Item{i + 1}")).ToArray();
-                var selector = Expression.Lambda<Func<T, object>>(
+                var members = properties.Select((_, i) => (MemberInfo)tupleType.GetProperty($"Item{i + 1}")!).ToArray();
+                var selector = Expression.Lambda<Func<T, object?>>(
                     Expression.New(
-                        tupleType.GetConstructor(properties.MapToArray(p => p.PropertyType)),
+                        tupleType.GetConstructor(properties.MapToArray(p => p.PropertyType))!,
                         eArgs,
                         members
                     ),
@@ -159,7 +165,7 @@ namespace NCoreUtils.Data
             }
             else
             {
-                builder.HasIndex(Expression.Lambda<Func<T, object>>(
+                builder.HasIndex(Expression.Lambda<Func<T, object?>>(
                     Expression.Property(eArg, idNameBuilder.Metadata.PropertyInfo),
                     eArg
                 )).IsUnique(true);

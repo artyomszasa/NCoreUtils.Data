@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -12,111 +13,16 @@ namespace NCoreUtils.Data.IdNameGeneration
 {
     public static class Annotations
     {
-        private class IdNameSourcePropertyDataConverter : JsonConverter<IdNameSourcePropertyData>
-        {
-            private static readonly byte[] _binType = Encoding.ASCII.GetBytes("type");
-
-            private static readonly byte[] _binSource = Encoding.ASCII.GetBytes("source");
-
-            private static readonly byte[] _binOther = Encoding.ASCII.GetBytes("other");
-
-            private static readonly JsonEncodedText _jsonType = JsonEncodedText.Encode("type");
-
-            private static readonly JsonEncodedText _jsonSource = JsonEncodedText.Encode("source");
-
-            private static readonly JsonEncodedText _jsonOther = JsonEncodedText.Encode("other");
-
-            public override IdNameSourcePropertyData Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
-            {
-                if (reader.TokenType != JsonTokenType.StartObject)
-                {
-                    throw new InvalidOperationException($"Expected {JsonTokenType.StartObject}, got {reader.TokenType}.");
-                }
-                reader.Read();
-                string? typeName = default;
-                string? sourcePropertyName = default;
-                var additionalPropertyNames = new List<string>();
-                while (reader.TokenType != JsonTokenType.EndObject)
-                {
-                    if (reader.TokenType != JsonTokenType.PropertyName)
-                    {
-                        throw new InvalidOperationException($"Expected {JsonTokenType.PropertyName}, got {reader.TokenType}.");
-                    }
-                    if (reader.ValueTextEquals(_binType))
-                    {
-                        reader.Read();
-                        typeName = reader.GetString();
-                    }
-                    else if (reader.ValueTextEquals(_binSource))
-                    {
-                        reader.Read();
-                        sourcePropertyName = reader.GetString();
-                    }
-                    else if (reader.ValueTextEquals(_binOther))
-                    {
-                        reader.Read();
-                        if (reader.TokenType != JsonTokenType.StartArray)
-                        {
-                            throw new InvalidOperationException($"Expected {JsonTokenType.StartArray}, got {reader.TokenType}.");
-                        }
-                        reader.Read();
-                        while (reader.TokenType != JsonTokenType.EndArray)
-                        {
-                            additionalPropertyNames.Add(reader.GetString());
-                            reader.Read();
-                        }
-                    }
-                    else
-                    {
-                        reader.Read();
-                        reader.Skip();
-                    }
-                    reader.Read();
-                }
-                return new IdNameSourcePropertyData(typeName!, sourcePropertyName!, additionalPropertyNames.ToArray());
-            }
-
-            public override void Write(Utf8JsonWriter writer, IdNameSourcePropertyData value, JsonSerializerOptions options)
-            {
-                writer.WriteStartObject();
-                writer.WriteString(_jsonType, value.TypeName);
-                writer.WriteString(_jsonSource, value.SourcePropertyName);
-                writer.WritePropertyName(_jsonOther);
-                writer.WriteStartArray();
-                foreach (var other in value.AdditionalPropertyNames)
-                {
-                    writer.WriteStringValue(other);
-                }
-                writer.WriteEndArray();
-                writer.WriteEndObject();
-            }
-        }
-
-        [JsonConverter(typeof(IdNameSourcePropertyDataConverter))]
-        public class IdNameSourcePropertyData
-        {
-            public string TypeName { get; }
-
-            public string SourcePropertyName { get; }
-
-            public string[] AdditionalPropertyNames { get; }
-
-            public IdNameSourcePropertyData(string typeName, string sourcePropertyName, string[] additionalPropertyNames)
-            {
-                TypeName = typeName;
-                SourcePropertyName = sourcePropertyName;
-                AdditionalPropertyNames = additionalPropertyNames;
-            }
-        }
-
         internal static Assembly? _generatedAssembly = null;
 
-        static Type ResolveType(string typeName)
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Only invoked internally.")]
+        private static Type ResolveType(string typeName)
         {
             return Type.GetType(typeName) ?? Type.GetType(
                 typeName,
                 name => _generatedAssembly != null && _generatedAssembly.GetName() == name ? _generatedAssembly : null,
-                null);
+                null)
+                ?? throw new InvalidOperationException($"Unable to get type for \"{typeName}\".");
         }
 
         public const string IdNameSourceProperty = nameof(IdNameSourceProperty);
@@ -129,7 +35,15 @@ namespace NCoreUtils.Data.IdNameGeneration
             {
                 try
                 {
-                    var data = JsonSerializer.Deserialize<IdNameSourcePropertyData>(raw);
+                    if (raw is null)
+                    {
+                        throw new InvalidOperationException("Raw annotation is null.");
+                    }
+                    var data = JsonSerializer.Deserialize(raw, IdNameGenerationAnnotationSerializationContext.Default.IdNameSourcePropertyData);
+                    if (data is null)
+                    {
+                        throw new InvalidOperationException("Unable to deserialize raw annotation.");
+                    }
                     var ty = ResolveType(data.TypeName);
                     var sourceNameProperty = ty.GetProperty(data.SourcePropertyName, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
                     if (null == sourceNameProperty)
@@ -171,18 +85,20 @@ namespace NCoreUtils.Data.IdNameGeneration
 
             public string Pack()
             {
-                return JsonSerializer.Serialize(new IdNameSourcePropertyData(
-                    typeName: SourceNameProperty.DeclaringType.AssemblyQualifiedName,
+                var annotation = new IdNameSourcePropertyData(
+                    typeName: SourceNameProperty.DeclaringType!.AssemblyQualifiedName!,
                     sourcePropertyName: SourceNameProperty.Name,
                     additionalPropertyNames: AdditionalIndexProperties.Select(e => e.Name).ToArray()
-                ));
+                );
+                return JsonSerializer.Serialize(annotation, IdNameGenerationAnnotationSerializationContext.Default.IdNameSourcePropertyData);
             }
         }
 
         public sealed class GetIdNameFunctionAnnotation
         {
-            static readonly Regex _regex = new Regex("^(.*)\\|(.*)\\|(.*)\\|(.*)$", RegexOptions.Compiled);
+            static readonly Regex _regex = new("^(.*)\\|(.*)\\|(.*)\\|(.*)$", RegexOptions.Compiled);
 
+            [RequiresUnreferencedCode("TypeName of the annotation must be explicitly preserved.")]
             public static GetIdNameFunctionAnnotation Unpack(string? raw)
             {
                 if (string.IsNullOrEmpty(raw))
@@ -201,7 +117,8 @@ namespace NCoreUtils.Data.IdNameGeneration
                 var ty = Type.GetType(typeName) ?? Type.GetType(
                     typeName,
                     name => _generatedAssembly != null && _generatedAssembly.GetName().FullName == name.FullName ? _generatedAssembly : null,
-                    null);
+                    null)
+                    ?? throw new InvalidOperationException($"Unable to get type for \"{typeName}\"");
                 if (null == ty)
                 {
                     throw new IdNameGenerationAnnotationException($"Unresolvable type {m.Groups[3].Value} in annotation.");
@@ -229,7 +146,7 @@ namespace NCoreUtils.Data.IdNameGeneration
 
             public string Pack()
             {
-                return $"{FunctionSchema}|{FunctionName}|{Method.DeclaringType.AssemblyQualifiedName}|{Method.Name}";
+                return $"{FunctionSchema}|{FunctionName}|{Method.DeclaringType!.AssemblyQualifiedName}|{Method.Name}";
             }
         }
     }

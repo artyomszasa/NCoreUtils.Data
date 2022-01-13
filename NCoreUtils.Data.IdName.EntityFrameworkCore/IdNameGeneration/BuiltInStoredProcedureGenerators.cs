@@ -6,7 +6,7 @@ namespace NCoreUtils.Data.IdNameGeneration
 {
     internal static class BuiltInStoredProcedureGenerators
     {
-        static readonly ConcurrentDictionary<Type, IStoredProcedureGenerator> _cache = new ConcurrentDictionary<Type, IStoredProcedureGenerator>();
+        static readonly ConcurrentDictionary<Type, IStoredProcedureGenerator> _cache = new();
 
         static IStoredProcedureGenerator CreateGenerator(Type type)
         {
@@ -14,13 +14,16 @@ namespace NCoreUtils.Data.IdNameGeneration
             {
                 return generator;
             }
-            return _cache.GetOrAdd(type, ty => (IStoredProcedureGenerator)Activator.CreateInstance(ty, true));
+            return _cache.GetOrAdd(type, ty => (IStoredProcedureGenerator)Activator.CreateInstance(ty, true)!);
         }
 
-        public static bool TryGetGenerator(string providerName, [NotNullWhen(true)] out IStoredProcedureGenerator? generator)
+        public static bool TryGetGenerator(string? providerName, [NotNullWhen(true)] out IStoredProcedureGenerator? generator)
         {
             switch (providerName)
             {
+                case null:
+                    generator = default;
+                    return false;
                 case "Npgsql.EntityFrameworkCore.PostgreSQL":
                     generator = CreateGenerator(typeof(PostgresStoredProcedureGenerator));
                     return true;

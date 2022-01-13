@@ -15,6 +15,7 @@ namespace NCoreUtils.Data
     /// </summary>
     public static class IdUtils
     {
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
         private sealed class IdBox<T>
         {
             public T Value;
@@ -112,11 +113,9 @@ namespace NCoreUtils.Data
         /// <c>true</c> if the specified type implements <see cref="NCoreUtils.Data.IHasId{T}" /> and the business
         /// key type has been stored into <paramref name="idType" />, <c>false</c> otherwise.
         /// </returns>
-        #if NETSTANDARD2_1
-        public static bool TryGetIdType(Type entityType, [NotNullWhen(true)] out Type? idType)
-        #else
-        public static bool TryGetIdType(Type entityType, out Type idType)
-        #endif
+        public static bool TryGetIdType(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] Type entityType,
+            [NotNullWhen(true)] out Type? idType)
         {
             foreach (var interfaceType in entityType.GetInterfaces())
             {
@@ -131,25 +130,27 @@ namespace NCoreUtils.Data
                 idType = entityType.GenericTypeArguments[0];
                 return true;
             }
-            #if NESTANDARD2_1
             idType = default;
-            #else
-            idType = default!;
-            #endif
             return false;
         }
 
         /// <summary>
         /// Attempts to get interface mapping between the specified data entity type and
-        /// <see cref="NCoreUtils.Data.IHasId{T}" />.
+        /// <see cref="IHasId{T}" />.
         /// </summary>
         /// <param name="entityType">Data entity type.</param>
         /// <param name="interfaceMapping">Variable to store interface mapping.</param>
         /// <returns>
-        /// <c>true</c> if the specified type implements <see cref="NCoreUtils.Data.IHasId{T}" /> and the mapping
+        /// <c>true</c> if the specified type implements <see cref="IHasId{T}" /> and the mapping
         /// has been stored into <paramref name="interfaceMapping" />, <c>false</c> otherwise.
         /// </returns>
-        public static bool TryGetInterfaceMap(Type entityType, out InterfaceMapping interfaceMapping)
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Interface types are preserved due to the root type annotation.")]
+        public static bool TryGetInterfaceMap(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces
+                | DynamicallyAccessedMemberTypes.PublicProperties
+                | DynamicallyAccessedMemberTypes.PublicMethods)]
+                Type entityType,
+            out InterfaceMapping interfaceMapping)
         {
             if (!TryGetIdType(entityType, out var idType))
             {
@@ -162,30 +163,28 @@ namespace NCoreUtils.Data
         }
 
         /// <summary>
-        /// Attempts to get business key property defined by <see cref="NCoreUtils.Data.IHasId{T}" /> from data
+        /// Attempts to get business key property defined by <see cref="IHasId{T}" /> from data
         /// entity type. On success interface implementation property is returned even if the interface is implemented
         /// explicitly. To get property that can be used in linq expressions use
-        /// <see cref="M:NCoreUtils.Data.TryGetRealIdProperty" /> instead.
+        /// <see cref="TryGetRealIdProperty" /> instead.
         /// </summary>
         /// <param name="entityType">Data entity type.</param>
         /// <param name="property">Variable to store property.</param>
         /// <returns>
-        /// <c>true</c> if the specified type implements <see cref="NCoreUtils.Data.IHasId{T}" /> and the property
+        /// <c>true</c> if the specified type implements <see cref="IHasId{T}" /> and the property
         /// has been stored into <paramref name="property" />, <c>false</c> otherwise.
         /// </returns>
-        #if NETSTANDARD2_1
-        public static bool TryGetIdProperty(Type entityType, [NotNullWhen(true)] out PropertyInfo? property)
-        #else
-        public static bool TryGetIdProperty(Type entityType, out PropertyInfo property)
-        #endif
+        public static bool TryGetIdProperty(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces
+                | DynamicallyAccessedMemberTypes.PublicProperties
+                | DynamicallyAccessedMemberTypes.PublicMethods
+                | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+                Type entityType,
+            [NotNullWhen(true)] out PropertyInfo? property)
         {
             if (!TryGetInterfaceMap(entityType, out var interfaceMapping))
             {
-                #if NETSTANDARD2_1
                 property = default;
-                #else
-                property = default!;
-                #endif
                 return false;
             }
             var index = Array.FindIndex(interfaceMapping.InterfaceMethods, method => StringComparer.InvariantCultureIgnoreCase.Equals("get_Id", method.Name));
@@ -197,33 +196,43 @@ namespace NCoreUtils.Data
         }
 
         /// <summary>
-        /// Attempts to get business key property defined by <see cref="NCoreUtils.Data.IHasId{T}" /> from data
+        /// Attempts to get business key property defined by <see cref="IHasId{T}" /> from data
         /// entity type. On success linq expression safe property is returned. To get interface implementation property
-        /// use <see cref="M:NCoreUtils.Data.TryGetIdProperty" /> instead.
+        /// use <see cref="TryGetIdProperty" /> instead.
         /// </summary>
         /// <param name="entityType">Data entity type.</param>
         /// <param name="property">Variable to store property.</param>
         /// <returns>
-        /// <c>true</c> if the specified type implements <see cref="NCoreUtils.Data.IHasId{T}" /> and the property
+        /// <c>true</c> if the specified type implements <see cref="IHasId{T}" /> and the property
         /// has been stored into <paramref name="property" />, <c>false</c> otherwise.
         /// </returns>
-        #if NETSTANDARD2_1
-        public static bool TryGetRealIdProperty(Type entityType, [NotNullWhen(true)] out PropertyInfo? property)
-        #else
-        public static bool TryGetRealIdProperty(Type entityType, out PropertyInfo property)
-        #endif
+        public static bool TryGetRealIdProperty(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties
+                | DynamicallyAccessedMemberTypes.NonPublicProperties
+                | DynamicallyAccessedMemberTypes.Interfaces
+                | DynamicallyAccessedMemberTypes.PublicMethods
+                | DynamicallyAccessedMemberTypes.NonPublicMethods)]
+                Type entityType,
+            [NotNullWhen(true)] out PropertyInfo? property)
         {
             if (TryGetIdProperty(entityType, out var interfaceProperty))
             {
                 var attr = interfaceProperty.GetCustomAttribute<TargetPropertyAttribute>();
-                property = null == attr ? interfaceProperty : entityType.GetProperty(attr.PropertyName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                if (attr is null)
+                {
+                    property = interfaceProperty;
+                    return true;
+                }
+                var realProperty = entityType.GetProperty(attr.PropertyName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                if (realProperty is null)
+                {
+                    property = default;
+                    return false;
+                }
+                property = realProperty;
                 return true;
             }
-            #if NETSTANDARD2_1
             property = default;
-            #else
-            property = default!;
-            #endif
             return false;
         }
 
@@ -232,6 +241,7 @@ namespace NCoreUtils.Data
         /// </summary>
         /// <param name="value">Value of the business key.</param>
         /// <returns>Predicate expression.</returns>
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "IdBox<> has necessary attributes.")]
         public static Expression<Func<TEntity, bool>> CreateIdEqualsPredicate<TEntity, TId>(TId value)
             where TEntity : IHasId<TId>
         {

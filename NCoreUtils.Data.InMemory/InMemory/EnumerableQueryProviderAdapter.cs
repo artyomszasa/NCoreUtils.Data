@@ -18,7 +18,7 @@ namespace NCoreUtils.Data.InMemory
             {
                 if (expression.TryExtractQueryable(out var queryable))
                 {
-                    return Task.FromResult((T)queryable.Provider.Execute(expression));
+                    return Task.FromResult((T)queryable.Provider.Execute(expression)!);
                 }
                 throw new InvalidOperationException("Should never happen.");
             }

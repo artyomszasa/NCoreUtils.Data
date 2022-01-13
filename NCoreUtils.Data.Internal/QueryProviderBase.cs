@@ -64,11 +64,7 @@ namespace NCoreUtils.Data.Internal
             return argType.IsGenericType && argType.GetGenericTypeDefinition().Equals(typeof(Func<,>));
         }
 
-        #if NETSTANDARD2_1
         static bool TryGetEnumerableElementType(Type type, [NotNullWhen(true)] out Type? elementType)
-        #else
-        static bool TryGetEnumerableElementType(Type type, out Type elementType)
-        #endif
         {
             if (TryInterface(type, out elementType))
             {
@@ -140,19 +136,13 @@ namespace NCoreUtils.Data.Internal
 
         protected abstract IAsyncEnumerable<TElement> ExecuteQuery<TElement>(IQueryable<TElement> source);
 
-        #if NETSTANDARD2_1
         protected virtual bool TryExtractQueryableCallArguments(
             MethodCallExpression expression,
             [NotNullWhen(true)] out IQueryable? source,
             [NotNullWhen(true)] out IReadOnlyList<Expression>? arguments)
-        #else
-        protected virtual bool TryExtractQueryableCallArguments(
-            MethodCallExpression expression,
-            out IQueryable source,
-            out IReadOnlyList<Expression> arguments)
-        #endif
         {
-            if (expression.Method.DeclaringType.Equals(typeof(Queryable)) && expression.Arguments.Count > 0 && expression.Arguments[0].TryExtractQueryable(out var queryable))
+            if (expression.Method.DeclaringType is not null && expression.Method.DeclaringType.Equals(typeof(Queryable))
+                && expression.Arguments.Count > 0 && expression.Arguments[0].TryExtractQueryable(out var queryable))
             {
                 source = queryable;
                 var args = new List<Expression>(expression.Arguments.Count - 1);
@@ -163,13 +153,8 @@ namespace NCoreUtils.Data.Internal
                 arguments = args;
                 return true;
             }
-            #if NETSTANDARD2_1
             source = default;
             arguments = default;
-            #else
-            source = default!;
-            arguments = default!;
-            #endif
             return false;
         }
 
@@ -211,6 +196,7 @@ namespace NCoreUtils.Data.Internal
             return (IQueryable<TElement>)CreateQuery(expression);
         }
 
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Only preserved types should be handled here.")]
         public virtual object Execute(Expression expression)
         {
             Type resultType;
@@ -222,14 +208,15 @@ namespace NCoreUtils.Data.Internal
             {
                 resultType = expression.Type;
             }
-            return _gmExecute.MakeGenericMethod(resultType).Invoke(this, new object[] { expression });
+            return _gmExecute.MakeGenericMethod(resultType).Invoke(this, new object[] { expression })!;
         }
 
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Only preserved types should be handled here.")]
         public virtual TResult Execute<TResult>(Expression expression)
         {
             if (TryGetEnumerableElementType(typeof(TResult), out var elementType))
             {
-                return (TResult)_gmExecuteEnumerable.MakeGenericMethod(elementType).Invoke(this, new object[] { expression });
+                return (TResult)_gmExecuteEnumerable.MakeGenericMethod(elementType).Invoke(this, new object[] { expression })!;
             }
             return ExecuteAsync<TResult>(expression, CancellationToken.None).GetAwaiter().GetResult();
         }

@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 using NCoreUtils.Data.Events;
@@ -34,15 +35,19 @@ namespace NCoreUtils.Data
                 => Observer(@event, cancellationToken);
         }
 
-        sealed class TypeObserver : IDataEventHandler
+        private sealed class TypeObserver : IDataEventHandler
         {
             public TargetOperation ObservedOperations { get; }
 
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
             public Type ObservedType { get; }
 
             public Func<IDataEvent, CancellationToken, ValueTask> Observer { get; }
 
-            public TypeObserver(Type observedType, TargetOperation observedOperations, Func<IDataEvent, CancellationToken, ValueTask> observer)
+            public TypeObserver(
+                [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] Type observedType,
+                TargetOperation observedOperations,
+                Func<IDataEvent, CancellationToken, ValueTask> observer)
             {
                 ObservedOperations = observedOperations;
                 ObservedType = observedType;
@@ -51,7 +56,7 @@ namespace NCoreUtils.Data
 
             public ValueTask HandleAsync(IDataEvent @event, CancellationToken cancellationToken = default)
             {
-                if (ObservedOperations.HasFlag(@event.Operation) && @event.EntityType.Equals(ObservedType))
+                if (ObservedOperations.HasFlag((TargetOperation)@event.Operation) && @event.EntityType.Equals(ObservedType))
                 {
                    return Observer(@event, cancellationToken);
                 }
@@ -59,7 +64,7 @@ namespace NCoreUtils.Data
             }
         }
 
-        sealed class TypeObserver<T> : IDataEventHandler
+        private sealed class TypeObserver<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T> : IDataEventHandler
             where T : class
         {
             public TargetOperation ObservedOperations { get; }
@@ -74,7 +79,7 @@ namespace NCoreUtils.Data
 
             public ValueTask HandleAsync(IDataEvent @event, CancellationToken cancellationToken = default)
             {
-                if (ObservedOperations.HasFlag(@event.Operation) && @event is IDataEvent<T> e)
+                if (ObservedOperations.HasFlag((TargetOperation)@event.Operation) && @event is IDataEvent<T> e)
                 {
                    return Observer(e, cancellationToken);
                 }
@@ -82,7 +87,7 @@ namespace NCoreUtils.Data
             }
         }
 
-        sealed class OperationObserver : IDataEventHandler
+        private sealed class OperationObserver : IDataEventHandler
         {
             public DataOperation Operation { get; }
 
@@ -104,7 +109,7 @@ namespace NCoreUtils.Data
             }
         }
 
-        sealed class OperationObserver<TData, TEvent> : IDataEventHandler
+        private sealed class OperationObserver<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] TData, TEvent> : IDataEventHandler
             where TData : class
             where TEvent : IDataEvent
         {
@@ -141,7 +146,10 @@ namespace NCoreUtils.Data
         /// <param name="operations">Operations being handled by the observer function.</param>
         /// <param name="observer">Data event observer function.</param>
         /// <returns>Newly created data event handler.</returns>
-        public static IDataEventHandler CreateObserver(Type entityType, TargetOperation operations, Func<IDataEvent, CancellationToken, ValueTask> observer)
+        public static IDataEventHandler CreateObserver(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] Type entityType,
+            TargetOperation operations,
+            Func<IDataEvent, CancellationToken, ValueTask> observer)
         {
             if (entityType == null)
             {
@@ -161,7 +169,9 @@ namespace NCoreUtils.Data
         /// <param name="entityType">Type of the data entity being handled by the observer function.</param>
         /// <param name="observer">Data event observer function.</param>
         /// <returns>Newly created data event handler.</returns>
-        public static IDataEventHandler CreateObserver(Type entityType, Func<IDataEvent, CancellationToken, ValueTask> observer)
+        public static IDataEventHandler CreateObserver(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] Type entityType,
+            Func<IDataEvent, CancellationToken, ValueTask> observer)
             => CreateObserver(entityType, TargetOperation.Insert | TargetOperation.Update | TargetOperation.Delete, observer);
 
         /// <summary>
@@ -172,7 +182,9 @@ namespace NCoreUtils.Data
         /// <param name="operations">Operations being handled by the observer function.</param>
         /// <param name="observer">Data event observer function.</param>
         /// <returns>Newly created data event handler.</returns>
-        public static IDataEventHandler CreateObserver<T>(TargetOperation operations, Func<IDataEvent<T>, CancellationToken, ValueTask> observer)
+        public static IDataEventHandler CreateObserver<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T>(
+            TargetOperation operations,
+            Func<IDataEvent<T>, CancellationToken, ValueTask> observer)
             where T : class
         {
             if (observer == null)
@@ -189,7 +201,8 @@ namespace NCoreUtils.Data
         /// <typeparam name="T">Type of the data entity being handled by the observer function.</typeparam>
         /// <param name="observer">Data event observer function.</param>
         /// <returns>Newly created data event handler.</returns>
-        public static IDataEventHandler CreateObserver<T>(Func<IDataEvent<T>, CancellationToken, ValueTask> observer)
+        public static IDataEventHandler CreateObserver<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T>(
+            Func<IDataEvent<T>, CancellationToken, ValueTask> observer)
             where T : class
             => CreateObserver(TargetOperation.Insert | TargetOperation.Update | TargetOperation.Delete, observer);
 
@@ -243,7 +256,8 @@ namespace NCoreUtils.Data
         /// <typeparam name="T">Type of the data entity being handled by the observer function.</typeparam>
         /// <param name="observer">Data event observer function.</param>
         /// <returns>Newly created data event handler.</returns>
-        public static IDataEventHandler CreateUpdateObserver<T>(Func<DataUpdateEvent<T>, CancellationToken, ValueTask> observer)
+        public static IDataEventHandler CreateUpdateObserver<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T>(
+            Func<DataUpdateEvent<T>, CancellationToken, ValueTask> observer)
             where T : class
             => new OperationObserver<T, DataUpdateEvent<T>>(observer);
 
@@ -254,7 +268,8 @@ namespace NCoreUtils.Data
         /// <typeparam name="T">Type of the data entity being handled by the observer function.</typeparam>
         /// <param name="observer">Data event observer function.</param>
         /// <returns>Newly created data event handler.</returns>
-        public static IDataEventHandler CreateInsertObserver<T>(Func<DataInsertEvent<T>, CancellationToken, ValueTask> observer)
+        public static IDataEventHandler CreateInsertObserver<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T>(
+            Func<DataInsertEvent<T>, CancellationToken, ValueTask> observer)
             where T : class
             => new OperationObserver<T, DataInsertEvent<T>>(observer);
 
@@ -265,7 +280,8 @@ namespace NCoreUtils.Data
         /// <typeparam name="T">Type of the data entity being handled by the observer function.</typeparam>
         /// <param name="observer">Data event observer function.</param>
         /// <returns>Newly created data event handler.</returns>
-        public static IDataEventHandler CreateDeleteObserver<T>(Func<DataUpdateEvent<T>, CancellationToken, ValueTask> observer)
+        public static IDataEventHandler CreateDeleteObserver<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T>(
+            Func<DataUpdateEvent<T>, CancellationToken, ValueTask> observer)
             where T : class
             => new OperationObserver<T, DataUpdateEvent<T>>(observer);
 
@@ -284,8 +300,23 @@ namespace NCoreUtils.Data
         /// <param name="entityType">Type of the data entity being handled by the observer function.</param>
         /// <param name="func">Data event observer function.</param>
         /// <returns>Newly created data event handler.</returns>
-        public static IDataEventHandler CreateObserverFrom(Type entityType, Func<IServiceProvider, DataOperation, object, CancellationToken, ValueTask> func)
+        public static IDataEventHandler CreateObserverFrom(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] Type entityType,
+            Func<IServiceProvider, DataOperation, object, CancellationToken, ValueTask> func)
             => CreateObserver(entityType, (e, token) => func(e.ServiceProvider, e.Operation, e.Entity, token));
+
+
+        private sealed class CreateObserverFromTInvoker<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T>
+            where T : class
+        {
+            private Func<IServiceProvider, DataOperation, T, CancellationToken, ValueTask> Func { get; }
+
+            public CreateObserverFromTInvoker(Func<IServiceProvider, DataOperation, T, CancellationToken, ValueTask> func)
+                => Func = func ?? throw new ArgumentNullException(nameof(func));
+
+            public ValueTask Invoke(IDataEvent<T> e, CancellationToken cancellationToken)
+                => Func(e.ServiceProvider, e.Operation, e.Entity, cancellationToken);
+        }
 
         /// <summary>
         /// Creates data event handler from the specified function that will be invoked only for the specified entity
@@ -294,9 +325,22 @@ namespace NCoreUtils.Data
         /// <typeparam name="T">Type of the data entity being handled by the observer function.</typeparam>
         /// <param name="func">Data event observer function.</param>
         /// <returns>Newly created data event handler.</returns>
-        public static IDataEventHandler CreateObserverFrom<T>(Func<IServiceProvider, DataOperation, T, CancellationToken, ValueTask> func)
+        public static IDataEventHandler CreateObserverFrom<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T>(
+            Func<IServiceProvider, DataOperation, T, CancellationToken, ValueTask> func)
             where T : class
-            => CreateObserver<T>((e, token) => func(e.ServiceProvider, e.Operation, e.Entity, token));
+            => CreateObserver<T>(new CreateObserverFromTInvoker<T>(func).Invoke);
+
+        private sealed class CreateUpdateObserverFromTInvoker<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T>
+            where T : class
+        {
+            private Func<IServiceProvider, T, CancellationToken, ValueTask> Func { get; }
+
+            public CreateUpdateObserverFromTInvoker(Func<IServiceProvider, T, CancellationToken, ValueTask> func)
+                => Func = func ?? throw new ArgumentNullException(nameof(func));
+
+            public ValueTask Invoke(IDataEvent<T> e, CancellationToken cancellationToken)
+                => Func(e.ServiceProvider, e.Entity, cancellationToken);
+        }
 
         /// <summary>
         /// Creates data event handler from the specified function that will be invoked only for the specified entity
@@ -305,9 +349,22 @@ namespace NCoreUtils.Data
         /// <typeparam name="T">Type of the data entity being handled by the observer function.</typeparam>
         /// <param name="func">Data event observer function.</param>
         /// <returns>Newly created data event handler.</returns>
-        public static IDataEventHandler CreateUpdateObserverFrom<T>(Func<IServiceProvider, T, CancellationToken, ValueTask> func)
+        public static IDataEventHandler CreateUpdateObserverFrom<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T>(
+            Func<IServiceProvider, T, CancellationToken, ValueTask> func)
             where T : class
-            => CreateUpdateObserver<T>((e, token) => func(e.ServiceProvider, e.Entity, token));
+            => CreateUpdateObserver<T>(new CreateUpdateObserverFromTInvoker<T>(func).Invoke);
+
+        private sealed class CreateInsertObserverFromTInvoker<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T>
+            where T : class
+        {
+            private Func<IServiceProvider, T, CancellationToken, ValueTask> Func { get; }
+
+            public CreateInsertObserverFromTInvoker(Func<IServiceProvider, T, CancellationToken, ValueTask> func)
+                => Func = func ?? throw new ArgumentNullException(nameof(func));
+
+            public ValueTask Invoke(IDataEvent<T> e, CancellationToken cancellationToken)
+                => Func(e.ServiceProvider, e.Entity, cancellationToken);
+        }
 
         /// <summary>
         /// Creates data event handler from the specified function that will be invoked only for the specified entity
@@ -316,9 +373,22 @@ namespace NCoreUtils.Data
         /// <typeparam name="T">Type of the data entity being handled by the observer function.</typeparam>
         /// <param name="func">Data event observer function.</param>
         /// <returns>Newly created data event handler.</returns>
-        public static IDataEventHandler CreateInsertObserverFrom<T>(Func<IServiceProvider, T, CancellationToken, ValueTask> func)
+        public static IDataEventHandler CreateInsertObserverFrom<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T>(
+            Func<IServiceProvider, T, CancellationToken, ValueTask> func)
             where T : class
-            => CreateInsertObserver<T>((e, token) => func(e.ServiceProvider, e.Entity, token));
+            => CreateInsertObserver<T>(new CreateInsertObserverFromTInvoker<T>(func).Invoke);
+
+        private sealed class CreateDeleteObserverFromTInvoker<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T>
+            where T : class
+        {
+            private Func<IServiceProvider, T, CancellationToken, ValueTask> Func { get; }
+
+            public CreateDeleteObserverFromTInvoker(Func<IServiceProvider, T, CancellationToken, ValueTask> func)
+                => Func = func ?? throw new ArgumentNullException(nameof(func));
+
+            public ValueTask Invoke(IDataEvent<T> e, CancellationToken cancellationToken)
+                => Func(e.ServiceProvider, e.Entity, cancellationToken);
+        }
 
         /// <summary>
         /// Creates data event handler from the specified function that will be invoked only for the specified entity
@@ -327,9 +397,10 @@ namespace NCoreUtils.Data
         /// <typeparam name="T">Type of the data entity being handled by the observer function.</typeparam>
         /// <param name="func">Data event observer function.</param>
         /// <returns>Newly created data event handler.</returns>
-        public static IDataEventHandler CreateDeleteObserverFrom<T>(Func<IServiceProvider, T, CancellationToken, ValueTask> func)
+        public static IDataEventHandler CreateDeleteObserverFrom<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T>(
+            Func<IServiceProvider, T, CancellationToken, ValueTask> func)
             where T : class
-            => CreateDeleteObserver<T>((e, token) => func(e.ServiceProvider, e.Entity, token));
+            => CreateDeleteObserver<T>(new CreateDeleteObserverFromTInvoker<T>(func).Invoke);
 
     }
 }

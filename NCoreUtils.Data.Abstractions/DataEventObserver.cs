@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 using NCoreUtils.Data.Events;
@@ -29,7 +30,7 @@ namespace NCoreUtils.Data
     /// <summary>
     /// Base class of the typed data event observer.
     /// </summary>
-    public abstract class DataEventObserver<T> : IDataEventHandler
+    public abstract class DataEventObserver<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T> : IDataEventHandler
         where T : class
     {
         /// <summary>

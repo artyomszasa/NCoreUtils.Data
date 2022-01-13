@@ -44,7 +44,7 @@ namespace NCoreUtils.Data.Build
             {
                 if (propertyType.IsValueType && !propertyType.IsNullable())
                 {
-                    throw new InvalidOperationException($"null is not a valid value for {Property.PropertyType.Name} {Property.DeclaringType.Name}.{Property.Name}");
+                    throw new InvalidOperationException($"null is not a valid value for {Property.PropertyType.Name} {Property.DeclaringType?.Name ?? "<<unknown>>"}.{Property.Name}");
                 }
             }
             else
@@ -52,7 +52,7 @@ namespace NCoreUtils.Data.Build
                 var valueType = value.GetType();
                 if (!propertyType.IsAssignableFrom(valueType))
                 {
-                    throw new InvalidOperationException($"{value} is not a valid value for {Property.PropertyType.Name} {Property.DeclaringType.Name}.{Property.Name}");
+                    throw new InvalidOperationException($"{value} is not a valid value for {Property.PropertyType.Name} {Property.DeclaringType?.Name  ?? "<<unknown>>"}.{Property.Name}");
                 }
             }
             return SetMetadata(CommonMetadata.DefaultValue, value);

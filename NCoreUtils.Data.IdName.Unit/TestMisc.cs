@@ -14,6 +14,7 @@ using Moq;
 using NCoreUtils.Data.Events;
 using NCoreUtils.Data.IdNameGeneration;
 using NCoreUtils.Text;
+using NCoreUtils.Text.Internal;
 using Xunit;
 
 namespace NCoreUtils.Data.Unit
@@ -31,7 +32,7 @@ namespace NCoreUtils.Data.Unit
 
             public bool IsEnabled(LogLevel logLevel) => false;
 
-            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
             { }
         }
 
@@ -48,7 +49,7 @@ namespace NCoreUtils.Data.Unit
 
         class Box<T>
         {
-            public T Value { get; set; }
+            public T Value { get; set; } = default!;
 
             public Box(T value) => Value = value;
 
@@ -62,7 +63,7 @@ namespace NCoreUtils.Data.Unit
 
         class HasId<T> : IHasId<T>
         {
-            public T Id { get; set; }
+            public T Id { get; set; } = default!;
         }
 
         class CtorOnly
@@ -74,7 +75,7 @@ namespace NCoreUtils.Data.Unit
 
         class DataEventHandler : IDataEventHandler
         {
-            readonly List<IDataEvent> _events = new List<IDataEvent>();
+            readonly List<IDataEvent> _events = new();
 
             public IReadOnlyList<IDataEvent> Events => _events;
 
@@ -85,7 +86,7 @@ namespace NCoreUtils.Data.Unit
             }
         }
 
-        DbContext MockDbContext(string providerName)
+        static DbContext MockDbContext(string providerName)
         {
             var dbContextBox = new Box<DbContext>();
             var mockDbContext = new Mock<DbContext>(MockBehavior.Strict);
@@ -109,7 +110,7 @@ namespace NCoreUtils.Data.Unit
         [Fact]
         public void TestIdNameGenerationInitialization()
         {
-            Assert.Throws<ArgumentNullException>(() => new IdNameGenerationInitialization(null, null));
+            Assert.Throws<ArgumentNullException>(() => new IdNameGenerationInitialization(null!, null));
             Assert.Throws<InvalidOperationException>(() => new IdNameGenerationInitialization(MockDbContext("NoNamespace.NoClass"), null));
         }
 
@@ -118,14 +119,14 @@ namespace NCoreUtils.Data.Unit
         {
             var dbContext = MockDbContext("Npgsql.EntityFrameworkCore.PostgreSQL");
             var initialization = new IdNameGenerationInitialization(dbContext, null);
-            var libicu = new Text.Internal.LibicuResolver(new DummyLogger<Text.Internal.LibicuResolver>()).GetInstance();
-            var simplifier = new StringSimplifier(libicu, '-', RuneSimplifiers.German, RuneSimplifiers.Russian);
+            var libicu = new Text.Internal.LibicuResolver(new DummyLogger<LibicuResolver>()).GetInstance();
+            var simplifier = new StringSimplifier(new LibicuDecomposer(libicu), '-', RuneSimplifiers.German, RuneSimplifiers.Russian);
 
-            var err = Assert.Throws<ArgumentNullException>(() => new SqlIdNameGenerator(null, dbContext, simplifier));
+            var err = Assert.Throws<ArgumentNullException>(() => new SqlIdNameGenerator(null!, dbContext, simplifier));
             Assert.Equal("initialization", err.ParamName);
-            err = Assert.Throws<ArgumentNullException>(() => new SqlIdNameGenerator(initialization, null, simplifier));
+            err = Assert.Throws<ArgumentNullException>(() => new SqlIdNameGenerator(initialization, null!, simplifier));
             Assert.Equal("dbContext", err.ParamName);
-            err = Assert.Throws<ArgumentNullException>(() => new SqlIdNameGenerator(initialization, dbContext, null));
+            err = Assert.Throws<ArgumentNullException>(() => new SqlIdNameGenerator(initialization, dbContext, null!));
             Assert.Equal("simplifier", err.ParamName);
         }
 
@@ -159,18 +160,20 @@ namespace NCoreUtils.Data.Unit
             Expression<Func<HasId<short>, int>> expr2 = x => (int)x.Id;
             Expression<Func<Item, object>> expr3 = x => new { x.Id, x.IdName };
             Expression<Func<Item, CtorOnly>> expr4 = x => new CtorOnly(x.Id);
-            Assert.Throws<ArgumentNullException>(() => ExpressionExtensions.MaybeExtractProperty(null));
+            Assert.Throws<ArgumentNullException>(() => ExpressionExtensions.MaybeExtractProperty(null!));
             Assert.False(expr0.MaybeExtractProperty().HasValue);
             Assert.False(expr1.MaybeExtractProperty().HasValue);
             Assert.True(expr2.MaybeExtractProperty().HasValue);
             Assert.Throws<InvalidOperationException>(() => expr0.ExtractProperty());
             Assert.Throws<InvalidOperationException>(() => expr1.ExtractProperty());
             Assert.Throws<InvalidOperationException>(() => expr1.ExtractProperties().ToList());
-            Assert.Throws<ArgumentNullException>(() => ExpressionExtensions.MaybeExtractQueryable(null));
-            Assert.Throws<ArgumentNullException>(() => ExpressionExtensions.ExtractProperties(null).ToList());
+            Assert.Throws<ArgumentNullException>(() => ExpressionExtensions.ExtractProperties(null!).ToList());
             Assert.Equal(new [] { typeof(HasId<short>).GetProperty(nameof(HasId<short>.Id)) }, expr2.ExtractProperties().ToArray());
             Assert.Empty(expr1.ExtractProperties(false).ToList());
-            Assert.Equal(new HashSet<PropertyInfo>(new [] { typeof(Item).GetProperty(nameof(Item.Id)), typeof(Item).GetProperty(nameof(Item.IdName)) }), new HashSet<PropertyInfo>(expr3.ExtractProperties()));
+            Assert.Equal(
+                new HashSet<PropertyInfo>(new [] { typeof(Item).GetProperty(nameof(Item.Id)), typeof(Item).GetProperty(nameof(Item.IdName)) }!),
+                new HashSet<PropertyInfo>(expr3.ExtractProperties())
+            );
             Assert.Empty(expr4.ExtractProperties(false).ToList());
             Assert.Throws<InvalidOperationException>(() => expr4.ExtractProperties().ToList());
         }
@@ -178,8 +181,8 @@ namespace NCoreUtils.Data.Unit
         [Fact]
         public void TestDummyStringDecomposition()
         {
-            string input = null;
-            Assert.Throws<ArgumentNullException>(() => (DummyStringDecomposition)input);
+            string? input = null;
+            Assert.Throws<ArgumentNullException>(() => (DummyStringDecomposition)input!);
         }
 
         [Fact]
@@ -187,7 +190,7 @@ namespace NCoreUtils.Data.Unit
         {
             {
                 string input = "file.ext";
-                Assert.Throws<ArgumentNullException>(() => new FileNameDecomposition(null));
+                Assert.Throws<ArgumentNullException>(() => new FileNameDecomposition(null!));
                 var decomposition = new FileNameDecomposition(input);
                 Assert.Equal(".ext", decomposition.Extension);
                 Assert.Equal("file", decomposition.MainPart);
@@ -198,7 +201,7 @@ namespace NCoreUtils.Data.Unit
             // DECOMPOSER
             {
                 string input = "file.ext";
-                Assert.Throws<ArgumentNullException>(() => FileNameDecomposition.Decomposer.Decompose(null));
+                Assert.Throws<ArgumentNullException>(() => FileNameDecomposition.Decomposer.Decompose(null!));
                 var decomposition = Assert.IsType<FileNameDecomposition>(FileNameDecomposition.Decomposer.Decompose(input));
                 Assert.Equal(".ext", decomposition.Extension);
                 Assert.Equal("file", decomposition.MainPart);
@@ -209,7 +212,7 @@ namespace NCoreUtils.Data.Unit
             // NO EXT
             {
                 string input = "filenoext";
-                Assert.Throws<ArgumentNullException>(() => new FileNameDecomposition(null));
+                Assert.Throws<ArgumentNullException>(() => new FileNameDecomposition(null!));
                 var decomposition = new FileNameDecomposition(input);
                 Assert.Null(decomposition.Extension);
                 Assert.Equal(input, decomposition.MainPart);
@@ -225,9 +228,9 @@ namespace NCoreUtils.Data.Unit
             var builder = new IdNameDescriptionBuilder<Item>();
             builder.SetIdNameProperty(i => i.IdName);
             Assert.Equal(typeof(Item).GetProperty(nameof(Item.IdName)), builder.IdNameProperty);
-            builder.AddAdditionalIndexProperties(new [] { typeof(Item).GetProperty(nameof(Item.IdName)) });
+            builder.AddAdditionalIndexProperties(new [] { typeof(Item).GetProperty(nameof(Item.IdName)) }!);
             Assert.All(builder.AdditionalIndexProperties, p => p.Equals(typeof(Item).GetProperty(nameof(Item.IdName))));
-            Assert.Throws<ArgumentNullException>("properties", () => builder.AddAdditionalIndexProperties(null));
+            Assert.Throws<ArgumentNullException>("properties", () => builder.AddAdditionalIndexProperties(null!));
         }
 
         [Fact]
@@ -236,8 +239,8 @@ namespace NCoreUtils.Data.Unit
             var item = new Item();
             IDataRepository<Item> repository = new Mock<IDataRepository<Item>>().Object;
             var realHandler = new DataEventHandler();
-            Assert.Throws<ArgumentNullException>(() => DataEventFilter.Filter(null, (e, _) => new ValueTask<bool>(e.Operation == DataOperation.Insert)));
-            Assert.Throws<ArgumentNullException>(() => DataEventFilter.Filter(realHandler, null));
+            Assert.Throws<ArgumentNullException>(() => DataEventFilter.Filter(null!, (e, _) => new ValueTask<bool>(e.Operation == DataOperation.Insert)));
+            Assert.Throws<ArgumentNullException>(() => DataEventFilter.Filter(realHandler, null!));
             var handler = DataEventFilter.Filter(realHandler, (e, _) =>
             {
                 switch (e)
@@ -276,24 +279,24 @@ namespace NCoreUtils.Data.Unit
         [Fact]
         public void TestDataRepositoryExtensions()
         {
-            Assert.Throws<ArgumentNullException>(() => DataRepositoryExtensions.Lookup<Item, int>(null, 0));
-            Assert.Throws<ArgumentNullException>(() => DataRepositoryExtensions.Persist(null, new Item()));
-            Assert.Throws<ArgumentNullException>(() => DataRepositoryExtensions.Remove(null, new Item()));
+            Assert.Throws<ArgumentNullException>(() => DataRepositoryExtensions.Lookup<Item, int>(null!, 0));
+            Assert.Throws<ArgumentNullException>(() => DataRepositoryExtensions.Persist(null!, new Item()));
+            Assert.Throws<ArgumentNullException>(() => DataRepositoryExtensions.Remove(null!, new Item()));
         }
 
         [Fact]
         public void TestDataRepositoryContextExtensions()
         {
             var context = new Mock<IDataRepositoryContext>().Object;
-            Assert.Throws<ArgumentNullException>(() => DataRepositoryContextExtensions.BeginTransaction(null, IsolationLevel.Serializable));
-            Assert.Throws<ArgumentNullException>(() => DataRepositoryContextExtensions.Transacted(null, IsolationLevel.Serializable, () => {}));
-            Assert.Throws<ArgumentNullException>(() => DataRepositoryContextExtensions.Transacted(null, IsolationLevel.Serializable, () => 2));
-            Assert.Throws<ArgumentNullException>(() => DataRepositoryContextExtensions.Transacted(context, IsolationLevel.Serializable, null));
-            Assert.Throws<ArgumentNullException>(() => DataRepositoryContextExtensions.Transacted(context, IsolationLevel.Serializable, (Func<int>)null));
-            Assert.ThrowsAsync<ArgumentNullException>(() => DataRepositoryContextExtensions.TransactedAsync(null, IsolationLevel.Serializable, () => Task.CompletedTask));
-            Assert.ThrowsAsync<ArgumentNullException>(() => DataRepositoryContextExtensions.TransactedAsync(null, IsolationLevel.Serializable, () => Task.FromResult(2)));
-            Assert.ThrowsAsync<ArgumentNullException>(() => DataRepositoryContextExtensions.TransactedAsync(context, IsolationLevel.Serializable, null));
-            Assert.ThrowsAsync<ArgumentNullException>(() => DataRepositoryContextExtensions.TransactedAsync(context, IsolationLevel.Serializable, (Func<Task<int>>)null));
+            Assert.Throws<ArgumentNullException>(() => DataRepositoryContextExtensions.BeginTransaction(null!, IsolationLevel.Serializable));
+            Assert.Throws<ArgumentNullException>(() => DataRepositoryContextExtensions.Transacted(null!, IsolationLevel.Serializable, () => {}));
+            Assert.Throws<ArgumentNullException>(() => DataRepositoryContextExtensions.Transacted(null!, IsolationLevel.Serializable, () => 2));
+            Assert.Throws<ArgumentNullException>(() => DataRepositoryContextExtensions.Transacted(context, IsolationLevel.Serializable, null!));
+            Assert.Throws<ArgumentNullException>(() => DataRepositoryContextExtensions.Transacted(context, IsolationLevel.Serializable, (Func<int>)null!));
+            Assert.ThrowsAsync<ArgumentNullException>(() => DataRepositoryContextExtensions.TransactedAsync(null!, IsolationLevel.Serializable, () => Task.CompletedTask));
+            Assert.ThrowsAsync<ArgumentNullException>(() => DataRepositoryContextExtensions.TransactedAsync(null!, IsolationLevel.Serializable, () => Task.FromResult(2)));
+            Assert.ThrowsAsync<ArgumentNullException>(() => DataRepositoryContextExtensions.TransactedAsync(context, IsolationLevel.Serializable, null!));
+            Assert.ThrowsAsync<ArgumentNullException>(() => DataRepositoryContextExtensions.TransactedAsync(context, IsolationLevel.Serializable, (Func<Task<int>>)null!));
         }
 
         [Fact]

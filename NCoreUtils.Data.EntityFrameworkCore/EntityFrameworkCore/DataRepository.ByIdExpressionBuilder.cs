@@ -32,7 +32,7 @@ namespace NCoreUtils.Data.EntityFrameworkCore
                 return LinqExtensions.ReplaceExplicitProperties(expression);
             }
 
-            static FieldInfo GetIdBoxField(Type ty) => ty.GetField(nameof(IdBox<int>.Value), BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+            static FieldInfo GetIdBoxField(Type ty) => ty.GetField(nameof(IdBox<int>.Value), BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)!;
 
             public static Expression<Func<TData, bool>> CreateFilter(TId id)
             {

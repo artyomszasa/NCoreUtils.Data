@@ -13,7 +13,7 @@ namespace NCoreUtils.Data.IdNameGeneration
         public static IStringDecomposer Decomposer { get; } = new DummyDecomposer();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static implicit operator DummyStringDecomposition(string input) => new DummyStringDecomposition(input);
+        public static implicit operator DummyStringDecomposition(string input) => new(input);
 
         public string MainPart { get; }
 

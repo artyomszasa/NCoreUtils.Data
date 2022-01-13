@@ -15,11 +15,12 @@ namespace NCoreUtils.Data
     /// </summary>
     public static class DataEventHandlerExtensions
     {
-        sealed class DataEventHandlerFactory : IDataEventHandler
+        private sealed class DataEventHandlerFactory : IDataEventHandler
         {
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
             readonly Type _targetHandlerType;
 
-            public DataEventHandlerFactory(Type targetHandlerType)
+            public DataEventHandlerFactory([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type targetHandlerType)
             {
                 _targetHandlerType = targetHandlerType;
             }
@@ -300,27 +301,17 @@ namespace NCoreUtils.Data
         /// </summary>
         /// <param name="handlers"></param>
         /// <returns></returns>
+        [RequiresUnreferencedCode("Only preserved types are loaded.")]
         public static IDataEventHandlers AddImplicitObservers(this IDataEventHandlers handlers)
         {
-            var types = AppDomain.CurrentDomain.GetAssemblies()
-                .SelectMany(assembly =>
-                {
-                    try
-                    {
-                        return assembly.GetTypes()
-                            .Where(ty => typeof(IDataEventHandler).IsAssignableFrom(ty)
-                                    && ty.GetCustomAttribute<ImplicitDataEventObserverAttribute>() != null);
-                    }
-                    catch
-                    {
-                        // TODO: log
-                        return Enumerable.Empty<Type>();
-                    }
-                })
-                .ToList();
-            foreach (var type in types)
+            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
-                handlers.Add(new DataEventHandlerFactory(type));
+                foreach (var type in assembly.GetTypes()
+                    .Where(ty => typeof(IDataEventHandler).IsAssignableFrom(ty)
+                        && ty.GetCustomAttribute<ImplicitDataEventObserverAttribute>() != null))
+                {
+                    handlers.Add(new DataEventHandlerFactory(type));
+                }
             }
             return handlers;
         }

@@ -77,6 +77,6 @@ namespace NCoreUtils.Data
         /// Either data entity from persistent store that has the specified business key, <c>null</c> if no such entity
         /// exists.
         /// </returns>
-        Task<TData> LookupAsync(TId id, CancellationToken cancellationToken = default);
+        Task<TData?> LookupAsync(TId id, CancellationToken cancellationToken = default);
     }
 }

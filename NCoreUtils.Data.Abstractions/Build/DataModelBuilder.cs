@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 using NCoreUtils.Data.Model;
@@ -8,11 +9,7 @@ namespace NCoreUtils.Data.Build
 {
     public class DataModelBuilder : MetadataBuilder
     {
-        private static readonly MethodInfo _gmEntity = typeof(DataModelBuilder)
-            .GetMethods(BindingFlags.Public | BindingFlags.Instance)
-            .First(m => m.IsGenericMethodDefinition && m.Name == nameof(Entity));
-
-        private readonly Dictionary<Type, DataEntityBuilder> _entities = new Dictionary<Type, DataEntityBuilder>();
+        private readonly Dictionary<Type, DataEntityBuilder> _entities = new();
 
         public IReadOnlyCollection<DataEntityBuilder> Entities => _entities.Values;
 
@@ -22,12 +19,20 @@ namespace NCoreUtils.Data.Build
             return this;
         }
 
-        public DataEntityBuilder Entity(Type entityType)
+        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(DataEntityBuilder<>))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.PublicMethods, typeof(DataModelBuilder))] // TODO: only single method
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Dynamic dependency should handle preserving.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2060", Justification = "Dynamic dependency should handle preserving.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "Dynamic dependency should handle preserving.")]
+        public DataEntityBuilder Entity([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] Type entityType)
         {
-            return (DataEntityBuilder)_gmEntity.MakeGenericMethod(entityType).Invoke(this, new object[0]);
+            var gmEntity = typeof(DataModelBuilder)
+                .GetMethods(BindingFlags.Public | BindingFlags.Instance)
+                .First(m => m.IsGenericMethodDefinition && m.Name == nameof(Entity));
+            return (DataEntityBuilder)gmEntity.MakeGenericMethod(entityType).Invoke(this, Array.Empty<object>())!;
         }
 
-        public DataEntityBuilder<T> Entity<T>()
+        public DataEntityBuilder<T> Entity<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T>()
         {
             if (_entities.TryGetValue(typeof(T), out var boxed))
             {
@@ -38,13 +43,15 @@ namespace NCoreUtils.Data.Build
             return builder;
         }
 
-        public DataModelBuilder Entity(Type entityType, Action<DataEntityBuilder> configure)
+        public DataModelBuilder Entity(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] Type entityType,
+            Action<DataEntityBuilder> configure)
         {
             configure(Entity(entityType));
             return this;
         }
 
-        public DataModelBuilder Entity<T>(Action<DataEntityBuilder<T>> configure)
+        public DataModelBuilder Entity<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T>(Action<DataEntityBuilder<T>> configure)
         {
             configure(Entity<T>());
             return this;

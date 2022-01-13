@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,14 +12,24 @@ namespace NCoreUtils.Data.Events
     public static class DataRepositoryDataEventExtensions
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static async ValueTask TriggerAsync<T>(IDataEventHandlers handlers, IDataEvent<T> @event, CancellationToken cancellationToken)
-            where T : class
+        private static async ValueTask DoTriggerAsync(
+            IDataEventHandlers handlers,
+            IDataEvent @event,
+            CancellationToken cancellationToken)
         {
             foreach (var handler in handlers.Handlers)
             {
                 await handler.HandleAsync(@event, cancellationToken);
             }
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static ValueTask TriggerAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T>(
+            IDataEventHandlers handlers,
+            IDataEvent<T> @event,
+            CancellationToken cancellationToken)
+            where T : class
+            => DoTriggerAsync(handlers, @event, cancellationToken);
 
         /// <summary>
         /// Initializes and triggers update event.
@@ -29,7 +40,7 @@ namespace NCoreUtils.Data.Events
         /// <param name="entity">Related entity.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ValueTask TriggerUpdateAsync<T>(
+        public static ValueTask TriggerUpdateAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T>(
             this IDataEventHandlers? handlers,
             IServiceProvider serviceProvider,
             IDataRepository<T> repository,
@@ -53,7 +64,7 @@ namespace NCoreUtils.Data.Events
         /// <param name="entity">Related entity.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ValueTask TriggerInsertAsync<T>(
+        public static ValueTask TriggerInsertAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T>(
             this IDataEventHandlers? handlers,
             IServiceProvider serviceProvider,
             IDataRepository<T> repository,
@@ -77,7 +88,7 @@ namespace NCoreUtils.Data.Events
         /// <param name="entity">Related entity.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ValueTask TriggerDeleteAsync<T>(
+        public static ValueTask TriggerDeleteAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T>(
             this IDataEventHandlers? handlers,
             IServiceProvider serviceProvider,
             IDataRepository<T> repository,

@@ -56,6 +56,6 @@ namespace NCoreUtils.Data.IdNameGeneration
             return this;
         }
 
-        public IdNameDescription Build() => new IdNameDescription(IdNameProperty!, NameSourceProperty!, Decompose!, AdditionalIndexProperties.ToArray());
+        public IdNameDescription Build() => new(IdNameProperty!, NameSourceProperty!, Decompose!, AdditionalIndexProperties.ToArray());
     }
 }

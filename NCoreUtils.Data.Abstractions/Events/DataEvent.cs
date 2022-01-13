@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 
 namespace NCoreUtils.Data.Events
 {
@@ -20,6 +21,7 @@ namespace NCoreUtils.Data.Events
         /// <summary>
         /// Gets the type of the target entity being inserted, updated or removed.
         /// </summary>
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
         public abstract Type EntityType { get; }
 
         /// <summary>
@@ -73,7 +75,7 @@ namespace NCoreUtils.Data.Events
     /// <summary>
     /// Represents base class of data repository related update event for concrete entity type.
     /// </summary>
-    public abstract class DataUpdateEventBase<T> : DataUpdateEvent
+    public abstract class DataUpdateEventBase<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T> : DataUpdateEvent
         where T : class
     {
         /// <summary>
@@ -85,6 +87,7 @@ namespace NCoreUtils.Data.Events
         /// Gets the type of the target entity being updated. Overridden to constantly return type of the generic
         /// parameter.
         /// </summary>
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
         public sealed override Type EntityType => typeof(T);
 
         /// <summary>
@@ -108,7 +111,7 @@ namespace NCoreUtils.Data.Events
     /// <summary>
     /// Represents data repository related update event for concrete entity type.
     /// </summary>
-    public sealed class DataUpdateEvent<T> : DataUpdateEventBase<T>, IDataEvent<T>
+    public sealed class DataUpdateEvent<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T> : DataUpdateEventBase<T>, IDataEvent<T>
         where T : class
     {
         /// <summary>
@@ -124,7 +127,7 @@ namespace NCoreUtils.Data.Events
     /// <summary>
     /// Represents base class of data repository related insert event for concrete entity type.
     /// </summary>
-    public abstract class DataInsertEventBase<T> : DataInsertEvent
+    public abstract class DataInsertEventBase<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T> : DataInsertEvent
         where T : class
     {
         /// <summary>
@@ -136,6 +139,7 @@ namespace NCoreUtils.Data.Events
         /// Gets the type of the target entity being inserted. Overridden to constantly return type of the generic
         /// parameter.
         /// </summary>
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
         public sealed override Type EntityType => typeof(T);
 
         /// <summary>
@@ -159,7 +163,7 @@ namespace NCoreUtils.Data.Events
     /// <summary>
     /// Represents data repository related insert event for concrete entity type.
     /// </summary>
-    public sealed class DataInsertEvent<T> : DataInsertEventBase<T>, IDataEvent<T>
+    public sealed class DataInsertEvent<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T> : DataInsertEventBase<T>, IDataEvent<T>
         where T : class
     {
         /// <summary>
@@ -175,7 +179,7 @@ namespace NCoreUtils.Data.Events
     /// <summary>
     /// Represents base class of data repository related delete event for concrete entity type.
     /// </summary>
-    public abstract class DataDeleteEventBase<T> : DataDeleteEvent
+    public abstract class DataDeleteEventBase<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T> : DataDeleteEvent
         where T : class
     {
         /// <summary>
@@ -187,6 +191,7 @@ namespace NCoreUtils.Data.Events
         /// Gets the type of the target entity being deleted. Overridden to constantly return type of the generic
         /// parameter.
         /// </summary>
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
         public sealed override Type EntityType => typeof(T);
 
         /// <summary>
@@ -210,7 +215,7 @@ namespace NCoreUtils.Data.Events
     /// <summary>
     /// Represents data repository related delete event for concrete entity type.
     /// </summary>
-    public sealed class DataDeleteEvent<T> : DataDeleteEventBase<T>, IDataEvent<T>
+    public sealed class DataDeleteEvent<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T> : DataDeleteEventBase<T>, IDataEvent<T>
         where T : class
     {
         /// <summary>

@@ -9,18 +9,18 @@ namespace NCoreUtils.Data
         public static EntityTypeBuilder<TEntity> HasId<TEntity, TId>(this EntityTypeBuilder<TEntity> builder)
             where TEntity : class, IHasId<TId>
         {
-            var idSelector = LinqExtensions.ReplaceExplicitProperties<Func<TEntity, object>>(e => e.Id!);
-            builder.HasKey(idSelector);
+            var idSelector = LinqExtensions.ReplaceExplicitProperties<Func<TEntity, object?>>(e => e.Id!);
+            builder.HasKey(idSelector!);
             return builder;
         }
 
         public static EntityTypeBuilder<TEntity> HasTimeTracking<TEntity>(this EntityTypeBuilder<TEntity> builder)
             where TEntity : class, IHasTimeTracking
         {
-            var createdSelector = LinqExtensions.ReplaceExplicitProperties<Func<TEntity, object>>(e => e.Created);
-            var updatedSelector = LinqExtensions.ReplaceExplicitProperties<Func<TEntity, object>>(e => e.Updated);
-            builder.HasIndex(createdSelector);
-            builder.HasIndex(updatedSelector);
+            var createdSelector = LinqExtensions.ReplaceExplicitProperties<Func<TEntity, object?>>(e => e.Created);
+            var updatedSelector = LinqExtensions.ReplaceExplicitProperties<Func<TEntity, object?>>(e => e.Updated);
+            builder.HasIndex(createdSelector!);
+            builder.HasIndex(updatedSelector!);
             return builder;
         }
 

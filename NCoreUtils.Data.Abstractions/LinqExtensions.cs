@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -14,11 +15,18 @@ namespace NCoreUtils.Data
         {
             public static ExplicitPropertyVisitor SharedInstance { get; } = new ExplicitPropertyVisitor();
 
+            [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Both method and property is preserved if related branch is reached.")]
+            [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "Both method and property is preserved if related branch is reached.")]
+            [UnconditionalSuppressMessage("Trimming", "IL2075", Justification = "Both method and property is preserved if related branch is reached.")]
+            [UnconditionalSuppressMessage("Trimming", "IL2103", Justification = "Both method and property is preserved if related branch is reached.")]
             protected override Expression VisitMember(MemberExpression node)
             {
-                if (node.Expression != null && node.Expression.NodeType == ExpressionType.Convert && node.Member is PropertyInfo propertyInfo && propertyInfo.CanRead && null != propertyInfo.GetMethod && propertyInfo.DeclaringType.IsInterface)
+                if (node.Expression is not null && node.Expression.NodeType == ExpressionType.Convert
+                    && node.Member is PropertyInfo propertyInfo && propertyInfo.CanRead
+                    && propertyInfo.GetMethod is not null
+                    && propertyInfo.DeclaringType is not null && propertyInfo.DeclaringType.IsInterface)
                 {
-                    var unaryExpression = ((UnaryExpression)node.Expression);
+                    var unaryExpression = (UnaryExpression)node.Expression;
                     if (null == unaryExpression.Method)
                     {
                         var realExpression = unaryExpression.Operand;
@@ -26,17 +34,17 @@ namespace NCoreUtils.Data
                         var mapping = dynamicType.GetInterfaceMap(propertyInfo.DeclaringType);
                         var index = Array.FindIndex(mapping.InterfaceMethods, m => m.Equals(propertyInfo.GetMethod));
                         var implementationMethod = mapping.TargetMethods[index];
-                        propertyInfo = dynamicType.GetProperties(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.FlattenHierarchy)
+                        var realPropertyInfo = dynamicType.GetProperties(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.FlattenHierarchy)
                             .FirstOrDefault(p => p.CanRead && null != p.GetMethod && p.GetMethod.Equals(implementationMethod));
-                        TargetPropertyAttribute attribute;
-                        if (null == propertyInfo)
+                        TargetPropertyAttribute? attribute;
+                        if (null == realPropertyInfo)
                         {
                             // In F# no implementation property is created --> TargetPropertyAttribute placed on method
                             attribute = implementationMethod.GetCustomAttribute<TargetPropertyAttribute>();
                         }
                         else
                         {
-                            attribute = propertyInfo.GetCustomAttribute<TargetPropertyAttribute>();
+                            attribute = realPropertyInfo.GetCustomAttribute<TargetPropertyAttribute>();
                         }
                         if (null != attribute)
                         {
@@ -47,16 +55,16 @@ namespace NCoreUtils.Data
                             }
                             if (!node.Type.IsAssignableFrom(targetPropertyInfo.PropertyType))
                             {
-                                throw new InvalidOperationException($"{dynamicType.FullName}.{attribute.PropertyName} is not compatible with {dynamicType.FullName}.{propertyInfo?.Name}.");
+                                throw new InvalidOperationException($"{dynamicType.FullName}.{attribute.PropertyName} is not compatible with {dynamicType.FullName}.{realPropertyInfo?.Name}.");
                             }
-                            return Expression.Property(base.Visit(realExpression), targetPropertyInfo);
+                            return Expression.Property(Visit(realExpression), targetPropertyInfo);
                         }
-                        return Expression.Property(base.Visit(realExpression), implementationMethod);
+                        return Expression.Property(Visit(realExpression), implementationMethod);
                     }
                 }
                 if (node.Expression != null && node.Member is PropertyInfo ownProperty && ownProperty.CanRead && null != ownProperty.GetMethod)
                 {
-                    if (ownProperty.DeclaringType.IsInterface)
+                    if (ownProperty.DeclaringType is not null && ownProperty.DeclaringType.IsInterface)
                     {
                         var dynamicType = node.Expression.Type;
                         var mapping = dynamicType.GetInterfaceMap(ownProperty.DeclaringType);
@@ -68,18 +76,23 @@ namespace NCoreUtils.Data
                     var attribute = ownProperty.GetCustomAttribute<TargetPropertyAttribute>();
                     if (null != attribute)
                     {
-                        var targetPropertyInfo = ownProperty.DeclaringType.GetProperty(attribute.PropertyName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                        var targetPropertyInfo = ownProperty.DeclaringType?.GetProperty(attribute.PropertyName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                        var declaringTypeName = ownProperty.DeclaringType switch
+                        {
+                            null => "<<unknown>>",
+                            var ty => ty.FullName
+                        };
                         if (null == targetPropertyInfo)
                         {
-                            throw new InvalidOperationException($"{ownProperty.DeclaringType.FullName} has no property with name {attribute.PropertyName}.");
+                            throw new InvalidOperationException($"{declaringTypeName} has no property with name {attribute.PropertyName}.");
                         }
                         if (!node.Type.IsAssignableFrom(targetPropertyInfo.PropertyType))
                         {
-                            throw new InvalidOperationException($"{ownProperty.DeclaringType.FullName}.{attribute.PropertyName} is not compatible with {ownProperty.DeclaringType.FullName}.{ownProperty.Name}.");
+                            throw new InvalidOperationException($"{declaringTypeName}.{attribute.PropertyName} is not compatible with {declaringTypeName}.{ownProperty.Name}.");
                         }
-                        return Expression.Property(base.Visit(node.Expression), targetPropertyInfo);
+                        return Expression.Property(Visit(node.Expression), targetPropertyInfo);
                     }
-                    return Expression.Property(base.Visit(node.Expression), ownProperty);
+                    return Expression.Property(Visit(node.Expression), ownProperty);
                 }
                 return base.VisitMember(node);
             }

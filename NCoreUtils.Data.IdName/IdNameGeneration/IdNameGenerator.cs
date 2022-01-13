@@ -1,18 +1,18 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using NCoreUtils.Linq;
-using NCoreUtils.Text;
 
 namespace NCoreUtils.Data.IdNameGeneration
 {
     public class IdNameGenerator : IIdNameGenerator
     {
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
         private class Box<T>
         {
             public T Value;
@@ -21,20 +21,25 @@ namespace NCoreUtils.Data.IdNameGeneration
                 => Value = value;
         }
 
-        static Expression BoxedContstant(object value, Type type)
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Used internally.")]
+        private static Expression BoxedContstant(
+            object? value,
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type type)
         {
             var boxType = typeof(Box<>).MakeGenericType(type);
-            var field = boxType.GetField(nameof(Box<int>.Value));
-            var ctor = boxType.GetConstructor(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, new [] { type }, null);
-            var box = ctor.Invoke(new object[] { value });
+            var field = boxType.GetField(nameof(Box<int>.Value))
+                ?? throw new InvalidOperationException($"Could not get Value field for Box<{type}>. Consider preserving types explicitly.");
+            var ctor = boxType.GetConstructor(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, new [] { type }, null)
+                ?? throw new InvalidOperationException($"Could not get ctor for Box<{type}>. Consider preserving types explicitly.");
+            var box = ctor.Invoke(new object?[] { value });
             return Expression.Field(Expression.Constant(box, boxType), field);
         }
 
-        readonly IStringSimplifier _simplifier;
+        private IStringSimplifier Simplifier { get; }
 
         public IdNameGenerator(IStringSimplifier simplifier)
         {
-            _simplifier = simplifier ?? throw new ArgumentNullException(nameof(simplifier));
+            Simplifier = simplifier ?? throw new ArgumentNullException(nameof(simplifier));
         }
 
         internal async Task<string> GenerateAsync<T>(
@@ -50,7 +55,7 @@ namespace NCoreUtils.Data.IdNameGeneration
             }
             cancellationToken.ThrowIfCancellationRequested();
             var decomposition = idNameDescription.Decomposer.Decompose(name);
-            var simplified = _simplifier.Simplify(decomposition.MainPart);
+            var simplified = Simplifier.Simplify(decomposition.MainPart);
             string? result = default;
             for (var index = 0; result is null; ++index)
             {
@@ -106,7 +111,7 @@ namespace NCoreUtils.Data.IdNameGeneration
                 var compositePredicate = Expression.Lambda<Func<T, bool>>(predicates.Aggregate((a, b) => Expression.AndAlso(a, b)), eArg);
                 query = directQuery.Where(compositePredicate);
             }
-            return GenerateAsync<T>(query, idNameDescription, name, cancellationToken);
+            return GenerateAsync(query, idNameDescription, name, cancellationToken);
         }
 
         public Task<string> GenerateAsync<T>(
@@ -136,7 +141,9 @@ namespace NCoreUtils.Data.IdNameGeneration
                 var predicate = Expression.Lambda<Func<T, bool>>(allPredicates, eArg);
                 query = directQuery.Where(predicate);
             }
-            return GenerateAsync<T>(query, idNameDescription, (string)idNameDescription.NameSourceProperty.GetValue(entity, null), cancellationToken);
+            var nameSource = idNameDescription.NameSourceProperty.GetValue(entity, null) as string
+                ?? throw new InvalidOperationException($"Unable to get source name for {typeof(T).Name}.");
+            return GenerateAsync(query, idNameDescription, nameSource, cancellationToken);
         }
     }
 }

@@ -1,5 +1,6 @@
 using System;
 using System.Data;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -18,6 +19,7 @@ namespace NCoreUtils.Data
 
         int _isDisposed;
 
+        [UnconditionalSuppressMessage("Trimming", "IL2026")]
         public TestBase(Action<IConfiguration, DbContextOptionsBuilder> initContext)
         {
             var configuration = new ConfigurationBuilder()
@@ -80,7 +82,7 @@ namespace NCoreUtils.Data
         public virtual Task InsertOne() => ScopedAsync(async (serviceProvider, cancellationToken) =>
         {
             var repository = serviceProvider.GetRequiredService<IDataRepository<Item, int>>();
-            var item = await repository.PersistAsync(new Item { Name = "tesztérték" });
+            var item = await repository.PersistAsync(new Item { Name = "tesztérték" }, cancellationToken);
             Assert.NotNull(item.IdName);
             Assert.Equal("tesztertek", item.IdName);
             if (repository is EntityFrameworkCore.DataRepository repo)
@@ -92,7 +94,7 @@ namespace NCoreUtils.Data
                             serviceProvider,
                             repo.IdNameDescription,
                             "tesztérték",
-                            null,
+                            null!,
                             cancellationToken),
                     cancellationToken);
                 Assert.Equal("tesztertek-1", nextName);
@@ -133,10 +135,10 @@ namespace NCoreUtils.Data
         public virtual Task InsertOneWithForeign() => ScopedAsync(async (serviceProvider, cancellationToken) =>
         {
             var repository = serviceProvider.GetRequiredService<IDataRepository<Item2, int>>();
-            var item0 = await repository.PersistAsync(new Item2 { Name = "tesztérték", ForeignId = 1 });
+            var item0 = await repository.PersistAsync(new Item2 { Name = "tesztérték", ForeignId = 1 }, cancellationToken);
             Assert.NotNull(item0.IdName);
             Assert.Equal("tesztertek", item0.IdName);
-            var item1 = await repository.PersistAsync(new Item2 { Name = "tesztérték", ForeignId = 2 });
+            var item1 = await repository.PersistAsync(new Item2 { Name = "tesztérték", ForeignId = 2 }, cancellationToken);
             Assert.NotNull(item1.IdName);
             Assert.Equal("tesztertek", item1.IdName);
 
@@ -144,7 +146,7 @@ namespace NCoreUtils.Data
             {
                 var nextName = await repository.Items.GenerateIdNameAsync(serviceProvider, repo.IdNameDescription, "tesztérték", new { ForeignId = 1 }, cancellationToken);
                 Assert.Equal("tesztertek-1", nextName);
-                await Assert.ThrowsAsync<ArgumentNullException>(() => repository.Items.GenerateIdNameAsync(serviceProvider, repo.IdNameDescription, "tesztérték", null, cancellationToken));
+                await Assert.ThrowsAsync<ArgumentNullException>(() => repository.Items.GenerateIdNameAsync(serviceProvider, repo.IdNameDescription, "tesztérték", null!, cancellationToken));
                 await Assert.ThrowsAsync<InvalidOperationException>(() => repository.Items.GenerateIdNameAsync(serviceProvider, repo.IdNameDescription, "tesztérték", new { X = 2 }, cancellationToken));
 
                 var nonSqlGenerator = new IdNameGeneration.IdNameGenerator(serviceProvider.GetRequiredService<IStringSimplifier>());
@@ -159,12 +161,12 @@ namespace NCoreUtils.Data
             // await repository.PersistAsync(new Item2 { Id = item1.Id, Name = item1.Name, IdName = item1.IdName, ForeignId = item1.ForeignId });
             var item00 = await repository.LookupAsync(item0.Id, cancellationToken);
             Assert.NotNull(item00);
-            Assert.Equal(item0.Id, item00.Id);
+            Assert.Equal(item0.Id, item00!.Id);
             Assert.Equal(item0.IdName, item00.IdName);
             var items = await repository.Items.ToListAsync(cancellationToken);
             Assert.Contains(items, i => i.Id == item0.Id && i.IdName == item0.IdName);
             Assert.Contains(items, i => i.Id == item1.Id && i.IdName == item1.IdName);
-            Assert.Equal(2, items.Count());
+            Assert.Equal(2, items.Count);
         });
 
         public virtual Task InsertTwoWithForeign() => ScopedAsync(async (serviceProvider, cancellationToken) =>
@@ -194,7 +196,7 @@ namespace NCoreUtils.Data
             {
                 var nextName = repository.Context.Transacted(
                     IsolationLevel.Serializable,
-                    () => repository.Items.GenerateIdName(serviceProvider, repo.IdNameDescription, "tesztérték", null)
+                    () => repository.Items.GenerateIdName(serviceProvider, repo.IdNameDescription, "tesztérték", null!)
                 );
                 Assert.Equal("tesztertek-1", nextName);
                 var nonSqlGenerator = new IdNameGeneration.IdNameGenerator(serviceProvider.GetRequiredService<IStringSimplifier>());
@@ -205,9 +207,10 @@ namespace NCoreUtils.Data
             }
             // LOOKUP CHECK
             var item0 = repository.Lookup(item.Id);
-            Assert.Equal(item.IdName, item0.IdName);
+            Assert.NotNull(item0);
+            Assert.Equal(item.IdName, item0!.IdName);
             // UPDATE CHECK
-            Item item1 = null;
+            Item item1 = null!;
             repository.Context.Transacted(IsolationLevel.Serializable, () =>
             {
                 item.Name = "új érték";

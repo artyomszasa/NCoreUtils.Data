@@ -29,8 +29,8 @@ namespace NCoreUtils.Data.IdNameGeneration
             }
             else
             {
-                MainPart = input.Substring(0, extensionIndex);
-                Extension = input.Substring(extensionIndex);
+                MainPart = input[..extensionIndex];
+                Extension = input[extensionIndex..];
             }
         }
 

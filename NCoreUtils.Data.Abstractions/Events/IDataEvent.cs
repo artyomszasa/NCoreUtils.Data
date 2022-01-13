@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 
 namespace NCoreUtils.Data.Events
 {
@@ -20,6 +21,7 @@ namespace NCoreUtils.Data.Events
         /// <summary>
         /// Gets the type of the target entity being inserted, updated or removed.
         /// </summary>
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
         Type EntityType { get; }
 
         /// <summary>
@@ -31,7 +33,7 @@ namespace NCoreUtils.Data.Events
     /// <summary>
     /// Defines functionality implemented by data repository related events within typed environment.
     /// </summary>
-    public interface IDataEvent<T> : IDataEvent
+    public interface IDataEvent<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T> : IDataEvent
         where T : class
     {
         /// <summary>

@@ -6,7 +6,7 @@ namespace NCoreUtils.Data.Internal
     {
         public static int ExtractInt32(this Expression expression)
         {
-            return (int)expression.MaybeExtractConstant().Value;
+            return (int)expression.MaybeExtractConstant().Value!;
         }
     }
 }

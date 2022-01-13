@@ -5,7 +5,7 @@ namespace NCoreUtils.Data
 {
     internal sealed class DataEventHandlers : IDataEventHandlers
     {
-        ImmutableList<IDataEventHandler> _handlers = ImmutableList<IDataEventHandler>.Empty;
+        private ImmutableList<IDataEventHandler> _handlers = ImmutableList<IDataEventHandler>.Empty;
 
         public IDataEventHandler this[int index]
         {

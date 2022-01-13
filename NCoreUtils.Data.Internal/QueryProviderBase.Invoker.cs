@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
@@ -9,26 +10,31 @@ namespace NCoreUtils.Data.Internal
 {
     public partial class QueryProviderBase
     {
-        static class Invoker
+        private static class Invoker
         {
-            static readonly ConcurrentDictionary<Type, OneArgInvoker> _cache1 = new ConcurrentDictionary<Type, OneArgInvoker>();
+            private static readonly ConcurrentDictionary<Type, OneArgInvoker> _cache1 = new();
 
-            static readonly ConcurrentDictionary<(Type, Type), TwoArgsInvoker> _cache2 = new ConcurrentDictionary<(Type, Type), TwoArgsInvoker>();
+            private static readonly ConcurrentDictionary<(Type, Type), TwoArgsInvoker> _cache2 = new();
 
-            static readonly Func<Type, OneArgInvoker> _factory1 = type => (OneArgInvoker)Activator.CreateInstance(typeof(OneArgInvoker<>).MakeGenericType(type));
+            private static readonly Func<Type, OneArgInvoker> _factory1 = CreateOneArgInvoker;
 
-            static readonly Func<(Type, Type), TwoArgsInvoker> _factory2 = types => (TwoArgsInvoker)Activator.CreateInstance(typeof(TwoArgsInvoker<,>).MakeGenericType(types.Item1, types.Item2));
+            private static readonly Func<(Type, Type), TwoArgsInvoker> _factory2 = CreateTwoArgInvoker;
 
-            static (Type, Type) GetSelectorTypes(Expression expression)
+            [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Type arguments from expressions should already be preserved.")]
+            private static OneArgInvoker CreateOneArgInvoker(Type type)
+                => (OneArgInvoker)Activator.CreateInstance(typeof(OneArgInvoker<>).MakeGenericType(type))!;
+
+            [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Type arguments from expressions should already be preserved.")]
+            private static TwoArgsInvoker CreateTwoArgInvoker((Type, Type) types)
+                => (TwoArgsInvoker)Activator.CreateInstance(typeof(TwoArgsInvoker<,>).MakeGenericType(types.Item1, types.Item2))!;
+
+            private static (Type, Type) GetSelectorTypes(Expression expression)
             {
                 var gargs = expression.Type.GetGenericArguments();
-                #if NETSTANDARD2_1
                 return (gargs[0], gargs[^1]);
-                #else
-                return (gargs[0], gargs[gargs.Length - 1]);
-                #endif
             }
 
+            [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TwoArgsInvoker<,>))]
             public static IQueryable ApplyOfType(QueryProviderBase provider, IQueryable source, Type targetType)
             {
                 var key = (source.ElementType, targetType);
@@ -36,6 +42,7 @@ namespace NCoreUtils.Data.Internal
                     .DoApplyOfType(provider, source);
             }
 
+            [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TwoArgsInvoker<,>))]
             public static IQueryable ApplyOrderBy(QueryProviderBase provider, IQueryable source, Expression selector)
             {
                 var key = GetSelectorTypes(selector);
@@ -43,6 +50,7 @@ namespace NCoreUtils.Data.Internal
                     .DoApplyOrderBy(provider, source, selector);
             }
 
+            [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TwoArgsInvoker<,>))]
             public static IQueryable ApplyOrderByDescending(QueryProviderBase provider, IQueryable source, Expression selector)
             {
                 var key = GetSelectorTypes(selector);
@@ -50,6 +58,7 @@ namespace NCoreUtils.Data.Internal
                     .DoApplyOrderByDescending(provider, source, selector);
             }
 
+            [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TwoArgsInvoker<,>))]
             public static IQueryable ApplySelectIndexed(QueryProviderBase provider, IQueryable source, Expression selector)
             {
                 var key = GetSelectorTypes(selector);
@@ -57,6 +66,7 @@ namespace NCoreUtils.Data.Internal
                     .DoApplySelectIndexed(provider, source, selector);
             }
 
+            [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TwoArgsInvoker<,>))]
             public static IQueryable ApplySelectUnindexed(QueryProviderBase provider, IQueryable source, Expression selector)
             {
                 var key = GetSelectorTypes(selector);
@@ -64,14 +74,17 @@ namespace NCoreUtils.Data.Internal
                     .DoApplySelectUnindexed(provider, source, selector);
             }
 
+            [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(OneArgInvoker<>))]
             public static IQueryable ApplySkip(QueryProviderBase provider, IQueryable source, int count)
                 => _cache1.GetOrAdd(source.ElementType, _factory1)
                     .DoApplySkip(provider, source, count);
 
+            [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(OneArgInvoker<>))]
             public static IQueryable ApplyTake(QueryProviderBase provider, IQueryable source, int count)
                 => _cache1.GetOrAdd(source.ElementType, _factory1)
                     .DoApplyTake(provider, source, count);
 
+            [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TwoArgsInvoker<,>))]
             public static IQueryable ApplyThenBy(QueryProviderBase provider, IQueryable source, Expression selector)
             {
                 var key = GetSelectorTypes(selector);
@@ -79,6 +92,7 @@ namespace NCoreUtils.Data.Internal
                     .DoApplyThenBy(provider, source, selector);
             }
 
+            [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TwoArgsInvoker<,>))]
             public static IQueryable ApplyThenByDescending(QueryProviderBase provider, IQueryable source, Expression selector)
             {
                 var key = GetSelectorTypes(selector);
@@ -86,22 +100,27 @@ namespace NCoreUtils.Data.Internal
                     .DoApplyThenByDescending(provider, source, selector);
             }
 
+            [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(OneArgInvoker<>))]
             public static IQueryable ApplyWhereIndexed(QueryProviderBase provider, IQueryable source, Expression predicate)
                 => _cache1.GetOrAdd(source.ElementType, _factory1)
                     .DoApplyWhereUnindexed(provider, source, predicate);
 
+            [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(OneArgInvoker<>))]
             public static IQueryable ApplyWhereUnindexed(QueryProviderBase provider, IQueryable source, Expression predicate)
                 => _cache1.GetOrAdd(source.ElementType, _factory1)
                     .DoApplyWhereUnindexed(provider, source, predicate);
 
+            [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(OneArgInvoker<>))]
             public static Task<bool> ExecuteAll(QueryProviderBase provider, IQueryable source, Expression predicate, CancellationToken cancellationToken)
                 => _cache1.GetOrAdd(source.ElementType, _factory1)
                     .DoExecuteAll(provider, source, predicate, cancellationToken);
 
+            [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(OneArgInvoker<>))]
             public static Task<bool> ExecuteAny(QueryProviderBase provider, IQueryable source, CancellationToken cancellationToken)
                 => _cache1.GetOrAdd(source.ElementType, _factory1)
                     .DoExecuteAny(provider, source, cancellationToken);
 
+            [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(OneArgInvoker<>))]
             public static Task<int> ExecuteCount(QueryProviderBase provider, IQueryable source, CancellationToken cancellationToken)
                 => _cache1.GetOrAdd(source.ElementType, _factory1)
                     .DoExecuteCount(provider, source, cancellationToken);

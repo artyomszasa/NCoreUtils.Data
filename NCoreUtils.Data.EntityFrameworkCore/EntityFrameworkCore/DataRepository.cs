@@ -19,18 +19,18 @@ namespace NCoreUtils.Data.EntityFrameworkCore
     public abstract partial class DataRepository : ISupportsIdNameGeneration
     {
         static readonly ConcurrentDictionary<Type, Maybe<(PropertyInfo, ImmutableArray<PropertyInfo>)>> _idNameSourceProperties
-            = new ConcurrentDictionary<Type, Maybe<(PropertyInfo, ImmutableArray<PropertyInfo>)>>();
+            = new();
 
         /// <summary>
         /// Internal Id name descriptions cache.
         /// </summary>
         protected static readonly ConcurrentDictionary<Type, Maybe<IdNameDescription>> _idNameDesciptionCache
-            = new ConcurrentDictionary<Type, Maybe<IdNameDescription>>();
+            = new();
 
         /// <summary>
         /// Default special property names. Spcial properties are not opverridden on entity update.
         /// </summary>
-        protected static ImmutableHashSet<string> _defaultSpecialPropertyNames = ImmutableHashSet.CreateRange(StringComparer.InvariantCultureIgnoreCase, new []
+        protected static readonly ImmutableHashSet<string> _defaultSpecialPropertyNames = ImmutableHashSet.CreateRange(StringComparer.InvariantCultureIgnoreCase, new []
         {
             "Created",
             "CreatedById"
@@ -49,9 +49,9 @@ namespace NCoreUtils.Data.EntityFrameworkCore
             }
             return _idNameSourceProperties.GetOrAdd(elementType, etype => dbContext
                 .Model
-                .FindEntityType(etype)
+                .FindEntityType(etype)!
                 .GetProperties()
-                .MaybePick(picker));
+                .MaybePick(picker!));
 
             static Maybe<(PropertyInfo, ImmutableArray<PropertyInfo>)> picker(Microsoft.EntityFrameworkCore.Metadata.IProperty e)
             {
@@ -61,7 +61,7 @@ namespace NCoreUtils.Data.EntityFrameworkCore
                     return Maybe.Nothing;
                 }
                 var a = Annotations.IdNameSourcePropertyAnnotation.Unpack(annotation.Value as string);
-                return (a.SourceNameProperty, a.AdditionalIndexProperties).Just();
+                return (a.SourceNameProperty, a.AdditionalIndexProperties).Just()!;
             }
         }
 
@@ -116,14 +116,14 @@ namespace NCoreUtils.Data.EntityFrameworkCore
                 }
                 else
                 {
-                    var d = new IdNameDescription(selector.ExtractProperty(), annotation.Item1, decomposer, annotation.Item2);
+                    var d = new IdNameDescription(selector!.ExtractProperty(), annotation.Item1, decomposer, annotation.Item2);
                     _idNameDesciptionCache[elementType] = d.Just();
                     desc = d.Just();
                 }
             }
             if (desc.TryGetValue(out var result))
             {
-                return result;
+                return result!;
             }
             throw new InvalidOperationException($"No id name description for {typeof(TData).FullName}.");
         }
@@ -156,29 +156,45 @@ namespace NCoreUtils.Data.EntityFrameworkCore
             await EventHandlers.TriggerUpdateAsync(ServiceProvider, this, entry.Entity, cancellationToken);
             // Speciális mezőket nem kell frissíteni...
             var originalValues = await entry.GetDatabaseValuesAsync(cancellationToken);
-            foreach (var p in entry.Properties)
+            if (originalValues is not null)
             {
-                if (SpecialPropertyNames.Contains(p.Metadata.Name))
+                foreach (var p in entry.Properties)
                 {
-                    if (!p.CurrentValue.Equals(originalValues[p.Metadata.Name]))
+                    if (SpecialPropertyNames.Contains(p.Metadata.Name))
                     {
-                        if (p.Metadata.ClrType.IsValueType)
+                        if (!Eq(p.CurrentValue, originalValues[p.Metadata.Name]))
                         {
-                            var defValue = Activator.CreateInstance(p.Metadata.ClrType);
-                            if (defValue.Equals(p.CurrentValue))
+                            if (p.Metadata.ClrType.IsValueType)
                             {
-                                p.CurrentValue = originalValues[p.Metadata.Name];
+                                var defValue = Activator.CreateInstance(p.Metadata.ClrType);
+                                if (Eq(defValue, p.CurrentValue))
+                                {
+                                    p.CurrentValue = originalValues[p.Metadata.Name];
+                                }
                             }
-                        }
-                        else
-                        {
-                            if (p.CurrentValue is null)
+                            else
                             {
-                                p.CurrentValue = originalValues[p.Metadata.Name];
+                                if (p.CurrentValue is null)
+                                {
+                                    p.CurrentValue = originalValues[p.Metadata.Name];
+                                }
                             }
                         }
                     }
                 }
+            }
+
+            static bool Eq(object? current, object? original)
+            {
+                if (current is null)
+                {
+                    return original is null;
+                }
+                if (original is null)
+                {
+                    return false;
+                }
+                return current.Equals(original);
             }
         }
 
@@ -206,32 +222,25 @@ namespace NCoreUtils.Data.EntityFrameworkCore
             return entry.Entity;
         }
 
-        public virtual Task RemoveAsync(TData item, bool force = false, CancellationToken cancellationToken = default)
+        public virtual async Task RemoveAsync(TData item, bool force = false, CancellationToken cancellationToken = default)
         {
-            try
+            cancellationToken.ThrowIfCancellationRequested();
+            var dbContext = EFCoreContext.DbContext;
+            var entry = dbContext.Entry(item);
+            if (entry.State == EntityState.Detached)
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                var dbContext = EFCoreContext.DbContext;
-                var entry = dbContext.Entry(item);
-                if (entry.State == EntityState.Detached)
-                {
-                    throw new InvalidOperationException("Trying to remove detached entity.");
-                }
-                EventHandlers.TriggerDeleteAsync(ServiceProvider, this, entry.Entity, cancellationToken);
-                if (!force && item is IHasState statefullEntity)
-                {
-                    statefullEntity.State = State.Deleted;
-                }
-                else
-                {
-                    dbContext.Remove(item);
-                }
-                return dbContext.SaveChangesAsync(cancellationToken);
+                throw new InvalidOperationException("Trying to remove detached entity.");
             }
-            catch (Exception exn)
+            await EventHandlers.TriggerDeleteAsync(ServiceProvider, this, entry.Entity, cancellationToken);
+            if (!force && item is IHasState statefullEntity)
             {
-                return Task.FromException(exn);
+                statefullEntity.State = State.Deleted;
             }
+            else
+            {
+                dbContext.Remove(item);
+            }
+            await dbContext.SaveChangesAsync(cancellationToken);
         }
     }
 
@@ -268,7 +277,7 @@ namespace NCoreUtils.Data.EntityFrameworkCore
             return await dbContext.AddAsync(entry.Entity, cancellationToken).ConfigureAwait(false);
         }
 
-        public virtual Task<TData> LookupAsync(TId id, CancellationToken cancellationToken = default)
-            => Items.Where(ByIdExpressionBuilder<TData, TId>.CreateFilter(id)).FirstOrDefaultAsync(cancellationToken);
+        public virtual Task<TData?> LookupAsync(TId id, CancellationToken cancellationToken = default)
+            => Items.Where(ByIdExpressionBuilder<TData, TId>.CreateFilter(id)).FirstOrDefaultAsync(cancellationToken)!;
     }
 }

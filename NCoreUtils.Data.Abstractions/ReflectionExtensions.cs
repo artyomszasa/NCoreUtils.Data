@@ -8,32 +8,23 @@ namespace NCoreUtils.Data
     // FIXME: move to NCoreUtils.Extensions.Reflection
     public static class ReflectionExtensions
     {
-        #if NETSTANDARD2_1
         public static bool IsNullable(this Type type, [NotNullWhen(true)] out Type? elementType)
-        #else
-        public static bool IsNullable(this Type type, out Type elementType)
-        #endif
         {
             if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>))
             {
                 elementType = type.GetGenericArguments()[0];
                 return true;
             }
-            #if NETSTANDARD2_1
             elementType = default;
-            #else
-            elementType = default!;
-            #endif
             return false;
         }
 
-        #if NETSTANDARD2_1
-        public static bool IsDictionaryType(this Type type, [NotNullWhen(true)] out Type? keyType, [NotNullWhen(true)] out Type? valueType)
-        #else
-        public static bool IsDictionaryType(this Type type, out Type keyType, out Type valueType)
-        #endif
+        public static bool IsDictionaryType(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] this Type type,
+            [NotNullWhen(true)] out Type? keyType,
+            [NotNullWhen(true)] out Type? valueType)
         {
-            if (type.IsInterface && type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IDictionary<,>))
+            if (type.IsInterface && type.IsConstructedGenericType && type.GetGenericTypeDefinition() == typeof(IDictionary<,>))
             {
                 var gargs = type.GetGenericArguments();
                 keyType = gargs[0];
@@ -42,7 +33,7 @@ namespace NCoreUtils.Data
             }
             foreach (var itype in type.GetInterfaces())
             {
-                if (itype.IsInterface && itype.IsGenericType && itype.GetGenericTypeDefinition() == typeof(IDictionary<,>))
+                if (itype.IsInterface && itype.IsConstructedGenericType && itype.GetGenericTypeDefinition() == typeof(IDictionary<,>))
                 {
                     var gargs = itype.GetGenericArguments();
                     keyType = gargs[0];
@@ -50,13 +41,8 @@ namespace NCoreUtils.Data
                     return true;
                 }
             }
-            #if NETSTANDARD2_1
             keyType = default;
             valueType = default;
-            #else
-            keyType = default!;
-            valueType = default!;
-            #endif
             return false;
         }
 
@@ -65,7 +51,8 @@ namespace NCoreUtils.Data
             => type.IsNullable(out var _);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsDictionaryType(this Type type)
+        public static bool IsDictionaryType(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] this Type type)
             => type.IsDictionaryType(out var _, out var _);
     }
 }

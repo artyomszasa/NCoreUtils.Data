@@ -11,7 +11,7 @@ namespace NCoreUtils.Data.IdNameGeneration
         {
             var type = typeof(PostgresStoredProcedureGenerator);
             var resourceName = type.Namespace + ".postgres_template.psql";
-            using var reader = new StreamReader(type.Assembly.GetManifestResourceStream(resourceName), Encoding.UTF8);
+            using var reader = new StreamReader(type.Assembly.GetManifestResourceStream(resourceName)!, Encoding.UTF8);
             _template = reader.ReadToEnd();
         }
 

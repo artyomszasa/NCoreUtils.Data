@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -13,13 +14,16 @@ namespace NCoreUtils.Data.Build
 
         public IReadOnlyDictionary<PropertyInfo, DataPropertyBuilder> Properties { get; }
 
-        public DataEntityBuilder(Type entityType)
+        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(DataPropertyBuilder<>))]
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Dynamic dependency should handle preserving.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2075", Justification = "Dynamic dependency should handle preserving.")]
+        public DataEntityBuilder([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] Type entityType)
         {
             EntityType = entityType ?? throw new ArgumentNullException(nameof(entityType));
             var properties = new Dictionary<PropertyInfo, DataPropertyBuilder>();
             foreach (var property in EntityType.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.FlattenHierarchy))
             {
-                properties.Add(property, (DataPropertyBuilder)Activator.CreateInstance(typeof(DataPropertyBuilder<>).MakeGenericType(property.PropertyType), new object[] { property }));
+                properties.Add(property, (DataPropertyBuilder)Activator.CreateInstance(typeof(DataPropertyBuilder<>).MakeGenericType(property.PropertyType), new object[] { property })!);
             }
             Properties = properties;
         }
@@ -48,7 +52,7 @@ namespace NCoreUtils.Data.Build
             => SetMetadata(CommonMetadata.Key, properties);
     }
 
-    public class DataEntityBuilder<T> : DataEntityBuilder
+    public class DataEntityBuilder<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T> : DataEntityBuilder
     {
         public DataEntityBuilder() : base(typeof(T)) { }
 

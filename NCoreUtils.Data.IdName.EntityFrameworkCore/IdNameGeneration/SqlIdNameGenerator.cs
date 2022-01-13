@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Linq;
 using System.Linq.Expressions;
@@ -14,23 +15,27 @@ namespace NCoreUtils.Data.IdNameGeneration
 {
     public class SqlIdNameGenerator : IIdNameGenerator
     {
-        sealed class Box<T>
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+        private sealed class Box<T>
         {
             public T Value;
 
             public Box(T value) => Value = value;
         }
 
-        static Expression BoxedConstant<T>(T value)
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Field is always preserved.")]
+        private static Expression BoxedConstant<T>(T value)
         {
             var box = new Box<T>(value);
             return Expression.Field(Expression.Constant(box), nameof(Box<T>.Value));
         }
 
-        static Expression BoxedContstant(object value, Type type)
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Field is always preserved.")]
+        static Expression BoxedContstant(object? value, Type type)
         {
             var boxType = typeof(Box<>).MakeGenericType(type);
-            var field = boxType.GetField(nameof(Box<int>.Value));
+            var field = boxType.GetField(nameof(Box<int>.Value))
+                ?? throw new InvalidOperationException($"Could not get Value field for Box<{type}>. Consider preserving types explicitly.");
             var box = Activator.CreateInstance(boxType, value);
             field.SetValue(box, value);
             return Expression.Field(Expression.Constant(box, boxType), field);
@@ -49,7 +54,8 @@ namespace NCoreUtils.Data.IdNameGeneration
             _initialization = initialization ?? throw new ArgumentNullException(nameof(initialization));
         }
 
-        async Task<string> GenerateAsync<T>(
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Annotation constructor should preserve the related type.")]
+        private async Task<string> GenerateAsync<T>(
             IQueryable<T> query,
             IdNameDescription idNameDescription,
             string name,
@@ -185,7 +191,9 @@ namespace NCoreUtils.Data.IdNameGeneration
                 var predicate = Expression.Lambda<Func<T, bool>>(allPredicates, eArg);
                 query = directQuery.Where(predicate);
             }
-            return GenerateAsync<T>(query, idNameDescription, (string)idNameDescription.NameSourceProperty.GetValue(entity, null), cancellationToken);
+            var nameSource = idNameDescription.NameSourceProperty.GetValue(entity, null) as string
+                ?? throw new InvalidOperationException($"Unable to get source name for {typeof(T).Name}.");
+            return GenerateAsync(query, idNameDescription, nameSource, cancellationToken);
         }
     }
 

@@ -17,7 +17,7 @@ namespace NCoreUtils.Data
         /// Either data entity from persistent store that has the specified business key, <c>null</c> if no such entity
         /// exists.
         /// </returns>
-        public static TData Lookup<TData, TId>(this IDataRepository<TData, TId> repository, TId id)
+        public static TData? Lookup<TData, TId>(this IDataRepository<TData, TId> repository, TId id)
             where TData : IHasId<TId>
         {
             if (repository == null)

@@ -9,17 +9,21 @@ namespace NCoreUtils.Data.EntityFrameworkCore
     {
         protected abstract class ByIdNameExpressionBuilder
         {
-            static readonly ConcurrentDictionary<Type, ByIdNameExpressionBuilder> _cache = new ConcurrentDictionary<Type, ByIdNameExpressionBuilder>();
+            private static readonly ConcurrentDictionary<Type, ByIdNameExpressionBuilder> _cache = new();
 
-            static readonly Func<Type, ByIdNameExpressionBuilder> _createBuilder = entityType =>
+            private static readonly Func<Type, ByIdNameExpressionBuilder> _createBuilder = CreateBuilder;
+
+            [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Handled by static ctor attributes.")]
+            private static ByIdNameExpressionBuilder CreateBuilder(Type entityType)
             {
                 if (typeof(IHasIdName).IsAssignableFrom(entityType))
                 {
-                    return (ByIdNameExpressionBuilder)Activator.CreateInstance(typeof(ByIdNameExpressionBuilder<>).MakeGenericType(entityType), true);
+                    return (ByIdNameExpressionBuilder)Activator.CreateInstance(typeof(ByIdNameExpressionBuilder<>).MakeGenericType(entityType), true)!;
                 }
                 return NothingByIdNameExpressionBuilder.Instance;
-            };
+            }
 
+            [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ByIdNameExpressionBuilder<>))]
             public static Maybe<Expression> MaybeGetExpression(Type entitType)
                 => _cache.GetOrAdd(entitType, _createBuilder)
                     .MaybeGetExpression();
