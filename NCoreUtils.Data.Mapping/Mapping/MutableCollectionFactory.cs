@@ -15,6 +15,7 @@ namespace NCoreUtils.Data.Mapping
 
         [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ICollection<>))]
         [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Dynamic dependency preserves types.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2055")]
         internal MutableCollectionFactory(
             Type elementType,
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type collectionType)
@@ -43,6 +44,7 @@ namespace NCoreUtils.Data.Mapping
         [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(IEnumerable<>))]
         [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(IEnumerator<>))]
         [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Dynamic dependency preserves types.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2075")]
         public override Expression CreateNewExpression(Expression items)
         {
             var evar = Expression.Variable(CollectionType);

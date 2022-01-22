@@ -9,8 +9,10 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 {
     public partial class FirestoreConverter
     {
-
-        protected bool TryCollectionToValue(object? value, Type sourceType, [NotNullWhen(true)] out Value? result)
+        protected bool TryCollectionToValue(
+            object? value,
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] Type sourceType,
+            [NotNullWhen(true)] out Value? result)
         {
             if (value is null)
             {
@@ -18,7 +20,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 return false;
             }
             // if enumerable?
-            Type? elementType = sourceType.IsGenericType && sourceType.GetGenericTypeDefinition().Equals(typeof(IEnumerable<>))
+            Type? elementType = sourceType.IsConstructedGenericType && sourceType.GetGenericTypeDefinition().Equals(typeof(IEnumerable<>))
                 ? sourceType.GetGenericArguments()[0]
                 : sourceType.GetInterfaces().FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition().Equals(typeof(IEnumerable<>)))?.GetGenericArguments()[0];
             if (elementType is null)
@@ -36,8 +38,13 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
         }
 
         [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Both key and value are preserved types.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2062", Justification = "Both key and value are preserved types.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2067", Justification = "Both key and value are preserved types.")]
         [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(KeyValuePair<,>))]
-        protected IEnumerable CollectionFromValue(Value value, Type targetType, CollectionFactory collectionFactory, bool strictMode)
+        protected IEnumerable CollectionFromValue(
+            Value value,
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type targetType,
+            CollectionFactory collectionFactory, bool strictMode)
         {
             if (value.ValueTypeCase == Value.ValueTypeOneofCase.NullValue && !strictMode)
             {
@@ -46,9 +53,13 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             if (value.ValueTypeCase == Value.ValueTypeOneofCase.ArrayValue)
             {
                 var builder = collectionFactory.CreateBuilder();
-                var items = value.ArrayValue.Values.Select(item => ConvertFromValue(item, collectionFactory.ElementType));
+                var items = value.ArrayValue.Values.Select(selector);
                 builder.AddRange(items);
                 return builder.Build();
+
+                [UnconditionalSuppressMessage("Trimming", "IL2062", Justification = "Element type should already be preserved.")]
+                [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "Element type should already be preserved.")]
+                object? selector(Value item) => ConvertFromValue(item, collectionFactory.ElementType);
             }
             if (value.ValueTypeCase == Value.ValueTypeOneofCase.MapValue && targetType.IsDictionaryType(out var keyType, out var valueType))
             {
@@ -65,7 +76,10 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             throw new InvalidOperationException($"Unable to convert value of type {value.ValueTypeCase} to {targetType}.");
         }
 
-        protected IEnumerable CollectionFromValue(Value value, Type targetType, CollectionFactory collectionFactory)
+        protected IEnumerable CollectionFromValue(
+            Value value,
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type targetType,
+            CollectionFactory collectionFactory)
             => CollectionFromValue(value, targetType, collectionFactory, true);
     }
 }

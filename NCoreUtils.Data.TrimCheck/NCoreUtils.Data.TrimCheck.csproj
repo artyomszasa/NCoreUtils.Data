@@ -4,9 +4,13 @@
     <ProjectReference Include="..\NCoreUtils.Data.Abstractions\NCoreUtils.Data.Abstractions.csproj" />
     <ProjectReference Include="..\NCoreUtils.Data.EntityFrameworkCore\NCoreUtils.Data.EntityFrameworkCore.csproj" />
     <ProjectReference Include="..\NCoreUtils.Data.Rest\NCoreUtils.Data.Rest.csproj" />
+    <ProjectReference Include="..\NCoreUtils.Data.Google.Cloud.Firestore\NCoreUtils.Data.Google.Cloud.Firestore.csproj" />
     <TrimmerRootAssembly Include="NCoreUtils.Data.Abstractions" />
     <TrimmerRootAssembly Include="NCoreUtils.Data.EntityFrameworkCore" />
     <TrimmerRootAssembly Include="NCoreUtils.Data.Rest" />
+    <TrimmerRootAssembly Include="NCoreUtils.Data.Google.Cloud.Firestore" />
+    <TrimmerRootAssembly Include="NCoreUtils.Data.Internal" />
+    <TrimmerRootAssembly Include="NCoreUtils.Data.Mapping" />
   </ItemGroup>
 
   <PropertyGroup>

@@ -138,6 +138,9 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             };
         }
 
+        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(IReadOnlyList<>))]
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Enum type is preserved.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2067", Justification = "Element type should be preserved.")]
         private PathOrValue HandleEnumValues(PathOrValue source, Type expressionType)
         {
             if (source.IsPath)

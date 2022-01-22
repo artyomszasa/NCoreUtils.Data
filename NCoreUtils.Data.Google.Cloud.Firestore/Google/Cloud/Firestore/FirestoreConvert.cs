@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
@@ -844,11 +845,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             where TEnum : Enum
         {
             return string.Join(
-                #if NETSTANDARD2_1
                 '|',
-                #else
-                "|",
-                #endif
                 Enum.GetValues(typeof(TEnum))
                     .Cast<TEnum>()
                     .Where(v => value.HasFlag(v))
@@ -856,6 +853,9 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             );
         }
 
+        [DynamicDependency("EnumToFlagsString`1", typeof(FirestoreConvert))]
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Dynamic dependency.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2060", Justification = "Dynamic dependency.")]
         internal static string EnumToFlagsString(Type enumType, object value)
         {
             if (!enumType.IsEnum)
@@ -921,6 +921,9 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             }
         }
 
+        [DynamicDependency("ToValue`1", typeof(FirestoreConvert))]
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Dynamic dependency.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2060", Justification = "Dynamic dependency.")]
         public static Value ToValue(Type enumType, object value, FirestoreEnumHandling enumHandling)
         {
             if (!enumType.IsEnum)

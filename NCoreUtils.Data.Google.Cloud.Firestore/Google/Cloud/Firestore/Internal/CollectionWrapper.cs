@@ -6,14 +6,16 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Internal
 {
     public abstract class CollectionWrapper
     {
-        private static bool IsReadOnlyList(Type collectionType, [NotNullWhen(true)] out Type? elementType)
+        private static bool IsReadOnlyList(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] Type collectionType,
+            [NotNullWhen(true)] out Type? elementType)
         {
             if (collectionType.IsInterface)
             {
                 elementType = default;
                 return false;
             }
-            if (collectionType.GetInterfaces().TryGetFirst(ty => ty.IsGenericType && ty.GetGenericTypeDefinition() == typeof(IReadOnlyList<>), out var ifaceType))
+            if (collectionType.GetInterfaces().TryGetFirst(ty => ty.IsConstructedGenericType && ty.GetGenericTypeDefinition() == typeof(IReadOnlyList<>), out var ifaceType))
             {
                 elementType = ifaceType.GetGenericArguments()[0];
                 return true;
@@ -22,14 +24,16 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Internal
             return false;
         }
 
-        private static bool IsEnumerable(Type collectionType, [NotNullWhen(true)] out Type? elementType)
+        private static bool IsEnumerable(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] Type collectionType,
+            [NotNullWhen(true)] out Type? elementType)
         {
             if (collectionType.IsInterface)
             {
                 elementType = default;
                 return false;
             }
-            if (collectionType.GetInterfaces().TryGetFirst(ty => ty.IsGenericType && ty.GetGenericTypeDefinition() == typeof(IEnumerable<>), out var ifaceType))
+            if (collectionType.GetInterfaces().TryGetFirst(ty => ty.IsConstructedGenericType && ty.GetGenericTypeDefinition() == typeof(IEnumerable<>), out var ifaceType))
             {
                 elementType = ifaceType.GetGenericArguments()[0];
                 return true;
@@ -42,6 +46,8 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Internal
         [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ReadOnlyListWrapper<>))]
         [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(EnumerableWrapper<>))]
         [UnconditionalSuppressMessage("Trimming", "IL2026")]
+        [UnconditionalSuppressMessage("Trimming", "IL2072")]
+        [UnconditionalSuppressMessage("Trimming", "IL2111")]
         public static CollectionWrapper Create(object source)
         {
             if (source is null)

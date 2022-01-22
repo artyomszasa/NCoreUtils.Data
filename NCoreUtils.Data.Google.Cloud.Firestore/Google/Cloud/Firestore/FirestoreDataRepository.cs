@@ -38,7 +38,10 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             Converter = model.Converter;
         }
 
-        protected virtual Dictionary<string, object> PopulateDTO(Type type, object data)
+        [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "All members of data entity has preserved types.")]
+        protected virtual Dictionary<string, object> PopulateDTO(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] Type type,
+            object data)
         {
             if (!Model.TryGetDataEntity(type, out var entity))
             {
@@ -59,7 +62,8 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
         }
     }
 
-    public class FirestoreDataRepository<TData> : FirestoreDataRespository, IDataRepository<TData, string>
+    public class FirestoreDataRepository<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicConstructors)] TData>
+        : FirestoreDataRespository, IDataRepository<TData, string>
         where TData : IHasId<string>
     {
         IDataRepositoryContext IDataRepository.Context => Context;

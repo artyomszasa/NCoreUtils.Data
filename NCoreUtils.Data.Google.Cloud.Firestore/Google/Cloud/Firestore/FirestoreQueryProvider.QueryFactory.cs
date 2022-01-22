@@ -1,16 +1,12 @@
 using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
-using System.Linq.Expressions;
-using Google.Cloud.Firestore;
-using NCoreUtils.Data.Google.Cloud.Firestore.Expressions;
+using System.Diagnostics.CodeAnalysis;
 
 namespace NCoreUtils.Data.Google.Cloud.Firestore
 {
     public partial class FirestoreQueryProvider
     {
-        public FirestoreQuery<T> CreateQueryable<T>()
+        public FirestoreQuery<T> CreateQueryable<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicConstructors)] T>()
         {
             if (!Model.TryGetDataEntity(typeof(T), out var entity))
             {

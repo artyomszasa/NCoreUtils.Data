@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
@@ -56,15 +57,21 @@ namespace NCoreUtils.Data
             Action<FirestoreConversionOptionsBuilder> configure)
             => services.AddFirestoreDataRepositoryContext(default, configure);
 
-        public static IServiceCollection AddFirestoreDataRepository<TRepository, TData>(this IServiceCollection services)
+        private static TRepository GetRepositoryService<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TRepository>(IServiceProvider serviceProvider)
+            where TRepository : notnull
+            =>  serviceProvider.GetRequiredService<TRepository>();
+
+        public static IServiceCollection AddFirestoreDataRepository<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TRepository, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicConstructors)] TData>(this IServiceCollection services)
             where TRepository : FirestoreDataRepository<TData>
             where TData : IHasId<string>
             => services
                 .AddScoped<TRepository>()
-                .AddScoped<IDataRepository<TData, string>>(serviceProvider => serviceProvider.GetRequiredService<TRepository>())
-                .AddScoped<IDataRepository<TData>>(serviceProvider => serviceProvider.GetRequiredService<TRepository>());
+                .AddScoped<IDataRepository<TData, string>>(GetRepositoryService<TRepository>)
+                .AddScoped<IDataRepository<TData>>(GetRepositoryService<TRepository>);
 
-        public static IServiceCollection AddFirestoreDataRepository<TData>(this IServiceCollection services)
+        [UnconditionalSuppressMessage("Trimming", "IL2111")]
+        [DynamicDependency("PopulateDTO", typeof(FirestoreDataRespository))]
+        public static IServiceCollection AddFirestoreDataRepository<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicConstructors)] TData>(this IServiceCollection services)
             where TData : IHasId<string>
             => services.AddFirestoreDataRepository<FirestoreDataRepository<TData>, TData>();
     }

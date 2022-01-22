@@ -19,6 +19,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Expressions
         private static readonly MethodInfo _gmConvertFromValue;
 
         [DynamicDependency(DynamicallyAccessedMemberTypes.NonPublicMethods, typeof(FirestoreConverter))]
+        [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "Generic method is preserved using dynamic dependency.")]
         static FirestoreFieldExpression()
         {
             Expression<Func<DocumentSnapshot, FieldPath, Value>> e0 = (doc, name) => doc.GetValue<Value>(name);
@@ -70,6 +71,8 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Expressions
         { }
 
         [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Generic method is preserved using dynamic dependency.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2060", Justification = "Generic method is preserved using dynamic dependency.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "Generic method is preserved using dynamic dependency.")]
         protected virtual Expression Reduce(Type targetType)
         {
             var cpath = Constant(Path);
@@ -85,6 +88,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Expressions
         }
 
         [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Id property is necessarily preserved during registration.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "Generic method is preserved using dynamic dependency.")]
         public override Expression Reduce()
         {
             if (Path.Equals(FieldPath.DocumentId))

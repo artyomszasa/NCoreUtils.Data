@@ -14,7 +14,7 @@ namespace NCoreUtils.Data.Mapping
 
         [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(IReadOnlyList<>))]
         [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Dynamic dependency preserves types.")]
-        internal ReadOnlyListFactory(Type elementType, Type collectionType)
+        internal ReadOnlyListFactory(Type elementType, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type collectionType)
             : base(elementType, collectionType)
         {
             if (!collectionType.Equals(typeof(IReadOnlyList<>).MakeGenericType(elementType))!)

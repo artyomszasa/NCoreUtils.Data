@@ -10,9 +10,28 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
     {
         internal delegate bool TryGetValueDelegate(string name, [NotNullWhen(true)] out Value? value);
 
+        private sealed class CanConvertPredicate
+        {
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+            private Type TargetType { get; }
+
+            public CanConvertPredicate([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type targetType)
+            {
+                TargetType = targetType;
+            }
+
+            public bool Invoke(FirestoreValueConverter c)
+                => c.CanConvert(TargetType);
+        }
+
         private readonly ConcurrentDictionary<Type, Ctor> _ctorCache = new();
 
-        private readonly Func<Type, Ctor> _ctorFactory = Ctor.GetCtor;
+        private readonly Func<Type, Ctor> _ctorFactory = CtorFactory;
+
+        [UnconditionalSuppressMessage("Trimming", "IL2111")]
+        [UnconditionalSuppressMessage("Trimming", "IL2067")]
+        private static Ctor CtorFactory(Type type)
+            => Ctor.GetCtor(type);
 
         public ILogger Logger { get; }
 
@@ -30,10 +49,11 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
         protected Ctor GetCtor(Type type)
             => _ctorCache.GetOrAdd(type, _ctorFactory);
 
-        public Value ConvertToValue(object? value, Type sourceType)
+        [UnconditionalSuppressMessage("Trimming", "IL2062", Justification = "Element type should already be preserved.")]
+        public Value ConvertToValue(object? value, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type sourceType)
         {
             // try custom converters
-            if (Options.Converters.TryGetFirst(c => c.CanConvert(sourceType), out var customConverter))
+            if (Options.Converters.TryGetFirst(new CanConvertPredicate(sourceType).Invoke, out var customConverter))
             {
                 return customConverter.ConvertToValue(value, sourceType, this);
             }
@@ -69,12 +89,13 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             throw new InvalidOperationException($"Unable to convert {value} of type {sourceType} to firestore value.");
         }
 
-        public Value ConvertToValue<T>(T value) => ConvertToValue(value, typeof(T));
+        public Value ConvertToValue<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>(T value) => ConvertToValue(value, typeof(T));
 
-        public object? ConvertFromValue(Value value, Type targetType)
+        [UnconditionalSuppressMessage("Trimming", "IL2062", Justification = "Element type should already be preserved.")]
+        public object? ConvertFromValue(Value value, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type targetType)
         {
             // try custom converters
-            if (Options.Converters.TryGetFirst(c => c.CanConvert(targetType), out var customConverter))
+            if (Options.Converters.TryGetFirst(new CanConvertPredicate(targetType).Invoke, out var customConverter))
             {
                 return customConverter.ConvertFromValue(value, targetType, this);
             }
@@ -110,7 +131,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             throw new InvalidOperationException($"Unable to convert {value} of type {value.ValueTypeCase} to {targetType}.");
         }
 
-        public T ConvertFromValue<T>(Value value)
+        public T ConvertFromValue<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>(Value value)
             => (T)ConvertFromValue(value, typeof(T))!;
     }
 }

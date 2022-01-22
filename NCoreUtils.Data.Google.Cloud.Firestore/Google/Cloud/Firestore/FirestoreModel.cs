@@ -64,7 +64,9 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             Converter = new FirestoreConverter(LoggerFactory.CreateLogger<FirestoreConverter>(), ConversionOptions, this);
         }
 
-        protected Expression GetInitialSelector(Type type, Expression snapshot)
+        protected Expression GetInitialSelector(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicConstructors)] Type type,
+            Expression snapshot)
         {
             // FIXME: Polymorphism...
             if (!TryGetDataEntity(type, out var entity))
@@ -88,7 +90,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             );
         }
 
-        protected Expression<Func<DocumentSnapshot, T>> GetInitialSelectorNoCache<T>()
+        protected Expression<Func<DocumentSnapshot, T>> GetInitialSelectorNoCache<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicConstructors)] T>()
         {
             var arg = Expression.Parameter(typeof(DocumentSnapshot));
             return Expression.Lambda<Func<DocumentSnapshot, T>>(
@@ -97,7 +99,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             );
         }
 
-        public Expression<Func<DocumentSnapshot, T>> GetInitialSelector<T>()
+        public Expression<Func<DocumentSnapshot, T>> GetInitialSelector<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicConstructors)] T>()
         {
             if (_initialSelectorCache.TryGetValue(typeof(T), out var boxed))
             {

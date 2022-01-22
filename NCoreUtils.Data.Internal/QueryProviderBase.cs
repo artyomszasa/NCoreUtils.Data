@@ -15,15 +15,16 @@ namespace NCoreUtils.Data.Internal
     {
         static readonly MethodInfo _gmExecute;
 
-        static readonly MethodInfo _gmExecuteEnumerableAsync;
+        // static readonly MethodInfo _gmExecuteEnumerableAsync;
 
         static readonly MethodInfo _gmExecuteEnumerable;
 
+        [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "Generic mezhod only used on preserved types.")]
         static QueryProviderBase()
         {
             var methods = typeof(QueryProviderBase).GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
             _gmExecute = methods.First(m => m.IsGenericMethodDefinition && m.Name == nameof(Execute));
-            _gmExecuteEnumerableAsync = methods.First(m => m.IsGenericMethodDefinition && m.Name == nameof(ExecuteEnumerableAsync));
+            // _gmExecuteEnumerableAsync = methods.First(m => m.IsGenericMethodDefinition && m.Name == nameof(ExecuteEnumerableAsync));
             _gmExecuteEnumerable = methods.First(m => m.IsGenericMethodDefinition && m.Name == nameof(ExecuteEnumerable));
         }
 
@@ -64,7 +65,7 @@ namespace NCoreUtils.Data.Internal
             return argType.IsGenericType && argType.GetGenericTypeDefinition().Equals(typeof(Func<,>));
         }
 
-        static bool TryGetEnumerableElementType(Type type, [NotNullWhen(true)] out Type? elementType)
+        static bool TryGetEnumerableElementType([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] Type type, [NotNullWhen(true)] out Type? elementType)
         {
             if (TryInterface(type, out elementType))
             {
@@ -197,6 +198,8 @@ namespace NCoreUtils.Data.Internal
         }
 
         [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Only preserved types should be handled here.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2060", Justification = "Only preserved types should be handled here.")]
+        [DynamicDependency("Execute`1", typeof(QueryProviderBase))]
         public virtual object Execute(Expression expression)
         {
             Type resultType;
@@ -212,7 +215,11 @@ namespace NCoreUtils.Data.Internal
         }
 
         [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Only preserved types should be handled here.")]
-        public virtual TResult Execute<TResult>(Expression expression)
+        [UnconditionalSuppressMessage("Trimming", "IL2060", Justification = "Only preserved types should be handled here.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2087", Justification = "If interface type is not preserved the function makes no sense anyway.")]
+        [DynamicDependency("ExecuteEnumerable`1", typeof(QueryProviderBase))]
+        public virtual TResult Execute<TResult>(
+            Expression expression)
         {
             if (TryGetEnumerableElementType(typeof(TResult), out var elementType))
             {
