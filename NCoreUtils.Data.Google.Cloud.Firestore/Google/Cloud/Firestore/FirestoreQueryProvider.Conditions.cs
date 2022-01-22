@@ -24,15 +24,16 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 return new PathOrValue(path, default!);
             }
 
-            public static PathOrValue CreateValue(object value) => new PathOrValue(null!, value);
+            public static PathOrValue CreateValue(object? value) => new(null!, value);
 
-            public bool IsPath => !(Path is null);
+            [MemberNotNullWhen(true, nameof(Path))]
+            public bool IsPath => Path is not null;
 
-            public FieldPath Path { get; }
+            public FieldPath? Path { get; }
 
-            public object Value { get; }
+            public object? Value { get; }
 
-            PathOrValue(FieldPath path, object value)
+            PathOrValue(FieldPath? path, object? value)
             {
                 Path = path;
                 Value = value;
@@ -60,26 +61,26 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
         private static MethodInfo GetMethod<TArg1, TArg2, TResult>(Func<TArg1, TArg2, TResult> func) => func.Method;
 
-        private static bool TryExtractNewExpressionAsConstant(Expression expression, [NotNullWhen(true)] out object? value)
-        {
-            if (expression is NewExpression nexp)
-            {
-                var args = new object?[nexp.Arguments.Count];
-                for (var i = 0; i < nexp.Arguments.Count; ++i)
-                {
-                    if (!(nexp.Arguments[i].TryExtractConstant(out var arg) || TryExtractNewExpressionAsConstant(nexp.Arguments[i], out arg)))
-                    {
-                        value = default;
-                        return false;
-                    }
-                    args[i] = arg;
-                }
-                value = nexp.Constructor.Invoke(args);
-                return true;
-            }
-            value = default;
-            return false;
-        }
+        // private static bool TryExtractNewExpressionAsConstant(Expression expression, [NotNullWhen(true)] out object? value)
+        // {
+        //     if (expression is NewExpression nexp)
+        //     {
+        //         var args = new object?[nexp.Arguments.Count];
+        //         for (var i = 0; i < nexp.Arguments.Count; ++i)
+        //         {
+        //             if (!(nexp.Arguments[i].TryExtractConstant(out var arg) || TryExtractNewExpressionAsConstant(nexp.Arguments[i], out arg)))
+        //             {
+        //                 value = default;
+        //                 return false;
+        //             }
+        //             args[i] = arg;
+        //         }
+        //         value = nexp.Constructor.Invoke(args);
+        //         return true;
+        //     }
+        //     value = default;
+        //     return false;
+        // }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool IsNumericType(Type type)
@@ -106,13 +107,13 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 {
                     throw new InvalidOperationException("Only path ~ object comparison is supported.");
                 }
-                conditions.Add(new FirestoreCondition(left.Path, operation, right.Value));
+                conditions.Add(new FirestoreCondition(left.Path, operation, right.Value!));
             }
             else
             {
                 if (right.IsPath)
                 {
-                    conditions.Add(new FirestoreCondition(right.Path, Reverse(operation), left.Value));
+                    conditions.Add(new FirestoreCondition(right.Path, Reverse(operation), left.Value!));
                 }
                 else
                 {
@@ -129,10 +130,10 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             {
                 FirestoreEnumHandling.AlwaysAsString => enumType.IsDefined(typeof(FlagsAttribute), true)
                     ? FirestoreConvert.EnumToFlagsString(enumType, v)
-                    : v.ToString(),
+                    : v.ToString()!,
                 FirestoreEnumHandling.AsNumberOrNumberArray => ((IConvertible)v).ToInt64(CultureInfo.InvariantCulture),
                 FirestoreEnumHandling.AsSingleNumber => ((IConvertible)v).ToInt64(CultureInfo.InvariantCulture),
-                FirestoreEnumHandling.AsStringOrStringArray => v.ToString(),
+                FirestoreEnumHandling.AsStringOrStringArray => v.ToString()!,
                 _ => throw new InvalidOperationException("should never happen")
             };
         }
@@ -187,7 +188,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 memberType = value?.GetType();
                 return HandleEnumValues(PathOrValue.CreateValue(value!), expression.Type);
             }
-            if (TryExtractNewExpressionAsConstant(expression, out var newValue))
+            if (expression.TryExtractInstance(out var newValue))
             {
                 memberType = value?.GetType();
                 return PathOrValue.CreateValue(newValue);
@@ -202,7 +203,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             }
             if (expression is NewArrayExpression arrayExpr)
             {
-                memberType = arrayExpr.Type.GetElementType();
+                memberType = arrayExpr.Type.GetElementType()!;
                 var arrayValue = Array.CreateInstance(memberType, arrayExpr.Expressions.Count);
                 var i = 0;
                 foreach (var expr in arrayExpr.Expressions)
@@ -236,11 +237,11 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             // {
             //     return (left, right);
             // }
-            if (!(tyLeft is null) && tyLeft.IsEnum && (tyRight is null || IsNumericType(tyRight) || rightSource.Type.IsArray))
+            if (tyLeft is not null && tyLeft.IsEnum && (tyRight is null || IsNumericType(tyRight) || rightSource.Type.IsArray))
             {
                 return (HandleEnumValues(left, tyLeft), HandleEnumValues(right, tyLeft));
             }
-            if (!(tyRight is null) && tyRight.IsEnum && (tyLeft is null || IsNumericType(tyLeft) || leftSource.Type.IsArray))
+            if (tyRight is not null && tyRight.IsEnum && (tyLeft is null || IsNumericType(tyLeft) || leftSource.Type.IsArray))
             {
                 return (HandleEnumValues(left, tyRight), HandleEnumValues(right, tyRight));
             }
@@ -299,7 +300,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                         (ExtractPathOrValue(arg, methodCall.Arguments[0]), ExtractPathOrValue(arg, methodCall.Arguments[1])),
                         conditions);
                     break;
-                case MethodCallExpression methodCall when methodCall.Method == _mHasFlag:
+                case MethodCallExpression methodCall when methodCall.Object is not null && methodCall.Method == _mHasFlag:
                     if (!methodCall.Object.Type.IsDefined(typeof(FlagsAttribute), true))
                     {
                         throw new InvalidOperationException($"HasFlag cannot be used on non-flags type {methodCall.Object.Type}.");
@@ -319,7 +320,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                     {
                         if (expression.TryExtractConstant(out var boxed))
                         {
-                            var boolValue = (bool)boxed;
+                            var boolValue = (bool)boxed!;
                             if (!boolValue)
                             {
                                 conditions.Add(FirestoreCondition.AlwaysFalse);

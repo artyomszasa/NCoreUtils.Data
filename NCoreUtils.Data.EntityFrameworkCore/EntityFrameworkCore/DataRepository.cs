@@ -10,6 +10,7 @@ using NCoreUtils.Data.IdNameGeneration;
 using System.Reflection;
 using System.Collections.Concurrent;
 using System.Linq.Expressions;
+using System.Diagnostics.CodeAnalysis;
 
 namespace NCoreUtils.Data.EntityFrameworkCore
 {
@@ -101,7 +102,8 @@ namespace NCoreUtils.Data.EntityFrameworkCore
         public virtual IStringDecomposer DecomposeName => DummyStringDecomposition.Decomposer;
     }
 
-    public abstract class DataRepository<TData> : DataRepository, IDataRepository<TData>
+    public abstract class DataRepository<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] TData>
+        : DataRepository, IDataRepository<TData>
         where TData : class
     {
         public static IdNameDescription GetIdNameDescription(Type elementType, DbContext dbContext, IStringDecomposer decomposer)
@@ -151,6 +153,7 @@ namespace NCoreUtils.Data.EntityFrameworkCore
 
         protected abstract ValueTask<EntityEntry<TData>> AttachNewOrUpdateAsync(EntityEntry<TData> entry, CancellationToken cancellationToken);
 
+        [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "Only types of the preserved properties are used.")]
         protected virtual async Task PrepareUpdatedEntityAsync(EntityEntry<TData> entry, CancellationToken cancellationToken = default)
         {
             await EventHandlers.TriggerUpdateAsync(ServiceProvider, this, entry.Entity, cancellationToken);
@@ -244,7 +247,8 @@ namespace NCoreUtils.Data.EntityFrameworkCore
         }
     }
 
-    public class DataRepository<TData, TId> : DataRepository<TData>, IDataRepository<TData, TId>
+    public class DataRepository<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] TData, TId>
+        : DataRepository<TData>, IDataRepository<TData, TId>
         where TData : class, IHasId<TId>
         where TId : IComparable<TId>
     {

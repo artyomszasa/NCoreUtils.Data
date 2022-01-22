@@ -10,7 +10,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
     {
         internal delegate bool TryGetValueDelegate(string name, [NotNullWhen(true)] out Value? value);
 
-        private readonly ConcurrentDictionary<Type, Ctor> _ctorCache = new ConcurrentDictionary<Type, Ctor>();
+        private readonly ConcurrentDictionary<Type, Ctor> _ctorCache = new();
 
         private readonly Func<Type, Ctor> _ctorFactory = Ctor.GetCtor;
 

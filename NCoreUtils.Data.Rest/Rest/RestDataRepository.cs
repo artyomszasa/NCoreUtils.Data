@@ -1,12 +1,13 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using NCoreUtils.Data.Protocol.Linq;
 
 namespace NCoreUtils.Data.Rest
 {
-    public abstract class RestDataRepository<TData> : IDataRepository<TData>
+    public abstract class RestDataRepository<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] TData>
+        : IDataRepository<TData>
     {
         IDataRepositoryContext IDataRepository.Context => Context;
 
@@ -28,7 +29,8 @@ namespace NCoreUtils.Data.Rest
         public abstract Task RemoveAsync(TData item, bool force = false, CancellationToken cancellationToken = default);
     }
 
-    public class RestDataRepository<TData, TId> : RestDataRepository<TData>, IDataRepository<TData, TId>
+    public class RestDataRepository<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] TData, TId>
+        : RestDataRepository<TData>, IDataRepository<TData, TId>
         where TData : IHasId<TId>
     {
         public override IQueryable<TData> Items => Client.Collection();
@@ -41,11 +43,11 @@ namespace NCoreUtils.Data.Rest
             Client = client ?? throw new ArgumentNullException(nameof(client));
         }
 
-        public Task<TData> LookupAsync(TId id, CancellationToken cancellationToken = default)
+        public Task<TData?> LookupAsync(TId id, CancellationToken cancellationToken = default)
             => Client.ItemAsync(id, cancellationToken);
 
         protected override ValueTask<bool> ShouldUpdate(TData data, CancellationToken cancellationToken)
-            => new ValueTask<bool>(IdUtils.HasValidId(data));
+            => new(IdUtils.HasValidId(data));
 
         public override async Task<TData> PersistAsync(TData item, CancellationToken cancellationToken = default)
         {
@@ -59,7 +61,7 @@ namespace NCoreUtils.Data.Rest
             {
                 id = await Client.CreateAsync(item, cancellationToken);
             }
-            return await LookupAsync(id, cancellationToken);
+            return (await LookupAsync(id, cancellationToken))!;
         }
 
         public override Task RemoveAsync(TData item, bool force = false, CancellationToken cancellationToken = default)
@@ -68,15 +70,6 @@ namespace NCoreUtils.Data.Rest
             {
                 throw new InvalidOperationException($"Unable to remove entity without valid id.");
             }
-            // if (!force && item is IHasState statefull)
-            // {
-            //     statefull.State = State.Deleted;
-            //     await Client.UpdateAsync(item.Id, item, cancellationToken);
-            // }
-            // else
-            // {
-            //     await Client.DeleteAsync(item.Id, cancellationToken);
-            // }
             return Client.DeleteAsync(item.Id, force, cancellationToken);
         }
     }

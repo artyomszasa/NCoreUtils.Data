@@ -8,9 +8,9 @@ namespace NCoreUtils.Data.Rest
 {
     public class DataRestClientCache : IDataRestClientCache
     {
-        private readonly object _sync = new object();
+        private readonly object _sync = new();
 
-        private readonly ConcurrentDictionary<IRestClientConfiguration, IHttpRestClient> _instances = new ConcurrentDictionary<IRestClientConfiguration, IHttpRestClient>();
+        private readonly ConcurrentDictionary<IRestClientConfiguration, IHttpRestClient> _instances = new();
 
         private readonly IServiceProvider _serviceProvider;
 

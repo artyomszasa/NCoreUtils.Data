@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 
+[assembly: InternalsVisibleTo("NCoreUtils.AspNetCore.Data")]
 [assembly: InternalsVisibleTo("NCoreUtils.Data")]
 [assembly: InternalsVisibleTo("NCoreUtils.Data.EntityFrameworkCore")]
 [assembly: InternalsVisibleTo("NCoreUtils.Data.Unit")]
@@ -9,3 +10,7 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("NCoreUtils.Data.IdName.EntityFrameworkCore")]
 [assembly: InternalsVisibleTo("NCoreUtils.Data.IdName.Unit")]
 [assembly: InternalsVisibleTo("NCoreUtils.Data.Internal")]
+[assembly: InternalsVisibleTo("NCoreUtils.Data.Mapping")]
+[assembly: InternalsVisibleTo("NCoreUtils.Data.Google.Cloud.Firestore")]
+[assembly: InternalsVisibleTo("NCoreUtils.Data.Rest")]
+[assembly: InternalsVisibleTo("NCoreUtils.Data.InMemory")]

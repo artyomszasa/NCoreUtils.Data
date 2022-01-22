@@ -8,19 +8,13 @@ namespace NCoreUtils.Data
 {
     public abstract class CollectionFactory
     {
-        #if NETSTANDARD2_1
-        public static bool IsCollection(Type collectionType, [NotNullWhen(true)] out Type? elementType)
-        #else
-        public static bool IsCollection(Type collectionType, out Type elementType)
-        #endif
+        public static bool IsCollection(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type collectionType,
+            [NotNullWhen(true)] out Type? elementType)
         {
             if (collectionType.IsInterface)
             {
-                #if NETSTANDARD2_1
                 elementType = default;
-                #else
-                elementType = default!;
-                #endif
                 return false;
             }
             if (collectionType.GetInterfaces().TryGetFirst(ty => ty.IsGenericType && ty.GetGenericTypeDefinition() == typeof(ICollection<>), out var ifaceType))
@@ -28,19 +22,13 @@ namespace NCoreUtils.Data
                 elementType = ifaceType.GetGenericArguments()[0];
                 return true;
             }
-            #if NETSTANDARD2_1
             elementType = default;
-            #else
-            elementType = default!;
-            #endif
             return false;
         }
 
-        #if NETSTANDARD2_1
-        public static bool TryCreate(Type collectionType, [NotNullWhen(true)] out CollectionFactory? builder)
-        #else
-        public static bool TryCreate(Type collectionType, out CollectionFactory builder)
-        #endif
+        public static bool TryCreate(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type collectionType,
+            [NotNullWhen(true)] out CollectionFactory? builder)
         {
             if (IsCollection(collectionType, out var elementType))
             {
@@ -53,19 +41,18 @@ namespace NCoreUtils.Data
                 builder = new ReadOnlyListFactory(elementType, collectionType);
                 return true;
             }
-            #if NETSTANDARD2_1
             builder = default;
-            #else
-            builder = default!;
-            #endif
             return false;
         }
 
         public Type ElementType { get; }
 
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
         public Type CollectionType { get; }
 
-        internal CollectionFactory(Type elementType, Type collectionType)
+        internal CollectionFactory(
+            Type elementType,
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type collectionType)
         {
             ElementType = elementType ?? throw new ArgumentNullException(nameof(elementType));
             CollectionType = collectionType ?? throw new ArgumentNullException(nameof(collectionType));

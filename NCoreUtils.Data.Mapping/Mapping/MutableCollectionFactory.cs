@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -12,18 +13,22 @@ namespace NCoreUtils.Data.Mapping
 
         public MethodInfo? AddRangeMethod { get; }
 
-        internal MutableCollectionFactory(Type elementType, Type collectionType)
+        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ICollection<>))]
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Dynamic dependency preserves types.")]
+        internal MutableCollectionFactory(
+            Type elementType,
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type collectionType)
             : base(elementType, collectionType)
         {
             if (!typeof(ICollection<>).MakeGenericType(elementType).IsAssignableFrom(collectionType))
             {
                 throw new InvalidOperationException($"{typeof(ICollection<>).MakeGenericType(elementType)} is not assignable from {collectionType.MakeGenericType(elementType)}");
             }
-            AddMethod = CollectionType.GetMethod("Add", BindingFlags.Public | BindingFlags.Instance, null, new [] { elementType}, null);
-            if (AddMethod is null)
+            AddMethod = CollectionType.GetMethod("Add", BindingFlags.Public | BindingFlags.Instance, null, new [] { elementType}, null) switch
             {
-                throw new InvalidOperationException($"No suitable Add method found for collection type {collectionType} and element type {elementType}.");
-            }
+                null => throw new InvalidOperationException($"No suitable Add method found for collection type {collectionType} and element type {elementType}."),
+                var m => m
+            };
             AddRangeMethod = CollectionType.GetMethod("AddRange", BindingFlags.Public | BindingFlags.Instance, null, new [] { typeof(IEnumerable<>).MakeGenericType(elementType) }, null);
         }
 
@@ -33,6 +38,11 @@ namespace NCoreUtils.Data.Mapping
                 items.Select(item => Expression.ElementInit(AddMethod, item))
             );
 
+        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(System.Collections.IEnumerator))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(System.Collections.IEnumerable))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(IEnumerable<>))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(IEnumerator<>))]
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Dynamic dependency preserves types.")]
         public override Expression CreateNewExpression(Expression items)
         {
             var evar = Expression.Variable(CollectionType);
@@ -44,10 +54,14 @@ namespace NCoreUtils.Data.Mapping
                 var eenumerator = Expression.Variable(typeof(IEnumerator<>).MakeGenericType(ElementType));
                 var eenumeratorinit = Expression.Assign(
                     eenumerator,
-                    Expression.Call(items, typeof(IEnumerable<>).MakeGenericType(ElementType).GetMethod("GetEnumerator"))
+                    Expression.Call(items, typeof(IEnumerable<>).MakeGenericType(ElementType).GetMethod("GetEnumerator")!)
                 );
-                var moveNext = typeof(System.Collections.IEnumerator).GetMethod("MoveNext");
-                var current = eenumerator.Type.GetProperty("Current");
+                var moveNext = typeof(System.Collections.IEnumerator)
+                    .GetMethod("MoveNext")
+                    ?? throw new InvalidOperationException("Unable to get MoveNext method of the IEnumerator.");
+                var current = eenumerator.Type
+                    .GetProperty("Current")
+                    ?? throw new InvalidOperationException("Unable to get Current property of the IEnumerator.");
                 var @break = Expression.Label("breakloop");
                 return Expression.Block(
                     new [] { evar },
@@ -78,10 +92,12 @@ namespace NCoreUtils.Data.Mapping
             );
         }
 
+        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MutableCollectionBuilder<,>))]
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Dynamic dependency preserves types.")]
         public override ICollectionBuilder CreateBuilder()
             => (ICollectionBuilder)Activator.CreateInstance(
                 typeof(MutableCollectionBuilder<,>).MakeGenericType(CollectionType, ElementType),
                 true
-            );
+            )!;
     }
 }

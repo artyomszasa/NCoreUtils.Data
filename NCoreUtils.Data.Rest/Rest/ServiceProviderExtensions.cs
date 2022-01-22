@@ -15,7 +15,7 @@ namespace NCoreUtils.Data.Rest
                 _override = @override;
             }
 
-            public object GetService(Type serviceType)
+            public object? GetService(Type serviceType)
             {
                 if (serviceType == typeof(T))
                 {

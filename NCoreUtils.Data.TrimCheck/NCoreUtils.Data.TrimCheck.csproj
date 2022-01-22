@@ -2,7 +2,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\NCoreUtils.Data.Abstractions\NCoreUtils.Data.Abstractions.csproj" />
+    <ProjectReference Include="..\NCoreUtils.Data.EntityFrameworkCore\NCoreUtils.Data.EntityFrameworkCore.csproj" />
+    <ProjectReference Include="..\NCoreUtils.Data.Rest\NCoreUtils.Data.Rest.csproj" />
     <TrimmerRootAssembly Include="NCoreUtils.Data.Abstractions" />
+    <TrimmerRootAssembly Include="NCoreUtils.Data.EntityFrameworkCore" />
+    <TrimmerRootAssembly Include="NCoreUtils.Data.Rest" />
   </ItemGroup>
 
   <PropertyGroup>

@@ -38,7 +38,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             if (Logger.IsEnabled(LogLevel.Debug))
             {
                 Logger.LogDebug(
-                    "Executing firestore query: {{ Collection = {0}, Conditions = [{1}], Ordering = [{2}], Offset = {3}, Limit = {4} }}.",
+                    "Executing firestore query: {{ Collection = {Collection}, Conditions = [{Conditions}], Ordering = [{Ordering}], Offset = {Offset}, Limit = {Limit} }}.",
                     query.Collection,
                     string.Join(", ", query.Conditions),
                     string.Join(", ", query.Ordering),
@@ -48,6 +48,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             }
         }
 
+        [SuppressMessage("Performance", "CA1822", Justification = "Backward compatibility.")]
         protected FirestoreQuery<TElement> Cast<TElement>(IQueryable<TElement> source)
             => source as FirestoreQuery<TElement> ?? throw new InvalidOperationException($"Unable to cast {source} to firestore query.");
 
@@ -65,11 +66,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
         protected virtual bool TryCreateFilteredQuery(
             FirestoreDb db,
             FirestoreQuery source,
-#if NETSTANDARD2_1
             [MaybeNullWhen(false)] out Query query,
-#else
-            out Query query,
-#endif
             out FirestoreMultiQuery multiQuery)
         {
             ValidateQuery(source);
@@ -89,11 +86,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
         protected virtual bool TryCreateUnboundQuery(
             FirestoreDb db,
             FirestoreQuery source,
-#if NETSTANDARD2_1
             [MaybeNullWhen(false)] out Query query,
-#else
-            out Query query,
-#endif
             out FirestoreMultiQuery multiQuery)
         {
             if (TryCreateFilteredQuery(db, source, out query, out multiQuery))
@@ -251,7 +244,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             => ExecuteQuery(source.Skip(0).Take(1)).FirstAsync(cancellationToken).AsTask();
 
         protected override Task<TElement> ExecuteFirstOrDefault<TElement>(IQueryable<TElement> source, CancellationToken cancellationToken)
-            => ExecuteQuery(source.Skip(0).Take(1)).FirstOrDefaultAsync(cancellationToken).AsTask();
+            => ExecuteQuery(source.Skip(0).Take(1)).FirstOrDefaultAsync(cancellationToken).AsTask()!;
 
         protected override Task<TElement> ExecuteLast<TElement>(IQueryable<TElement> source, CancellationToken cancellationToken)
             => ExecuteFirst(Cast(source).ReverseOrder(), cancellationToken);
@@ -352,7 +345,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                         if (candidates[i].TryGetValue(out var doc))
                         {
                             // first candidate or another value "comes earlier"
-                            if (selectedValue is null || -1 == comparer.Compare(doc, selectedValue))
+                            if (selectedValue is null || -1 == comparer.Compare(doc!, selectedValue))
                             {
 
                                 selectedIndex = i;
@@ -389,7 +382,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
         {
             if (query.Conditions.TryGetFirst(c => c.Operation == FirestoreCondition.Op.ArrayContainsAny, out var c))
             {
-                var wrapper = CollectionWrapper.Create(c.Value);
+                var wrapper = CollectionWrapper.Create(c.Value!);
                 if (wrapper.Count > 10)
                 {
                     // FIXME: pool

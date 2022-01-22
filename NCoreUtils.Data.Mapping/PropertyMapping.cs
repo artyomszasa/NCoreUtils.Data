@@ -34,7 +34,7 @@ namespace NCoreUtils.Data
             public override T Accept<T>(IPropertyMappingVisitor<T> visitor)
                 => visitor.Visit(this);
 
-            public override int CompareTo(PropertyMapping other)
+            public override int CompareTo(PropertyMapping? other)
             {
                 if (other is null)
                 {
@@ -50,7 +50,7 @@ namespace NCoreUtils.Data
             public override int ComputeHashCode()
                 => HashCode.Combine(0, TargetProperty, By);
 
-            public override bool Equals(PropertyMapping other)
+            public override bool Equals(PropertyMapping? other)
                 => other switch
                 {
                     null => false,
@@ -80,7 +80,7 @@ namespace NCoreUtils.Data
             public override T Accept<T>(IPropertyMappingVisitor<T> visitor)
                 => visitor.Visit(this);
 
-            public override int CompareTo(PropertyMapping other)
+            public override int CompareTo(PropertyMapping? other)
             {
                 if (other is null)
                 {
@@ -96,7 +96,7 @@ namespace NCoreUtils.Data
             public override int ComputeHashCode()
                 => HashCode.Combine(1, TargetProperty);
 
-            public override bool Equals(PropertyMapping other)
+            public override bool Equals(PropertyMapping? other)
                 => other switch
                 {
                     null => false,
@@ -106,10 +106,10 @@ namespace NCoreUtils.Data
         }
 
         public static ByCtorParameterMapping ByCtorParameter(PropertyInfo targetProperty, ParameterInfo by)
-            => new ByCtorParameterMapping(targetProperty, by);
+            => new(targetProperty, by);
 
         public static BySetterMapping BySetter(PropertyInfo targetProperty)
-            => new BySetterMapping(targetProperty);
+            => new(targetProperty);
 
         public PropertyInfo TargetProperty { get; }
 
@@ -147,11 +147,11 @@ namespace NCoreUtils.Data
             }
         }
 
-        public abstract int CompareTo(PropertyMapping other);
+        public abstract int CompareTo(PropertyMapping? other);
 
         public abstract int ComputeHashCode();
 
-        public abstract bool Equals(PropertyMapping other);
+        public abstract bool Equals(PropertyMapping? other);
 
         public override bool Equals(object? obj)
             => obj is PropertyMapping other && Equals(other);

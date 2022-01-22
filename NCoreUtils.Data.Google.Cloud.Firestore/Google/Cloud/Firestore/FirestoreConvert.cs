@@ -6,10 +6,6 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using Google.Cloud.Firestore.V1;
 using Google.Protobuf;
-#if NETSTANDARD2_0
-using Convert = NCoreUtils.PolyfillConvert;
-using BitConverter = NCoreUtils.PolyfillBitConverter;
-#endif
 
 namespace NCoreUtils.Data.Google.Cloud.Firestore
 {
@@ -22,9 +18,9 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             "1"
         };
 
-        private static readonly MethodInfo _gmValueToEnum = typeof(FirestoreConvert)
-            .GetMethods(BindingFlags.Static | BindingFlags.Public)
-            .First(m => m.Name == nameof(ToEnum) && m.IsGenericMethodDefinition);
+        // private static readonly MethodInfo _gmValueToEnum = typeof(FirestoreConvert)
+        //     .GetMethods(BindingFlags.Static | BindingFlags.Public)
+        //     .First(m => m.Name == nameof(ToEnum) && m.IsGenericMethodDefinition);
 
         private static readonly MethodInfo _gmEnumToValue = typeof(FirestoreConvert)
             .GetMethods(BindingFlags.Static | BindingFlags.Public)
@@ -38,15 +34,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static Guid GuidFromByteString(ByteString value)
-        {
-            #if NETSTANDARD2_0
-            var buffer = new byte[value.Length];
-            value.CopyTo(buffer, 0);
-            return new Guid(buffer);
-            #else
-            return new Guid(value.Span);
-            #endif
-        }
+            => new(value.Span);
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal static string ToBase64(ByteString bytes)
@@ -57,7 +45,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 Span<char> buffer = stackalloc char[bufferSize];
                 if (Convert.TryToBase64Chars(bytes.Span, buffer, out var written, Base64FormattingOptions.None))
                 {
-                    return buffer.Slice(0, written).ToString();
+                    return buffer[..written].ToString();
                 }
             }
             // fallback to heap memory
@@ -541,7 +529,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 {
                     var ints = new int[4];
                     ReadOnlySpan<byte> source = bytes.Span;
-                    ints[0] = BitConverter.ToInt32(source.Slice(0, 4));
+                    ints[0] = BitConverter.ToInt32(source[..4]);
                     ints[1] = BitConverter.ToInt32(source.Slice(4, 4));
                     ints[2] = BitConverter.ToInt32(source.Slice(8, 4));
                     ints[3] = BitConverter.ToInt32(source.Slice(12, 4));
@@ -581,29 +569,17 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 {
                     return 0L;
                 }
-                if (-1 == source.IndexOf('|'))
+                if (!source.Contains('|'))
                 {
                     // single string
-                    #if NETSTANDARD2_1
                     return Enum.Parse<TEnum>(source, true).ToInt64(CultureInfo.InvariantCulture);
-                    #else
-                    return ((TEnum)Enum.Parse(typeof(TEnum), source, true)).ToInt64(CultureInfo.InvariantCulture);
-                    #endif
                 }
 
-                #if NETSTANDARD2_1
                 return source.Split('|', StringSplitOptions.RemoveEmptyEntries)
                     .Aggregate(
                         0L,
                         (result, s) => Enum.Parse<TEnum>(s, true).ToInt64(CultureInfo.InvariantCulture) | result
                     );
-                #else
-                return source.Split(new char[] { '|' }, StringSplitOptions.RemoveEmptyEntries)
-                    .Aggregate(
-                        0L,
-                        (result, s) => ((TEnum)Enum.Parse(typeof(TEnum), s, true)).ToInt64(CultureInfo.InvariantCulture) | result
-                    );
-                #endif
             }
         }
 
@@ -613,9 +589,46 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             {
                 throw new ArgumentException($"{enumType} is not an enum.", nameof(enumType));
             }
-            return _gmValueToEnum
-                .MakeGenericMethod(enumType)
-                .Invoke(null, new object[] { value, strict });
+            // return _gmValueToEnum
+            //     .MakeGenericMethod(enumType)
+            //     .Invoke(null, new object[] { value, strict });
+            return Enum.ToObject(enumType, Parse(enumType, value, strict));
+
+            static long Parse(Type enumType, Value value, bool strict)
+            {
+                return value.ValueTypeCase switch
+                {
+                    Value.ValueTypeOneofCase.ArrayValue => value.ArrayValue
+                        .Values
+                        .Aggregate(0L, (result, v) => result | Parse(enumType, v, strict)),
+                    Value.ValueTypeOneofCase.IntegerValue => value.IntegerValue,
+                    Value.ValueTypeOneofCase.StringValue => ParseString(enumType, value.StringValue),
+                    Value.ValueTypeOneofCase.BooleanValue when !strict => value.BooleanValue ? 1L : 0L,
+                    Value.ValueTypeOneofCase.NullValue when !strict => 0L,
+                    Value.ValueTypeOneofCase.None when !strict => 0L,
+                    var @case => throw new FirestoreConversionException(enumType, @case)
+                };
+            }
+
+            static long ParseString(Type enumType, string source)
+            {
+                if (string.IsNullOrEmpty(source))
+                {
+                    return 0L;
+                }
+                if (!source.Contains('|'))
+                {
+                    // single string
+                    return ((IConvertible)Enum.Parse(enumType, source, true)).ToInt64(CultureInfo.InvariantCulture);
+                }
+
+                return source.Split('|', StringSplitOptions.RemoveEmptyEntries)
+                    .Aggregate(
+                        0L,
+                        (result, s) => ((IConvertible)Enum.Parse(enumType, s, true))
+                            .ToInt64(CultureInfo.InvariantCulture) | result
+                    );
+            }
         }
 
         public static DateTimeOffset ToDateTimeOffset(Value value, bool strict)
@@ -765,44 +778,44 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                     var @case => throw new FirestoreConversionException(typeof(Guid), @case)
                 };
             }
-            catch (Exception exn) when (!(exn is FirestoreConversionException))
+            catch (Exception exn) when (exn is not FirestoreConversionException)
             {
                 throw new FirestoreConversionException(typeof(Guid), value.ValueTypeCase, exn);
             }
         }
 
         public static Value ToValue(string value)
-            => new Value { StringValue = value };
+            => new() { StringValue = value };
 
         public static Value ToValue(sbyte value)
-            => new Value { IntegerValue = value };
+            => new() { IntegerValue = value };
 
         public static Value ToValue(short value)
-            => new Value { IntegerValue = value };
+            => new() { IntegerValue = value };
 
         public static Value ToValue(int value)
-            => new Value { IntegerValue = value };
+            => new() { IntegerValue = value };
 
         public static Value ToValue(long value)
-            => new Value { IntegerValue = value };
+            => new() { IntegerValue = value };
 
         public static Value ToValue(byte value)
-            => new Value { IntegerValue = value };
+            => new() { IntegerValue = value };
 
         public static Value ToValue(ushort value)
-            => new Value { IntegerValue = value };
+            => new() { IntegerValue = value };
 
         public static Value ToValue(uint value)
-            => new Value { IntegerValue = value };
+            => new() { IntegerValue = value };
 
         public static Value ToValue(ulong value)
-            => new Value { IntegerValue = Convert.ToInt64(value) };
+            => new() { IntegerValue = Convert.ToInt64(value) };
 
         public static Value ToValue(float value)
-            => new Value { DoubleValue = value };
+            => new() { DoubleValue = value };
 
         public static Value ToValue(double value)
-            => new Value { DoubleValue = value };
+            => new() { DoubleValue = value };
 
         public static Value ToValue(decimal value, FirestoreDecimalHandling decimalHandling)
         {
@@ -819,7 +832,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             {
                 var ints = decimal.GetBits(value);
                 Span<byte> bytes = stackalloc byte[16];
-                BitConverter.TryWriteBytes(bytes.Slice(0, 4), ints[0]);
+                BitConverter.TryWriteBytes(bytes[..4], ints[0]);
                 BitConverter.TryWriteBytes(bytes.Slice(4, 4), ints[1]);
                 BitConverter.TryWriteBytes(bytes.Slice(8, 4), ints[2]);
                 BitConverter.TryWriteBytes(bytes.Slice(12, 4), ints[3]);
@@ -851,7 +864,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             }
             return (string)_gmEnumToFlagsString
                 .MakeGenericMethod(enumType)
-                .Invoke(null, new object[] { value });
+                .Invoke(null, new object[] { value })!;
         }
 
         public static Value ToValue<TEnum>(TEnum value, FirestoreEnumHandling enumHandling)
@@ -873,10 +886,10 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             };
 
             static Value ToString(TEnum value)
-                => new Value { StringValue = value.ToString() };
+                => new() { StringValue = value.ToString() };
 
             static Value ToFlagsString(TEnum value)
-                => new Value { StringValue = EnumToFlagsString(value) };
+                => new() { StringValue = EnumToFlagsString(value) };
 
             static Value ToStringArray(TEnum value)
             {
@@ -892,7 +905,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             }
 
             static Value ToNumber(TEnum value)
-                => new Value { IntegerValue = value.ToInt64(CultureInfo.InvariantCulture) };
+                => new() { IntegerValue = value.ToInt64(CultureInfo.InvariantCulture) };
 
             static Value ToNumberArray(TEnum value)
             {
@@ -920,22 +933,22 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             }
             return (Value)_gmEnumToValue
                 .MakeGenericMethod(enumType)
-                .Invoke(null, new object[] { value, enumHandling });
+                .Invoke(null, new object[] { value, enumHandling })!;
         }
 
         public static Value ToValue(DateTimeOffset value)
-            => new Value { TimestampValue = global::Google.Protobuf.WellKnownTypes.Timestamp.FromDateTimeOffset(value) };
+            => new() { TimestampValue = global::Google.Protobuf.WellKnownTypes.Timestamp.FromDateTimeOffset(value) };
 
         public static Value ToValue(DateTime value)
-            => new Value { TimestampValue = global::Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(value) };
+            => new() { TimestampValue = global::Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(value) };
 
         public static Value ToValue(TimeSpan value)
-            => new Value { IntegerValue = value.Ticks };
+            => new() { IntegerValue = value.Ticks };
 
         public static Value ToValue(bool value)
-            => new Value { BooleanValue = value };
+            => new() { BooleanValue = value };
 
         public static Value ToValue(Guid value)
-            => new Value { BytesValue = ByteString.CopyFrom(value.ToByteArray()) };
+            => new() { BytesValue = ByteString.CopyFrom(value.ToByteArray()) };
     }
 }

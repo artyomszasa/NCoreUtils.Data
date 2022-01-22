@@ -4,6 +4,8 @@ using System.Linq;
 using Google.Cloud.Firestore.V1;
 using static Google.Cloud.Firestore.V1.Value;
 
+#pragma warning disable CA1822, IDE0090, CS8767
+
 namespace NCoreUtils.Data.Google.Cloud.Firestore.Internal
 {
     /// <summary>
@@ -203,3 +205,5 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Internal
         }
     }
 }
+
+#pragma warning restore CA1822, IDE0090, CS8767

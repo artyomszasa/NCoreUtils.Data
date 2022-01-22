@@ -54,6 +54,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Unit
 
         public void Dispose()
         {
+            GC.SuppressFinalize(this);
             (_serviceProvider as IDisposable)?.Dispose();
         }
     }

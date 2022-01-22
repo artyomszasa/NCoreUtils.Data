@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 
@@ -10,7 +11,9 @@ namespace NCoreUtils.Data
         private static bool Eqi(string? a, string? b)
             => StringComparer.InvariantCultureIgnoreCase.Equals(a, b);
 
-        public static IEnumerable<Ctor> GetSuitableCtors(Type type)
+        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(Ctor<>))]
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Dynamic dependency preserves types.")]
+        public static IEnumerable<Ctor> GetSuitableCtors([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties)] Type type)
         {
             var properties = type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.FlattenHierarchy);
             var ctorCtor = typeof(Ctor<>).MakeGenericType(type).GetConstructors(BindingFlags.NonPublic | BindingFlags.Instance).First();

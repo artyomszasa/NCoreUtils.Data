@@ -35,6 +35,8 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             return true;
         }
 
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Both key and value are preserved types.")]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(KeyValuePair<,>))]
         protected IEnumerable CollectionFromValue(Value value, Type targetType, CollectionFactory collectionFactory, bool strictMode)
         {
             if (value.ValueTypeCase == Value.ValueTypeOneofCase.NullValue && !strictMode)
@@ -56,7 +58,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 {
                     var key = keyType == typeof(string) ? kv.Key : Convert.ChangeType(kv.Key, keyType);
                     var val = ConvertFromValue(kv.Value, valueType);
-                    builder.Add(Activator.CreateInstance(keyValueType, key, val));
+                    builder.Add(Activator.CreateInstance(keyValueType, key, val)!);
                 }
                 return builder.Build();
             }

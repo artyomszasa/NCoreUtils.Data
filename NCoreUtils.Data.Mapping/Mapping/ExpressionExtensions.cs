@@ -11,11 +11,7 @@ namespace NCoreUtils.Data.Mapping
     {
         private interface IOriginSource
         {
-            #if NETSTANDARD2_1
             bool TryGetOrigin(Expression instance, MemberInfo property, [NotNullWhen(true)] out Expression? origin);
-            #else
-            bool TryGetOrigin(Expression instance, MemberInfo property, out Expression origin);
-            #endif
         }
 
         private sealed class CtorOriginSource : IOriginSource
@@ -33,11 +29,7 @@ namespace NCoreUtils.Data.Mapping
                 _arguments = arguments;
             }
 
-            #if NETSTANDARD2_1
             public bool TryGetOrigin(Expression instance, MemberInfo property, [NotNullWhen(true)] out Expression? origin)
-            #else
-            public bool TryGetOrigin(Expression instance, MemberInfo property, out Expression origin)
-            #endif
             {
                 if (_instance.Equals(instance))
                 {
@@ -48,7 +40,7 @@ namespace NCoreUtils.Data.Mapping
                         return true;
                     }
                 }
-                origin = default!;
+                origin = default;
                 return false;
             }
         }
@@ -100,7 +92,9 @@ namespace NCoreUtils.Data.Mapping
 
             protected override Expression VisitMember(MemberExpression node)
             {
-                if (node.Member is PropertyInfo property && _originSource.TryGetOrigin(node.Expression, property, out var origin))
+                if (node.Member is PropertyInfo property
+                    && node.Expression is not null
+                    && _originSource.TryGetOrigin(node.Expression, property, out var origin))
                 {
                     return origin;
                 }

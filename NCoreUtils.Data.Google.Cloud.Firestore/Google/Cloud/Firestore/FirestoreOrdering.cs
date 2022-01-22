@@ -35,7 +35,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             => HashCode.Combine(Path, Direction);
 
         public FirestoreOrdering Revert()
-            => new FirestoreOrdering(Path, Direction switch
+            => new(Path, Direction switch
             {
                 FirestoreOrderingDirection.Ascending => FirestoreOrderingDirection.Descending,
                 _ => FirestoreOrderingDirection.Ascending

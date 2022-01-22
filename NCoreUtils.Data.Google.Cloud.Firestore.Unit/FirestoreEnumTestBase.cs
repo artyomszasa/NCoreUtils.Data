@@ -89,7 +89,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Unit
                 var e1 = await erepo.LookupAsync(e0.Id);
                 Assert.NotNull(e1);
                 Assert.Equal(evalue, e0.Value);
-                Assert.Equal(evalue, e1.Value);
+                Assert.Equal(evalue, e1!.Value);
 
                 var items = await erepo.Items.Where(e => e.Value == evalue).ToListAsync(default);
                 Assert.NotEmpty(items);
@@ -103,7 +103,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Unit
                 var e1 = await frepo.LookupAsync(e0.Id);
                 Assert.NotNull(e1);
                 Assert.Equal(fvalue, e0.Value);
-                Assert.Equal(fvalue, e1.Value);
+                Assert.Equal(fvalue, e1!.Value);
             }
             if (_enumHandling == FirestoreEnumHandling.AsNumberOrNumberArray || _enumHandling == FirestoreEnumHandling.AsStringOrStringArray)
             {

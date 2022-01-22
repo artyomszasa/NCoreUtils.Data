@@ -5,7 +5,7 @@ namespace System.Diagnostics.CodeAnalysis
     //     Suppresses reporting of a specific rule violation, allowing multiple suppressions
     //     on a single code artifact.
     [AttributeUsage(AttributeTargets.All, Inherited = false, AllowMultiple = true)]
-    public sealed class UnconditionalSuppressMessageAttribute : Attribute
+    internal sealed class UnconditionalSuppressMessageAttribute : Attribute
     {
         //
         // Summary:

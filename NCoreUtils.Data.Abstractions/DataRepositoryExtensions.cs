@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 
 namespace NCoreUtils.Data
@@ -17,7 +18,8 @@ namespace NCoreUtils.Data
         /// Either data entity from persistent store that has the specified business key, <c>null</c> if no such entity
         /// exists.
         /// </returns>
-        public static TData? Lookup<TData, TId>(this IDataRepository<TData, TId> repository, TId id)
+        public static TData? Lookup<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] TData, TId>(
+            this IDataRepository<TData, TId> repository, TId id)
             where TData : IHasId<TId>
         {
             if (repository == null)
@@ -36,7 +38,8 @@ namespace NCoreUtils.Data
         /// <param name="repository">Data repository.</param>
         /// <param name="item">Data entity instance to persist.</param>
         /// <returns>Updated data entity.</returns>
-        public static T Persist<T>(this IDataRepository<T> repository, T item)
+        public static T Persist<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T>(
+            this IDataRepository<T> repository, T item)
         {
             if (repository == null)
             {
@@ -53,11 +56,12 @@ namespace NCoreUtils.Data
         /// <param name="item">Data entity to remove.</param>
         /// <param name="force">
         /// Force physical removal from the persistent store. If data entity implements
-        /// <see cref="NCoreUtils.Data.IHasState" /> interface then <see cref="P:NCoreUtils.Data.IHasState.State" />
+        /// <see cref="IHasState" /> interface then <see cref="IHasState.State" />
         /// may be updated instead of removing the entity. Setting <paramref name="force" /> to <c>true</c> suppresses
         /// this functionality.
         /// </param>
-        public static void Remove<T>(this IDataRepository<T> repository, T item, bool force = false)
+        public static void Remove<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T>(
+            this IDataRepository<T> repository, T item, bool force = false)
         {
             if (repository == null)
             {

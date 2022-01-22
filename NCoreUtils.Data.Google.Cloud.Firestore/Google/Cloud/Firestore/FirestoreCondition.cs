@@ -103,9 +103,9 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
         public Op Operation { get; }
 
-        public object Value { get; }
+        public object? Value { get; }
 
-        public FirestoreCondition(FieldPath path, Op operation, object value)
+        public FirestoreCondition(FieldPath path, Op operation, object? value)
         {
             if (operation != Op.AlwaysFalse)
             {
@@ -129,24 +129,24 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             {
                 return other.Operation == Op.ArrayContainsAny
                     && _pathComparer.Equals(Path, other.Path)
-                    && SequenceEqual((IEnumerable)Value, (IEnumerable)other.Value);
+                    && SequenceEqual((IEnumerable)Value!, (IEnumerable)other.Value!);
             }
             return Operation == other.Operation
                 && _pathComparer.Equals(Path, other.Path)
                 && (Value?.Equals(other.Value) ?? false);
         }
 
-        public override bool Equals(object obj) => obj is FirestoreCondition other && Equals(other);
+        public override bool Equals(object? obj) => obj is FirestoreCondition other && Equals(other);
 
         public override int GetHashCode() => HashCode.Combine(Path, Operation, Value);
 
-        private string StringifyValue(object value)
+        private string StringifyValue(object? value)
             => value switch
             {
                 null => string.Empty,
                 string s => s,
                 IEnumerable enumerable => $"[{string.Join(", ", enumerable.Cast<object>().Select(StringifyValue))}]",
-                var o => o.ToString()
+                var o => o.ToString() ?? string.Empty
             };
 
         public override string ToString()

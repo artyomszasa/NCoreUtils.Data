@@ -15,7 +15,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 {
     public class FirestoreModel : DataModel
     {
-        internal static readonly HashSet<Type> _primitiveTypes = new HashSet<Type>
+        internal static readonly HashSet<Type> _primitiveTypes = new()
         {
             typeof(bool),
             typeof(byte[]),
@@ -42,7 +42,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             typeof(long?),
         };
 
-        private readonly ConcurrentDictionary<Type, LambdaExpression> _initialSelectorCache = new ConcurrentDictionary<Type, LambdaExpression>();
+        private readonly ConcurrentDictionary<Type, LambdaExpression> _initialSelectorCache = new();
 
         public IFirestoreConfiguration Configuration { get; }
 
@@ -106,11 +106,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             return (Expression<Func<DocumentSnapshot, T>>)_initialSelectorCache.GetOrAdd(typeof(T), _ => GetInitialSelectorNoCache<T>());
         }
 
-        #if NETSTANDARD2_1
         public bool TryGetDataEntity(Type type, [NotNullWhen(true)] out DataEntity? entity)
-        #else
-        public bool TryGetDataEntity(Type type, out DataEntity entity)
-        #endif
             => ByType.TryGetValue(type, out entity);
     }
 }

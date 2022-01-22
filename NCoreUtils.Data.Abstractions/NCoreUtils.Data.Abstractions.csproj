@@ -25,6 +25,6 @@
   <ItemGroup>
     <PackageReference Include="NCoreUtils.Extensions.Expressions" Version="6.0.1" />
     <PackageReference Include="NCoreUtils.Maybe" Version="2.0.0" />
-    <PackageReference Include="System.Collections.Immutable" Version="1.7.1" />
+    <PackageReference Include="System.Collections.Immutable" Version="6.0.0" />
   </ItemGroup>
 </Project>

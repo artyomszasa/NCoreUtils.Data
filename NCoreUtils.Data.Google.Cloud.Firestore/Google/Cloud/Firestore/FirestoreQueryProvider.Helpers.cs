@@ -24,7 +24,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
         private sealed class EmptyAsyncEnumerable<T> : IAsyncEnumerable<T>
         {
-            private static readonly EmptyAsyncEnumerator<T> _enumerator = new EmptyAsyncEnumerator<T>();
+            private static readonly EmptyAsyncEnumerator<T> _enumerator = new();
 
             public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
                 => _enumerator;
@@ -46,8 +46,9 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
             // if expression is a property of the known entity.
             if (expression is MemberExpression mexpr
-                && !(mexpr.Expression is null)
+                && mexpr.Expression is not null
                 && mexpr.Member is PropertyInfo prop
+                && prop.DeclaringType is not null
                 && Model.TryGetDataEntity(prop.DeclaringType, out var entity)
                 && entity.Properties.TryGetFirst(d => d.Property.Equals(prop), out var pdata))
             {
@@ -96,50 +97,5 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             return TryResolveSubpath(expression, document, ImmutableList<string>.Empty, out path, out type);
             #pragma warning restore CS0618
         }
-
-        /*
-        protected virtual FieldPath ResolvePath(Expression expression, ParameterExpression rootParameter)
-        {
-            // handle key expression
-            if (expression is MemberExpression mexpr && mexpr.Member is PropertyInfo prop && mexpr.Expression.Equals(rootParameter))
-            {
-                if (!Model.TryGetDataEntity(rootParameter.Type, out var entity))
-                {
-                    throw new InvalidOperationException($"Unable to resolve path as type {rootParameter.Type} is not registered as entity.");
-                }
-                var key = entity.Key;
-                if (null != key && key.Count == 1 && key[0].Equals(prop))
-                {
-                    return FieldPath.DocumentId;
-                }
-            }
-            // FIXME: pool
-            var segments = new List<string>(4);
-            ResolvePathRec(Model, expression, rootParameter, segments);
-            return new FieldPath(segments.ToArray());
-
-            static void ResolvePathRec(FirestoreModel model, Expression expression, ParameterExpression rootParameter, List<string> path)
-            {
-                if (expression is ParameterExpression pexpr && pexpr == rootParameter)
-                {
-                    return;
-                }
-                if (expression is MemberExpression mexpr && mexpr.Member is PropertyInfo property)
-                {
-                    ResolvePathRec(model, mexpr.Expression, rootParameter, path);
-                    if (!model.TryGetDataEntity(property.DeclaringType, out var entity))
-                    {
-                        throw new InvalidOperationException($"Unable to resolve path as type {property.DeclaringType} is not registered as entity.");
-                    }
-                    if (!entity.Properties.TryGetFirst(e => e.Property.Equals(property), out var prop))
-                    {
-                        throw new InvalidOperationException($"Unable to resolve path as no property definition found for {property.DeclaringType}.{property.Name}.");
-                    }
-                    path.Add(prop.Name);
-                }
-                throw new NotSupportedException($"Not supported expression {expression} while resolving property path.");
-            }
-        }
-        */
     }
 }

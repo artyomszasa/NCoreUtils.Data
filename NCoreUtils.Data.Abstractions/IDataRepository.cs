@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -26,7 +27,7 @@ namespace NCoreUtils.Data
     /// Defines data repository functionality.
     /// </summary>
     /// <typeparam name="T">Data entity type.</typeparam>
-    public interface IDataRepository<T> : IDataRepository
+    public interface IDataRepository<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T> : IDataRepository
     {
         /// <summary>
         /// Get customizable data entity query object.
@@ -64,7 +65,8 @@ namespace NCoreUtils.Data
     /// </summary>
     /// <typeparam name="TData">Data entity type.</typeparam>
     /// <typeparam name="TId">Data entity business key type.</typeparam>
-    public interface IDataRepository<TData, TId> : IDataRepository<TData>
+    public interface IDataRepository<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] TData, TId>
+        : IDataRepository<TData>
         where TData : IHasId<TId>
     {
         /// <summary>

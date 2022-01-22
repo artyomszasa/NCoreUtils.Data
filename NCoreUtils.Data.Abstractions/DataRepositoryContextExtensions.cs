@@ -22,7 +22,13 @@ namespace NCoreUtils.Data
             {
                 throw new ArgumentNullException(nameof(context));
             }
-            return context.BeginTransactionAsync(isolationLevel, CancellationToken.None).GetAwaiter().GetResult();
+            var asyncRes = context.BeginTransactionAsync(isolationLevel, CancellationToken.None);
+            if (asyncRes.IsCompletedSuccessfully)
+            {
+                return asyncRes.Result;
+            }
+            // should never happen.
+            return asyncRes.AsTask().GetAwaiter().GetResult();
         }
 
         /// <summary>

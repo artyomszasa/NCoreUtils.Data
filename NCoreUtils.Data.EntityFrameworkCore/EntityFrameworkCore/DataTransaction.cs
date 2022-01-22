@@ -32,7 +32,7 @@ namespace NCoreUtils.Data.EntityFrameworkCore
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [DebuggerStepThrough]
-        void ThrowAlreadyFinished()
+        private static void ThrowAlreadyFinished()
         {
             throw new InvalidOperationException("Transaction has already been finished.");
         }

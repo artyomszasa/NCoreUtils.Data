@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
@@ -8,7 +9,7 @@ using NCoreUtils.Data.Events;
 
 namespace NCoreUtils.AspNetCore.Data
 {
-    public class RequestScopedEventHandler<TEventHandler> : IDataEventHandler
+    public class RequestScopedEventHandler<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TEventHandler> : IDataEventHandler
         where TEventHandler : IDataEventHandler
     {
         readonly IHttpContextAccessor _httpContextAccessor;

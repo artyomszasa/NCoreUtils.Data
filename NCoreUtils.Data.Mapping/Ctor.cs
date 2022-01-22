@@ -13,7 +13,7 @@ namespace NCoreUtils.Data
 
         public IReadOnlyList<PropertyMapping> Properties { get; }
 
-        public Type Type => Constructor.DeclaringType;
+        public Type Type => Constructor.DeclaringType ?? throw new InvalidOperationException("Unable to get constructor declaring type.");
 
         internal Ctor(ConstructorInfo constructor, IReadOnlyList<PropertyMapping> properties)
         {
@@ -22,7 +22,7 @@ namespace NCoreUtils.Data
         }
 
         public CtorExpression CreateExpression(IEnumerable<Expression> arguments)
-            => new CtorExpression(this, arguments);
+            => new(this, arguments);
 
         public object Instantiate(IEnumerable values)
         {
@@ -54,7 +54,7 @@ namespace NCoreUtils.Data
             return obj;
         }
 
-        public bool Equals(Ctor other)
+        public bool Equals(Ctor? other)
             => other != null
                 && Constructor.Equals(other.Constructor)
                 && Properties.SequenceEqual(other.Properties);

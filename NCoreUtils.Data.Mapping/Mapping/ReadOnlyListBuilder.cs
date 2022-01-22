@@ -6,7 +6,7 @@ namespace NCoreUtils.Data.Mapping
 {
     public class ReadOnlyListBuilder<T> : ICollectionBuilder<T>
     {
-        private readonly List<T> _items = new List<T>();
+        private readonly List<T> _items = new();
 
         void ICollectionBuilder.Add(object value)
             => Add((T)value);

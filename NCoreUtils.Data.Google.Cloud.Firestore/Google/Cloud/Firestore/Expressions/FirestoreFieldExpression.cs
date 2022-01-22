@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -17,6 +18,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Expressions
 
         private static readonly MethodInfo _gmConvertFromValue;
 
+        [DynamicDependency(DynamicallyAccessedMemberTypes.NonPublicMethods, typeof(FirestoreConverter))]
         static FirestoreFieldExpression()
         {
             Expression<Func<DocumentSnapshot, FieldPath, Value>> e0 = (doc, name) => doc.GetValue<Value>(name);
@@ -67,6 +69,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Expressions
             : this(converter, instance, default, specialPath, type)
         { }
 
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Generic method is preserved using dynamic dependency.")]
         protected virtual Expression Reduce(Type targetType)
         {
             var cpath = Constant(Path);
@@ -81,6 +84,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Expressions
             );
         }
 
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Id property is necessarily preserved during registration.")]
         public override Expression Reduce()
         {
             if (Path.Equals(FieldPath.DocumentId))

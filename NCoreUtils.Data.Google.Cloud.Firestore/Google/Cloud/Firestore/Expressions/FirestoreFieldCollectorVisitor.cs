@@ -6,11 +6,11 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Expressions
 {
     public class FirestoreFieldCollectorVisitor : ExpressionVisitor
     {
-        private readonly HashSet<FieldPath> _paths = new HashSet<FieldPath>();
+        private readonly HashSet<FieldPath> _paths = new();
 
         public IReadOnlyCollection<FieldPath> Paths => _paths;
 
-        public override Expression Visit(Expression node)
+        public override Expression? Visit(Expression? node)
         {
             if (node is FirestoreFieldExpression fieldExpression)
             {

@@ -12,7 +12,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
             public static RollbackMessage Rollback { get; } = new RollbackMessage();
 
-            public static ActionMessage<T> Action<T>(Func<Transaction, Task<T>> action) => new ActionMessage<T>(action);
+            public static ActionMessage<T> Action<T>(Func<Transaction, Task<T>> action) => new(action);
 
             protected Message() { }
 

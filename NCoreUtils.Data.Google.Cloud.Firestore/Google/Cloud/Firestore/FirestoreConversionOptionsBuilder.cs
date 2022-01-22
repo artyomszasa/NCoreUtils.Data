@@ -58,6 +58,6 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
         }
 
         public FirestoreConversionOptions ToOptions()
-            => new FirestoreConversionOptions(StrictMode, DecimalHandling, EnumHandling, Converters.ToArray());
+            => new(StrictMode, DecimalHandling, EnumHandling, Converters.ToArray());
     }
 }

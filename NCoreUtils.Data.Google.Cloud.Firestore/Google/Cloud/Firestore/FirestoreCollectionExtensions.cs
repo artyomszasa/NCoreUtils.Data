@@ -34,6 +34,6 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
         }
 
         internal static FieldPath ToFieldPath(this ImmutableList<string> rawPath)
-            => new FieldPath(rawPath.ToArray());
+            => new(rawPath.ToArray());
     }
 }

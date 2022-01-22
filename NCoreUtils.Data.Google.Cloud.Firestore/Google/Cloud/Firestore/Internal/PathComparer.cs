@@ -10,13 +10,20 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Internal
     {
         public static PathComparer Instance { get; } = new PathComparer();
 
-        private PathComparer()
-        {
-        }
+        private PathComparer() { }
 
         // Note: we don't handle null input, but this is never exposed, so we should never need to.
-        public int Compare(string left, string right)
+        public int Compare(string? left, string? right)
         {
+            if (left is null)
+            {
+                return right is null ? 0 : -1;
+            }
+            if (right is null)
+            {
+                return 1;
+            }
+
             // We can't just do a string comparison, because of cases such as:
             // foo/bar/baz
             // foo/bar-/baz

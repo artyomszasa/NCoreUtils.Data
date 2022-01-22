@@ -4,7 +4,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 {
     public struct FirestoreMultiQuery
     {
-        private static readonly IReadOnlyList<FirestoreQuery> _noQueries = new FirestoreQuery[0];
+        private static readonly IReadOnlyList<FirestoreQuery> _noQueries = System.Array.Empty<FirestoreQuery>();
 
         private readonly IReadOnlyList<FirestoreQuery>? _queries;
 

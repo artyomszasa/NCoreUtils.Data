@@ -22,12 +22,7 @@ namespace NCoreUtils.Data.Rest
         public Task DeleteAsync(TId id, bool force, CancellationToken cancellationToken = default)
             => _client.DeleteAsync<TData, TId>(id, force, cancellationToken);
 
-#if NETSTANDARD2_0
-        public Task DeleteAsync(TId id, CancellationToken cancellationToken = default)
-            => DeleteAsync(id, false, cancellationToken);
-#endif
-
-        public Task<TData> ItemAsync(TId id, CancellationToken cancellationToken = default)
+        public Task<TData?> ItemAsync(TId id, CancellationToken cancellationToken = default)
             => _client.ItemAsync<TData, TId>(id, cancellationToken);
 
         public Task UpdateAsync(TId id, TData data, CancellationToken cancellationToken = default)

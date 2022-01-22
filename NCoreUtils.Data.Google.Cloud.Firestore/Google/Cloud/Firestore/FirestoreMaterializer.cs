@@ -10,7 +10,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 {
     public class FirestoreMaterializer
     {
-        private readonly ConcurrentDictionary<Ctor, object> _ctorExpressionCache = new ConcurrentDictionary<Ctor, object>();
+        private readonly ConcurrentDictionary<Ctor, object> _ctorExpressionCache = new();
 
         // FIXME: Expression parameterization and cache.
         protected virtual Func<DocumentSnapshot, T> CompileMaterialization<T>(Expression<Func<DocumentSnapshot, T>> expression)

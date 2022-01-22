@@ -13,7 +13,7 @@ namespace NCoreUtils.Data.Rest
     public interface IDataRestClient<TData, TId> : IDataRestClient<TData>
         where TData : IHasId<TId>
     {
-        Task<TData> ItemAsync(TId id, CancellationToken cancellationToken = default);
+        Task<TData?> ItemAsync(TId id, CancellationToken cancellationToken = default);
 
         Task<TId> CreateAsync(TData data, CancellationToken cancellationToken = default);
 
@@ -23,10 +23,6 @@ namespace NCoreUtils.Data.Rest
 
         [Obsolete("Use DeleteAsync(id, force, cancellationToken) instead.")]
         Task DeleteAsync(TId id, CancellationToken cancellationToken = default)
-#if NETSTANDARD2_0
-            ;
-#else
             => DeleteAsync(id, false, cancellationToken);
-#endif
     }
 }

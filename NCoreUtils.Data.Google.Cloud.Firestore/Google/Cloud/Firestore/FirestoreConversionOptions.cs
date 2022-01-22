@@ -9,7 +9,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             true,
             FirestoreDecimalHandling.AsString,
             FirestoreEnumHandling.AlwaysAsString,
-            new FirestoreValueConverter[0]
+            Array.Empty<FirestoreValueConverter>()
         );
 
         public bool StrictMode { get; }

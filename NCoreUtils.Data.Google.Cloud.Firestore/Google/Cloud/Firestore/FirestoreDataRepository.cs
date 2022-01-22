@@ -13,26 +13,6 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 {
     public abstract class FirestoreDataRespository : IDataRepository
     {
-        private abstract class ToList
-        {
-            private static readonly ConcurrentDictionary<Type, ToList> _cache = new ConcurrentDictionary<Type, ToList>();
-
-            private static readonly Func<Type, ToList> _factory =
-                type => (ToList)Activator.CreateInstance(typeof(ToList<>).MakeGenericType(type), true)!;
-
-            public static object Convert(object enumerable, Type elementType, Func<Type, object, object> populateValue)
-                => _cache.GetOrAdd(elementType, _factory)
-                    .Convert(enumerable, populateValue);
-
-            protected abstract object Convert(object enumerable, Func<Type, object, object> populateValue);
-        }
-
-        private sealed class ToList<T> : ToList
-        {
-            protected override object Convert(object enumerable, Func<Type, object, object> populateValue)
-                => ((IEnumerable<T>)enumerable).Select(v => populateValue(typeof(T), v!)).ToList();
-        }
-
         IDataRepositoryContext IDataRepository.Context => Context;
 
         protected FirestoreConverter Converter { get; }
@@ -167,16 +147,16 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
         /// <c>true</c> if insert operation shpuld be performed, <c>false</c> otherwise.
         /// </returns>
         protected virtual ValueTask<bool> ShouldInsert(TData item, CancellationToken cancellationToken)
-            => new ValueTask<bool>(string.IsNullOrEmpty(item.Id));
+            => new(string.IsNullOrEmpty(item.Id));
 
-        public virtual Task<TData> LookupAsync(string id, CancellationToken cancellationToken = default)
+        public virtual Task<TData?> LookupAsync(string id, CancellationToken cancellationToken = default)
             => ((FirestoreQuery<TData>)Items)
                 .AddCondition(new FirestoreCondition(
                     FieldPath.DocumentId,
                     FirestoreCondition.Op.EqualTo,
                     Context.Db.Collection(Entity.Name).Document(id)
                 ))
-                .FirstOrDefaultAsync(cancellationToken);
+                .FirstOrDefaultAsync(cancellationToken)!;
 
         public virtual async Task<TData> PersistAsync(TData item, CancellationToken cancellationToken = default)
         {
@@ -189,7 +169,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             {
                 id = await UpdateAsync(item, cancellationToken);
             }
-            return await LookupAsync(id, cancellationToken);
+            return (await LookupAsync(id, cancellationToken))!;
         }
 
         public virtual Task RemoveAsync(TData item, bool force = false, CancellationToken cancellationToken = default)

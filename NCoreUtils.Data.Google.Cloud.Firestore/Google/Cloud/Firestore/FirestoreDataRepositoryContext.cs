@@ -29,7 +29,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
         }
 
         ValueTask<IDataTransaction> IDataRepositoryContext.BeginTransactionAsync(IsolationLevel isolationLevel, CancellationToken cancellationToken)
-            => new ValueTask<IDataTransaction>(BeginTransaction(isolationLevel));
+            => new(BeginTransaction(isolationLevel));
 
         Task IFirestoreDbAccessor.ExecuteAsync(Func<FirestoreDb, Task> action)
         {

@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 using NCoreUtils.Data.Protocol;
@@ -47,14 +48,13 @@ namespace NCoreUtils.Data.Rest
         public virtual IDataRestClient<TData, TId> GetClient<TData, TId>() where TData : IHasId<TId>
             => new DataRestClient<TData, TId>(this);
 
+        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(DataRestClientFactory))]
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Generic method is preserved using dynamic dependency.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2060", Justification = "Argument types are preserved during registration.")]
         public IDataRestClient<TData> GetClient<TData>()
-            // => (IDataRestClient<TData>)Activator.CreateInstance(typeof(DataRestClient<,>).MakeGenericType(typeof(TData), Configuration[typeof(TData)].IdType), new object[]
-            // {
-            //     this
-            // });
         {
             var m = _getClient.MakeGenericMethod(typeof(TData), Configuration[typeof(TData)].IdType);
-            return (IDataRestClient<TData>)m.Invoke(this, new object[0]);
+            return (IDataRestClient<TData>)m.Invoke(this, Array.Empty<object>())!;
         }
     }
 }

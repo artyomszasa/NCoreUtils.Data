@@ -13,9 +13,32 @@ namespace NCoreUtils.Data.IdNameGeneration
 {
     public static class Annotations
     {
+        private class PropertyResolver
+        {
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+            private Type Type { get; }
+
+            public PropertyResolver([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] Type type)
+                => Type = type ?? throw new ArgumentNullException(nameof(type));
+
+            public PropertyInfo ResolvePropertyOrThrow(string name)
+            {
+                var property = Type.GetProperty(name, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+                if (null == property)
+                {
+                    throw new IdNameGenerationAnnotationException($"Unresolvable property name {name} for type {Type.FullName} in annotation.");
+                }
+                return property;
+            }
+        }
+
         internal static Assembly? _generatedAssembly = null;
 
         [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Only invoked internally.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2073", Justification = "Only invoked internally.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2057", Justification = "Only invoked internally.")]
+        [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties
+            | DynamicallyAccessedMemberTypes.NonPublicProperties)]
         private static Type ResolveType(string typeName)
         {
             return Type.GetType(typeName) ?? Type.GetType(
@@ -45,22 +68,9 @@ namespace NCoreUtils.Data.IdNameGeneration
                         throw new InvalidOperationException("Unable to deserialize raw annotation.");
                     }
                     var ty = ResolveType(data.TypeName);
-                    var sourceNameProperty = ty.GetProperty(data.SourcePropertyName, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
-                    if (null == sourceNameProperty)
-                    {
-                        throw new IdNameGenerationAnnotationException($"Unresolvable property name {data.SourcePropertyName} for type {ty.FullName} in annotation.");
-                    }
-                    var additionalProperties = data.AdditionalPropertyNames
-                        .Select(name => {
-                            var property = ty.GetProperty(name, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
-                            if (null == property)
-                            {
-                                throw new IdNameGenerationAnnotationException($"Unresolvable property name {name} for type {ty.FullName} in annotation.");
-                            }
-                            return property;
-                        });
-
-
+                    var resolver = new PropertyResolver(ty);
+                    var sourceNameProperty = resolver.ResolvePropertyOrThrow(data.SourcePropertyName);
+                    var additionalProperties = data.AdditionalPropertyNames.Select(resolver.ResolvePropertyOrThrow);
                     return new IdNameSourcePropertyAnnotation(sourceNameProperty, additionalProperties.ToImmutableArray());
                 }
                 catch (IdNameGenerationAnnotationException)

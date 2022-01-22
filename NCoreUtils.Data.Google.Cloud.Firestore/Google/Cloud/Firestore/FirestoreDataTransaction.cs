@@ -10,9 +10,9 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 {
     public sealed partial class FirestoreDataTransaction : IDataTransaction
     {
-        private readonly BufferBlock<Message> _queue = new BufferBlock<Message>();
+        private readonly BufferBlock<Message> _queue = new();
 
-        private readonly CancellationTokenSource _cancellation = new CancellationTokenSource();
+        private readonly CancellationTokenSource _cancellation = new();
 
         private readonly Task _task;
 
@@ -66,7 +66,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                     var message = await _queue.ReceiveAsync(tx.CancellationToken);
                     shouldExit = await message.RunAsync(tx);
                 }
-                _logger.LogDebug("Committing firestore transaction {0}.", Guid);
+                _logger.LogDebug("Committing firestore transaction {Guid}.", Guid);
             }
             finally
             {
@@ -101,16 +101,16 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                     if (aexn.InnerExceptions[0] is AbortTransactionException)
                     {
                         // aborted normally
-                        _logger.LogDebug("Firestore transaction {0} has been rolled back.", Guid);
+                        _logger.LogDebug("Firestore transaction {Guid} has been rolled back.", Guid);
                     }
                     else
                     {
-                        _logger.LogError(aexn.InnerExceptions[0], "Unexpected exception while disposing firebase transaction {0}.", Guid);
+                        _logger.LogError(aexn.InnerExceptions[0], "Unexpected exception while disposing firebase transaction {Guid}.", Guid);
                     }
                 }
                 else
                 {
-                    _logger.LogError(aexn.InnerExceptions[0], "Unexpected exception while disposing firebase transaction {0}.", Guid);
+                    _logger.LogError(aexn.InnerExceptions[0], "Unexpected exception while disposing firebase transaction {Guid}.", Guid);
                 }
                 return true;
             }

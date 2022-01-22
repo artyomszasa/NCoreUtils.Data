@@ -7,7 +7,7 @@ namespace NCoreUtils.Data.Mapping
     public class MutableCollectionBuilder<TCollection, TElement> : ICollectionBuilder<TElement>
         where TCollection : ICollection<TElement>, new()
     {
-        private readonly TCollection _items = new TCollection();
+        private readonly TCollection _items = new();
 
         void ICollectionBuilder.Add(object value)
             => Add((TElement)value);

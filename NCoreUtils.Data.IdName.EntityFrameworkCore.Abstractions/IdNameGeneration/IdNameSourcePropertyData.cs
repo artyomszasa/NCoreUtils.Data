@@ -1,9 +1,16 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Text.Json.Serialization;
 
 namespace NCoreUtils.Data.IdNameGeneration;
 
 public class IdNameSourcePropertyData
 {
+    public static IdNameSourcePropertyData Create(
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] string typeName,
+        string sourcePropertyName,
+        string[] additionalPropertyNames)
+        => new(typeName, sourcePropertyName, additionalPropertyNames);
+
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
     public string TypeName { get; }
 
@@ -11,8 +18,9 @@ public class IdNameSourcePropertyData
 
     public string[] AdditionalPropertyNames { get; }
 
-    public IdNameSourcePropertyData(
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] string typeName,
+    [JsonConstructor]
+    internal IdNameSourcePropertyData(
+        string typeName,
         string sourcePropertyName,
         string[] additionalPropertyNames)
     {

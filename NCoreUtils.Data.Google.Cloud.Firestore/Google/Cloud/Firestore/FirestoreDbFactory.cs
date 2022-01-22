@@ -5,7 +5,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 {
     public class FirestoreDbFactory
     {
-        private readonly object _sync = new object();
+        private readonly object _sync = new();
 
         private FirestoreDb? _db;
 

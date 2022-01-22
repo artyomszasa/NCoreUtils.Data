@@ -11,7 +11,7 @@ namespace NCoreUtils.Data
         public static IServiceCollection AddFirestoreDataRepositoryContext(this IServiceCollection services, IFirestoreConfiguration? configuration)
         {
             var conf = services.AddOptions<FirestoreConfiguration>();
-            if (!(configuration is null))
+            if (configuration is not null)
             {
                 conf.Configure(c =>
                 {
@@ -19,7 +19,7 @@ namespace NCoreUtils.Data
                     {
                         c.ProjectId = configuration.ProjectId;
                     }
-                    if (!(configuration.ConversionOptions is null))
+                    if (configuration.ConversionOptions is not null)
                     {
                         c.ConversionOptions = configuration.ConversionOptions;
                     }

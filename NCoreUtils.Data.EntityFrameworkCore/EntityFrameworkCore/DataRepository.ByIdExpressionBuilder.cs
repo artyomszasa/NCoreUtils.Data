@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using NCoreUtils.Linq;
 
 namespace NCoreUtils.Data.EntityFrameworkCore
@@ -26,14 +28,21 @@ namespace NCoreUtils.Data.EntityFrameworkCore
         protected static class ByIdExpressionBuilder<TData, TId>
             where TData : IHasId<TId>
         {
-            static Expression<Func<TData, TId>> GetIdProperty()
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields
+                | DynamicallyAccessedMemberTypes.PublicConstructors)]
+            private static readonly Type _idBoxType = typeof(IdBox<TId>);
+
+            private static Expression<Func<TData, TId>> GetIdProperty()
             {
                 Expression<Func<TData, TId>> expression = entity => entity.Id;
                 return LinqExtensions.ReplaceExplicitProperties(expression);
             }
 
-            static FieldInfo GetIdBoxField(Type ty) => ty.GetField(nameof(IdBox<int>.Value), BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)!;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            private static FieldInfo GetIdBoxField([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] Type ty)
+                => ty.GetField(nameof(IdBox<int>.Value), BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)!;
 
+            [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "IdBox<> type is preserved througs static field.")]
             public static Expression<Func<TData, bool>> CreateFilter(TId id)
             {
                 if (!ByIdExpressionBuilder.IdAccessors.TryGetValue(typeof(TData), out var idAccessor))
@@ -43,9 +52,9 @@ namespace NCoreUtils.Data.EntityFrameworkCore
                 // see: https://github.com/aspnet/EntityFrameworkCore/issues/8909
                 // see: https://github.com/aspnet/EntityFrameworkCore/issues/10535
                 // instead of constant member access expression must be generated to avoid cache issues.
-                if (!ByIdExpressionBuilder.IdBoxFieldCache.TryGetValue(typeof(IdBox<TId>), out var idBoxField))
+                if (!ByIdExpressionBuilder.IdBoxFieldCache.TryGetValue(_idBoxType, out var idBoxField))
                 {
-                    idBoxField = ByIdExpressionBuilder.IdBoxFieldCache.GetOrAdd(typeof(IdBox<TId>), GetIdBoxField);
+                    idBoxField = ByIdExpressionBuilder.IdBoxFieldCache.GetOrAdd(_idBoxType, GetIdBoxField);
                 }
                 var idBox = new IdBox<TId>(id);
                 var idExpression = Expression.Field(Expression.Constant(idBox, typeof(IdBox<TId>)), idBoxField);

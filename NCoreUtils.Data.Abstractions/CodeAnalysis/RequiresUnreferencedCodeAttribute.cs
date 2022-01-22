@@ -5,7 +5,7 @@ namespace System.Diagnostics.CodeAnalysis
     //     Indicates that the specified method requires dynamic access to code that is not
     //     referenced statically, for example, through System.Reflection.
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Constructor | AttributeTargets.Method, Inherited = false)]
-    public sealed class RequiresUnreferencedCodeAttribute : Attribute
+    internal sealed class RequiresUnreferencedCodeAttribute : Attribute
     {
         //
         // Summary:

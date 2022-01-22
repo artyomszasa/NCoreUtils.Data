@@ -88,7 +88,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             => Provider.ExecuteEnumerableAsync<T>(Expression).ToEnumerable().GetEnumerator();
 
         public FirestoreQuery<TResult> ApplySelector<TResult>(Expression<Func<T, TResult>> selector)
-            => new FirestoreQuery<TResult>(
+            => new(
                 Provider,
                 Collection,
                 Selector.ChainSimplified(selector, true),
@@ -99,7 +99,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             );
 
         public FirestoreQuery<T> AddCondition(in FirestoreCondition condition)
-            => new FirestoreQuery<T>(
+            => new(
                 Provider,
                 Collection,
                 Selector,
@@ -110,7 +110,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             );
 
         public FirestoreQuery<T> AddConditions(IEnumerable<FirestoreCondition> conditions)
-            => new FirestoreQuery<T>(
+            => new(
                 Provider,
                 Collection,
                 Selector,
@@ -132,7 +132,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             );
 
         public FirestoreQuery<T> AddOrdering(in FirestoreOrdering ordering)
-            => new FirestoreQuery<T>(
+            => new(
                 Provider,
                 Collection,
                 Selector,
@@ -143,7 +143,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             );
 
         public FirestoreQuery<T> ReverseOrder()
-            => new FirestoreQuery<T>(
+            => new(
                 Provider,
                 Collection,
                 Selector,
@@ -157,7 +157,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             );
 
         public FirestoreQuery<T> ApplyOffset(int offset)
-            => new FirestoreQuery<T>(
+            => new(
                 Provider,
                 Collection,
                 Selector,
@@ -168,7 +168,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             );
 
         public FirestoreQuery<T> ApplyLimit(int limit)
-            => new FirestoreQuery<T>(
+            => new(
                 Provider,
                 Collection,
                 Selector,
@@ -179,12 +179,12 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             );
 
         public FirestoreQuery<T> RevertOrdering()
-            => new FirestoreQuery<T>(
+            => new(
                 Provider,
                 Collection,
                 Selector,
                 Conditions,
-                // FIXME: optimize
+                // TODO: optimize
                 Ordering.Select(o => o.Revert()).ToImmutableList(),
                 Offset,
                 Limit

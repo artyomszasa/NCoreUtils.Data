@@ -2,7 +2,7 @@ using System;
 
 namespace NCoreUtils.Data.Rest
 {
-    public class RestDataTransaction : IDataTransaction
+    public sealed class RestDataTransaction : IDataTransaction
     {
         readonly RestDataRepositoryContext _context;
 

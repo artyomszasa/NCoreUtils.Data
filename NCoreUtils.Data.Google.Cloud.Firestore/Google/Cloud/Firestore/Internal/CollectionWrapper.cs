@@ -10,11 +10,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Internal
         {
             if (collectionType.IsInterface)
             {
-                #if NETSTANDARD2_1
                 elementType = default;
-                #else
-                elementType = default!;
-                #endif
                 return false;
             }
             if (collectionType.GetInterfaces().TryGetFirst(ty => ty.IsGenericType && ty.GetGenericTypeDefinition() == typeof(IReadOnlyList<>), out var ifaceType))
@@ -30,11 +26,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Internal
         {
             if (collectionType.IsInterface)
             {
-                #if NETSTANDARD2_1
                 elementType = default;
-                #else
-                elementType = default!;
-                #endif
                 return false;
             }
             if (collectionType.GetInterfaces().TryGetFirst(ty => ty.IsGenericType && ty.GetGenericTypeDefinition() == typeof(IEnumerable<>), out var ifaceType))
@@ -46,6 +38,10 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Internal
             return false;
         }
 
+        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ArrayWrapper<>))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ReadOnlyListWrapper<>))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(EnumerableWrapper<>))]
+        [UnconditionalSuppressMessage("Trimming", "IL2026")]
         public static CollectionWrapper Create(object source)
         {
             if (source is null)
@@ -56,23 +52,23 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Internal
             if (type.IsArray)
             {
                 return (CollectionWrapper)Activator.CreateInstance(
-                    typeof(ArrayWrapper<>).MakeGenericType(type.GetElementType()),
+                    typeof(ArrayWrapper<>).MakeGenericType(type.GetElementType()!),
                     new object[] { source }
-                );
+                )!;
             }
             if (IsReadOnlyList(type, out var elementType))
             {
                 return (CollectionWrapper)Activator.CreateInstance(
                     typeof(ReadOnlyListWrapper<>).MakeGenericType(elementType),
                     new object[] { source }
-                );
+                )!;
             }
             if (IsEnumerable(type, out elementType))
             {
                 return (CollectionWrapper)Activator.CreateInstance(
                     typeof(EnumerableWrapper<>).MakeGenericType(elementType),
                     new object[] { source }
-                );
+                )!;
             }
             throw new InvalidOperationException($"Unable to create collection wrapper for \"{type}\".");
         }

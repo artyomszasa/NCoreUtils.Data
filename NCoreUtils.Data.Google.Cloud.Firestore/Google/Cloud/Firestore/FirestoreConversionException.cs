@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.Serialization;
 using Google.Cloud.Firestore.V1;
 
@@ -14,10 +15,11 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
         public Value.ValueTypeOneofCase FirestoreType { get; }
 
+        [RequiresUnreferencedCode("The type might be removed")]
         protected FirestoreConversionException(SerializationInfo info, StreamingContext context)
             : base(info, context)
         {
-            RequestedClrType = Type.GetType(info.GetString(nameof(RequestedClrType)), true);
+            RequestedClrType = Type.GetType(info.GetString(nameof(RequestedClrType)) ?? string.Empty, true)!;
             FirestoreType = (Value.ValueTypeOneofCase)info.GetInt32(nameof(FirestoreType));
         }
 

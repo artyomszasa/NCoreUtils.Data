@@ -1,11 +1,12 @@
 using System;
 using System.Data;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace NCoreUtils.Data.Rest
 {
-    public class RestDataRepositoryContext : IDataRepositoryContext
+    public sealed class RestDataRepositoryContext : IDataRepositoryContext
     {
         internal IDataTransaction? _tx;
 
@@ -20,6 +21,6 @@ namespace NCoreUtils.Data.Rest
             throw new InvalidOperationException($"Multiple transactions are not allowed (current ttransaction = {_tx.Guid}).");
         }
 
-        public void Dispose() { }
+        public void Dispose() { /* noop */ }
     }
 }
