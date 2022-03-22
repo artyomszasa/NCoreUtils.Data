@@ -55,12 +55,13 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             return Convert.ToBase64String(managedBuffer);
         }
 
-        public static string ToString(Value value, bool strict)
+        public static string? ToString(Value value, bool strict)
         {
             if (strict)
             {
                 return value.ValueTypeCase switch
                 {
+                    Value.ValueTypeOneofCase.NullValue => null,
                     Value.ValueTypeOneofCase.StringValue => value.StringValue,
                     Value.ValueTypeOneofCase.ReferenceValue => value.ReferenceValue,
                     var @case => throw new FirestoreConversionException(typeof(string), @case)
@@ -68,7 +69,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             }
             return value.ValueTypeCase switch
             {
-                Value.ValueTypeOneofCase.NullValue => string.Empty,
+                Value.ValueTypeOneofCase.NullValue => null,
                 Value.ValueTypeOneofCase.StringValue => value.StringValue,
                 Value.ValueTypeOneofCase.BooleanValue => value.BooleanValue.ToString(CultureInfo.InvariantCulture),
                 Value.ValueTypeOneofCase.BytesValue => ToBase64(value.BytesValue),
