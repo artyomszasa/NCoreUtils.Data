@@ -11,7 +11,7 @@ using NCoreUtils.Linq;
 
 namespace NCoreUtils.Data.Google.Cloud.Firestore
 {
-    public abstract class FirestoreDataRespository : IDataRepository
+    public abstract class FirestoreDataRepository : IDataRepository
     {
         IDataRepositoryContext IDataRepository.Context => Context;
 
@@ -27,7 +27,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
         public FirestoreQueryProvider QueryProvider { get; }
 
-        public FirestoreDataRespository(
+        public FirestoreDataRepository(
             FirestoreDataRepositoryContext context,
             FirestoreQueryProvider queryProvider,
             FirestoreModel model)
@@ -63,7 +63,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
     }
 
     public class FirestoreDataRepository<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicConstructors)] TData>
-        : FirestoreDataRespository, IDataRepository<TData, string>
+        : FirestoreDataRepository, IDataRepository<TData, string>
         where TData : IHasId<string>
     {
         IDataRepositoryContext IDataRepository.Context => Context;

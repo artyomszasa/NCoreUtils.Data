@@ -274,56 +274,46 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             };
         }
 
-        protected override IAsyncEnumerable<TElement> ExecuteQuery<TElement>(IQueryable<TElement> source)
+        protected virtual IAsyncEnumerable<DocumentSnapshot> StreamQueryAsync<TElement>(
+            FirestoreDb db,
+            FirestoreQuery<TElement> q,
+            CancellationToken cancellationToken)
         {
-            var q = Cast(source);
-            if (q.IsAlwaysFalse())
+            if (TryCreateUnboundQuery(db, q, out var query, out var mq))
             {
-                return new EmptyAsyncEnumerable<TElement>();
+                if (q.Offset > 0)
+                {
+                    query = query.Offset(q.Offset);
+                }
+                if (q.Limit.HasValue)
+                {
+                    query = query.Limit(q.Limit.Value);
+                }
+                // apply fields selection
+                query = query.Select(q.Selector.CollectFirestorePaths().ToArray());
+                LogFirestoreQuery(q);
+                return query.StreamAsync(cancellationToken);
             }
-            return new DelayedAsyncEnumerable<TElement>(cancellationToken => new ValueTask<IAsyncEnumerable<TElement>>(DbAccessor.ExecuteAsync(db =>
+            // when query is split we execute all queries concurrently maintaining order of the results
+            // offset and limit are applied on the resulting enumeration on the client side.
+            var enumerators = mq.Queries.MapToArray(q1 =>
             {
-                IAsyncEnumerable<DocumentSnapshot> stream;
-                if (TryCreateUnboundQuery(db, q, out var query, out var mq))
+                if (!TryCreateUnboundQuery(db, q1, out var query, out var mq))
                 {
-                    if (q.Offset > 0)
-                    {
-                        query = query.Offset(q.Offset);
-                    }
-                    if (q.Limit.HasValue)
-                    {
-                        query = query.Limit(q.Limit.Value);
-                    }
-                    // apply fields selection
-                    query = query.Select(q.Selector.CollectFirestorePaths().ToArray());
-                    LogFirestoreQuery(q);
-                    stream = query.StreamAsync(cancellationToken);
+                    throw new InvalidOperationException("Should never happen (query has already been splitted).");
                 }
-                else
+                if (q1.Limit.HasValue)
                 {
-                    // when query is split we execute all queries concurrently maintaining order of the results
-                    // offset and limit are applied on the resulting enumeration on the client side.
-                    var enumerators = mq.Queries.MapToArray(q1 =>
-                    {
-                        if (!TryCreateUnboundQuery(db, q1, out var query, out var mq))
-                        {
-                            throw new InvalidOperationException("Should never happen (query has already been splitted).");
-                        }
-                        if (q1.Limit.HasValue)
-                        {
-                            // also include elements to skip as ordering is performed on the client side
-                            query = query.Limit(q1.Offset + q1.Limit.Value);
-                        }
-                        LogFirestoreQuery(q1);
-                        return new PreferchAsyncEnumerator<DocumentSnapshot>(query.StreamAsync(cancellationToken), cancellationToken);
-                    });
-                    stream = MergeStream(enumerators, CreateDocumentComparer(q), q.Offset, q.Limit);
+                    // also include elements to skip as ordering is performed on the client side
+                    query = query.Limit(q1.Offset + q1.Limit.Value);
                 }
-                return Task.FromResult(Materializer.Materialize(stream, q.Selector));
-            })));
+                LogFirestoreQuery(q1);
+                return new PrefetchAsyncEnumerator<DocumentSnapshot>(query.StreamAsync(cancellationToken), cancellationToken);
+            });
+            return MergeStream(enumerators, CreateDocumentComparer(q), q.Offset, q.Limit);
 
             static async IAsyncEnumerable<DocumentSnapshot> MergeStream(
-                PreferchAsyncEnumerator<DocumentSnapshot>[] enumerators,
+                PrefetchAsyncEnumerator<DocumentSnapshot>[] enumerators,
                 IComparer<DocumentSnapshot> comparer,
                 int offset,
                 int? limit)
@@ -367,6 +357,22 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                     }
                 }
             }
+        }
+
+        protected override IAsyncEnumerable<TElement> ExecuteQuery<TElement>(IQueryable<TElement> source)
+        {
+            var q = Cast(source);
+            if (q.IsAlwaysFalse())
+            {
+                return new EmptyAsyncEnumerable<TElement>();
+            }
+            return new DelayedAsyncEnumerable<TElement>(cancellationToken => new ValueTask<IAsyncEnumerable<TElement>>(DbAccessor.ExecuteAsync(db =>
+            {
+                var stream = StreamQueryAsync(db, q, cancellationToken);
+                return Task.FromResult(Materializer.Materialize(stream, q.Selector));
+            })));
+
+
         }
 
         /// <summary>

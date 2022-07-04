@@ -13,7 +13,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 {
     public partial class FirestoreQueryProvider
     {
-        private struct PathOrValue
+        protected struct PathOrValue
         {
             public static PathOrValue CreatePath(FieldPath path)
             {
@@ -83,7 +83,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
         // }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static bool IsNumericType(Type type)
+        protected static bool IsNumericType(Type type)
         {
             if (type.IsEnum)
             {
@@ -94,10 +94,10 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
         }
 
 
-        private static FirestoreCondition.Op Reverse(FirestoreCondition.Op op)
+        protected static FirestoreCondition.Op Reverse(FirestoreCondition.Op op)
             => _conditionReverseMap.TryGetValue(op, out var res) ? res : throw new InvalidOperationException($"Unable to reverse operation {op}.");
 
-        private static void CreateCondition(FirestoreCondition.Op operation, (PathOrValue Left, PathOrValue Right) args, List<FirestoreCondition> conditions)
+        protected static void CreateCondition(FirestoreCondition.Op operation, (PathOrValue Left, PathOrValue Right) args, List<FirestoreCondition> conditions)
         {
             ref readonly PathOrValue left = ref args.Left;
             ref readonly PathOrValue right = ref args.Right;
@@ -184,7 +184,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             return source;
         }
 
-        private PathOrValue ExtractPathOrValue(ParameterExpression arg, Expression expression, out Type? memberType)
+        protected PathOrValue ExtractPathOrValue(ParameterExpression arg, Expression expression, out Type? memberType)
         {
             if (expression.TryExtractConstant(out var value))
             {
@@ -228,10 +228,10 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             throw new InvalidOperationException($"Unable to resolve path {expression}.");
         }
 
-        private PathOrValue ExtractPathOrValue(ParameterExpression arg, Expression expression)
+        protected PathOrValue ExtractPathOrValue(ParameterExpression arg, Expression expression)
             => ExtractPathOrValue(arg, expression, out var _);
 
-        private (PathOrValue Left, PathOrValue Right) ExtractPathOrValue(ParameterExpression arg, Expression leftSource, Expression rightSource)
+        protected (PathOrValue Left, PathOrValue Right) ExtractPathOrValue(ParameterExpression arg, Expression leftSource, Expression rightSource)
         {
             var left = ExtractPathOrValue(arg, leftSource, out var tyLeft);
             var right = ExtractPathOrValue(arg, rightSource, out var tyRight);
@@ -251,10 +251,10 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             return (left, right);
         }
 
-        private (PathOrValue Left, PathOrValue Right) ExtractPathOrValue(ParameterExpression arg, BinaryExpression expression)
+        protected (PathOrValue Left, PathOrValue Right) ExtractPathOrValue(ParameterExpression arg, BinaryExpression expression)
             => ExtractPathOrValue(arg, expression.Left, expression.Right);
 
-        private void ExtractConditions(ParameterExpression arg, List<FirestoreCondition> conditions, Expression expression)
+        protected virtual void ExtractConditions(ParameterExpression arg, List<FirestoreCondition> conditions, Expression expression)
         {
             switch (expression)
             {
@@ -340,7 +340,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             }
         }
 
-        protected List<FirestoreCondition> ExtractConditions(LambdaExpression expression)
+        protected virtual List<FirestoreCondition> ExtractConditions(LambdaExpression expression)
         {
             try
             {

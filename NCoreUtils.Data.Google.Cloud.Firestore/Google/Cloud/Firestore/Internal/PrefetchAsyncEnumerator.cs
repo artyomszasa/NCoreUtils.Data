@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace NCoreUtils.Data.Google.Cloud.Firestore.Internal
 {
-    public sealed class PreferchAsyncEnumerator<T> : IAsyncDisposable
+    public sealed class PrefetchAsyncEnumerator<T> : IAsyncDisposable
     {
         private readonly IAsyncEnumerator<T> _source;
 
@@ -13,7 +13,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Internal
 
         private Maybe<T> _current;
 
-        public PreferchAsyncEnumerator(IAsyncEnumerable<T> source, CancellationToken cancellationToken)
+        public PrefetchAsyncEnumerator(IAsyncEnumerable<T> source, CancellationToken cancellationToken)
         {
             _source = source.GetAsyncEnumerator(cancellationToken);
         }

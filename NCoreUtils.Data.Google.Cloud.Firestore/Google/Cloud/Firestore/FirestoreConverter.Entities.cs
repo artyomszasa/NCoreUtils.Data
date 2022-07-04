@@ -72,7 +72,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 throw new InvalidOperationException($"Unable to convert {value} of type {value.ValueTypeCase} to {entity.EntityType}.");
             }
             var fields = value.MapValue.Fields;
-            return EntityFromValue((string name, out Value? value) => fields.TryGetValue(name, out value), entity);
+            return EntityFromValue((string name, [MaybeNullWhen(false)] out Value value) => fields.TryGetValue(name, out value), entity);
         }
     }
 }

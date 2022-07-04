@@ -20,7 +20,12 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             LessThanOrEqualTo = 6,
             ArrayContainsAny = 7,
             In = 8,
-            AlwaysFalse = 9
+            AlwaysFalse = 9,
+            /// <summary>
+            /// Allows adding custom conditions which can only be created by derived query providers and must be handled
+            /// by them.
+            /// </summary>
+            Custom = 10
         }
 
         private static readonly EqualityComparer<FieldPath> _pathComparer = EqualityComparer<FieldPath>.Default;
@@ -105,7 +110,9 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
         public object? Value { get; }
 
-        public FirestoreCondition(FieldPath path, Op operation, object? value)
+        public string? CustomData { get; }
+
+        public FirestoreCondition(FieldPath path, Op operation, object? value, string? customData = default)
         {
             if (operation != Op.AlwaysFalse)
             {
@@ -117,10 +124,18 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             Path = path;
             Operation = operation;
             Value = value;
+            CustomData = customData;
         }
 
         public bool Equals(FirestoreCondition other)
         {
+            if (Operation == Op.Custom)
+            {
+                return Op.Custom == other.Operation
+                    && _pathComparer.Equals(Path, other.Path)
+                    && CustomData == other.CustomData
+                    && (ReferenceEquals(Value, other.Value) || (Value is not null && Value.Equals(other.Value)));
+            }
             if (Operation == Op.AlwaysFalse)
             {
                 return other.Operation == Op.AlwaysFalse;
@@ -138,7 +153,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
         public override bool Equals(object? obj) => obj is FirestoreCondition other && Equals(other);
 
-        public override int GetHashCode() => HashCode.Combine(Path, Operation, Value);
+        public override int GetHashCode() => HashCode.Combine(Path, Operation, Value, CustomData);
 
         private string StringifyValue(object? value)
             => value switch
@@ -149,9 +164,12 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 var o => o.ToString() ?? string.Empty
             };
 
-        public override string ToString()
-            => Operation < Op.AlwaysFalse
-                ? $"{{{Path} {_opNames[(int)Operation]} {StringifyValue(Value)}}}"
-                : "FALSE";
+        public override string ToString() => Operation switch
+        {
+            < Op.AlwaysFalse => $"{{{Path} {_opNames[(int)Operation]} {StringifyValue(Value)}}}",
+            Op.AlwaysFalse => "FALSE",
+            Op.Custom => $"{{CUSTOM({Path},{CustomData},{StringifyValue(Value)})}}",
+            _ => string.Empty
+        };
     }
 }

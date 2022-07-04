@@ -70,7 +70,7 @@ namespace NCoreUtils.Data
                 .AddScoped<IDataRepository<TData>>(GetRepositoryService<TRepository>);
 
         [UnconditionalSuppressMessage("Trimming", "IL2111")]
-        [DynamicDependency("PopulateDTO", typeof(FirestoreDataRespository))]
+        [DynamicDependency("PopulateDTO", typeof(FirestoreDataRepository))]
         public static IServiceCollection AddFirestoreDataRepository<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicConstructors)] TData>(this IServiceCollection services)
             where TData : IHasId<string>
             => services.AddFirestoreDataRepository<FirestoreDataRepository<TData>, TData>();

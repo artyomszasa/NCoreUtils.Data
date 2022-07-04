@@ -6,6 +6,6 @@
     <ProjectReference Include="..\NCoreUtils.Data.Abstractions\NCoreUtils.Data.Abstractions.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="NCoreUtils.Text" Version="6.0.0-beta00" />
+    <PackageReference Include="NCoreUtils.Text" Version="6.0.0" />
   </ItemGroup>
 </Project>

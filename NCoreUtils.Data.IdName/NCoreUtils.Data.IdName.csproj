@@ -23,7 +23,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="$(FxNugetVersion)" />
     <PackageReference Include="NCoreUtils.Linq.Abstractions" Version="6.0.0" />
-    <PackageReference Include="NCoreUtils.Text.Abstractions" Version="6.0.0-beta00" />
+    <PackageReference Include="NCoreUtils.Text.Abstractions" Version="6.0.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\NCoreUtils.Data.Abstractions\NCoreUtils.Data.Abstractions.csproj" />
