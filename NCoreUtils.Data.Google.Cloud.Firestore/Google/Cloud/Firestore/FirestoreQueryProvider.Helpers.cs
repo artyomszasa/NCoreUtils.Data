@@ -34,14 +34,14 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
         private bool TryResolveSubpath(
             Expression expression,
             ParameterExpression document,
-            ImmutableList<string> prefix,
+            ImmutableList<string> propertyPath,
             [NotNullWhen(true)] out FieldPath? path,
             [NotNullWhen(true)] out Type? type)
         {
             // if expression an interface conversion...
             if (expression is UnaryExpression uexpr && uexpr.NodeType == ExpressionType.Convert)
             {
-                return TryResolveSubpath(uexpr.Operand, document, prefix, out path, out type);
+                return TryResolveSubpath(uexpr.Operand, document, propertyPath, out path, out type);
             }
 
             // if expression is a property of the known entity.
@@ -52,7 +52,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 && Model.TryGetDataEntity(prop.DeclaringType, out var entity)
                 && entity.Properties.TryGetFirst(d => d.Property.Equals(prop), out var pdata))
             {
-                return TryResolveSubpath(mexpr.Expression, document, prefix.Add(pdata.Name), out path, out type);
+                return TryResolveSubpath(mexpr.Expression, document, propertyPath.Add(pdata.Name), out path, out type);
             }
             // if expression is firestore field access
             if (expression is FirestoreFieldExpression fieldExpression && fieldExpression.Instance.Equals(document))
@@ -61,7 +61,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 {
                     throw new InvalidOperationException("Special paths cannot be chained.");
                 }
-                path = prefix.ToFieldPath(fieldExpression.RawPath);
+                path = propertyPath.ToFieldPath(fieldExpression.RawPath);
                 type = fieldExpression.Type;
                 return true;
             }

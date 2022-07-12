@@ -16,7 +16,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 this,
                 entity.Name,
                 Model.GetInitialSelector<T>(),
-                ImmutableList<FirestoreCondition>.Empty,
+                ImmutableHashSet<FirestoreCondition>.Empty,
                 ImmutableList<FirestoreOrdering>.Empty,
                 0,
                 default

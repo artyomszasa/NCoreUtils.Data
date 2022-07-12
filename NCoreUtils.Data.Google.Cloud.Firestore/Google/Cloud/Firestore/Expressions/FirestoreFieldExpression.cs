@@ -36,6 +36,8 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Expressions
 
         public override Type Type { get; }
 
+        // FIXME: consider using single string as there is no use case where this field holds more than a single
+        // value... At least right now...
         public ImmutableList<string>? RawPath { get; }
 
         public FieldPath Path { get; }

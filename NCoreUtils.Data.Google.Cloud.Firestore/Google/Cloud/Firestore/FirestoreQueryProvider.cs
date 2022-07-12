@@ -91,7 +91,10 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
         {
             if (TryCreateFilteredQuery(db, source, out query, out multiQuery))
             {
-                if (source.Conditions.Count == 1 && source.Conditions[0].Operation == FirestoreCondition.Op.EqualTo && source.Conditions[0].Path.Equals(FieldPath.DocumentId))
+                var singleCondition = source.Conditions.Count == 1
+                    ? source.Conditions.First()
+                    : default(FirestoreCondition?);
+                if (singleCondition is FirestoreCondition c && c.Operation == FirestoreCondition.Op.EqualTo && c.Path.Equals(FieldPath.DocumentId))
                 {
                     // If the condition is __key__ == xxxx then ordering is ignored completely
                     return true;
@@ -396,7 +399,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                     wrapper.SplitIntoChunks(10, values);
                     queries = new FirestoreMultiQuery(values.MapToArray(newValue =>
                     {
-                        var conditions = ImmutableList.CreateBuilder<FirestoreCondition>();
+                        var conditions = ImmutableHashSet.CreateBuilder<FirestoreCondition>();
                         foreach (var condition in query.Conditions)
                         {
                             if (condition.Operation == FirestoreCondition.Op.ArrayContainsAny)

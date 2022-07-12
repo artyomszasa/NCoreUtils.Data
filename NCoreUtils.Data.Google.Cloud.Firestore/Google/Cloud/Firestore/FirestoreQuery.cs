@@ -29,7 +29,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
         public abstract LambdaExpression SelectorExpression { get; }
 
-        public ImmutableList<FirestoreCondition> Conditions { get; }
+        public ImmutableHashSet<FirestoreCondition> Conditions { get; }
 
         public ImmutableList<FirestoreOrdering> Ordering { get; }
 
@@ -42,7 +42,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
         public FirestoreQuery(
             FirestoreQueryProvider provider,
             string collection,
-            ImmutableList<FirestoreCondition> conditions,
+            ImmutableHashSet<FirestoreCondition> conditions,
             ImmutableList<FirestoreOrdering> ordering,
             int offset,
             int? limit)
@@ -59,7 +59,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
         protected abstract IEnumerator GetBoxedEnumerator();
 
-        public abstract FirestoreQuery ReplaceConditions(ImmutableList<FirestoreCondition> conditions);
+        public abstract FirestoreQuery ReplaceConditions(ImmutableHashSet<FirestoreCondition> conditions);
     }
 
     public class FirestoreQuery<T> : FirestoreQuery, IOrderedQueryable<T>
@@ -74,7 +74,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             FirestoreQueryProvider provider,
             string collection,
             Expression<Func<DocumentSnapshot, T>> selector,
-            ImmutableList<FirestoreCondition> conditions,
+            ImmutableHashSet<FirestoreCondition> conditions,
             ImmutableList<FirestoreOrdering> ordering,
             int offset,
             int? limit)
@@ -114,13 +114,13 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 Provider,
                 Collection,
                 Selector,
-                Conditions.AddRange(conditions),
+                conditions.Aggregate(Conditions, (set, condition) => set.Add(condition)),
                 Ordering,
                 Offset,
                 Limit
             );
 
-        public override FirestoreQuery ReplaceConditions(ImmutableList<FirestoreCondition> conditions)
+        public override FirestoreQuery ReplaceConditions(ImmutableHashSet<FirestoreCondition> conditions)
             => new FirestoreQuery<T>(
                 Provider,
                 Collection,

@@ -45,8 +45,9 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
         public static FirestoreCondition AlwaysFalse { get; } = new FirestoreCondition(default!, Op.AlwaysFalse, default!);
 
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static bool SafeEq(object a, object b)
+        private static bool SafeEq(object? a, object? b)
         {
             if (a is null)
             {
@@ -97,11 +98,11 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool operator==(FirestoreCondition a, FirestoreCondition b)
+        public static bool operator ==(FirestoreCondition a, FirestoreCondition b)
             => a.Equals(b);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool operator!=(FirestoreCondition a, FirestoreCondition b)
+        public static bool operator !=(FirestoreCondition a, FirestoreCondition b)
             => !a.Equals(b);
 
         public FieldPath Path { get; }
