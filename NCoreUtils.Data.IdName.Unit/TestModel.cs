@@ -33,7 +33,7 @@ namespace NCoreUtils.Data
             });
             var model = new DataModel(builder);
             Assert.Single(model.Entities);
-            var e = model.Entities.First();
+            var e = model.Entities[0];
             Assert.Equal("ename", e.Name);
             foreach (var p in e.Properties)
             {

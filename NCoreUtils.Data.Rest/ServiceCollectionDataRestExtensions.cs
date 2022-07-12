@@ -11,6 +11,26 @@ namespace NCoreUtils.Data
 {
     public static class ServiceCollectionDataRestExtensions
     {
+        private static RestClientConfiguration? GetRestClientConfiguration(this IConfiguration configuration)
+        {
+            if (configuration is IConfigurationSection section)
+            {
+                var result = new RestClientConfiguration();
+                var endpoint = section[nameof(result.Endpoint)];
+                if (endpoint is not null)
+                {
+                    result.Endpoint = endpoint;
+                }
+                var httpClient = section[nameof(result.HttpClient)];
+                if (httpClient is not null)
+                {
+                    result.HttpClient = httpClient;
+                }
+                return result;
+            }
+            return default;
+        }
+
         private static DataRestConfigurationBuilder GetOrAddRestConfigurationBuilder(this IServiceCollection services)
         {
             var desc = services.FirstOrDefault(e => e.ServiceType == typeof(DataRestConfigurationBuilder));
@@ -114,8 +134,6 @@ namespace NCoreUtils.Data
                 new RestClientConfiguration { Endpoint = endpoint, HttpClient = httpClient }
             );
 
-        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(RestClientConfiguration))]
-        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Configuration type is preserved using dynamic dependency.")]
         public static IServiceCollection AddRestDataRepository<
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TRepository,
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] TData,
@@ -125,7 +143,7 @@ namespace NCoreUtils.Data
             where TRepository : RestDataRepository<TData, TId>
             where TData : IHasId<TId>
             => services.AddRestDataRepository<TRepository, TData, TId>(
-                configuration.Get<RestClientConfiguration>()
+                configuration.GetRestClientConfiguration()
                 ?? throw new InvalidOperationException($"No REST client configuration found for {typeof(TData)}.")
             );
     }

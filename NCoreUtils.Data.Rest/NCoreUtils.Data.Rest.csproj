@@ -7,7 +7,7 @@
     <ProjectReference Include="..\NCoreUtils.Data.Abstractions\NCoreUtils.Data.Abstractions.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="NCoreUtils.AspNetCore.Rest.Client" Version="6.0.0-rc00" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="$(FxNugetVersion)" />
+    <PackageReference Include="NCoreUtils.AspNetCore.Rest.Client" Version="6.0.0-rc02" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="$(FxNugetVersion)" />
   </ItemGroup>
 </Project>
