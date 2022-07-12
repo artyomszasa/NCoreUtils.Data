@@ -3,6 +3,16 @@ using System.Collections.Generic;
 
 namespace NCoreUtils.Data.Google.Cloud.Firestore.Unit
 {
+    public class NestedSubitem
+    {
+        public SimpleItem Data { get; }
+
+        public NestedSubitem(SimpleItem data)
+        {
+            Data = data;
+        }
+    }
+
     public class ComplexItem : IHasId<string>
     {
         public string Id { get; }
@@ -23,7 +33,19 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Unit
 
         public HashSet<SimpleItem> Set { get; }
 
-        public ComplexItem(string id, int? nint1, int? nint2, decimal @decimal, float @float, Guid guid, SimpleItem subitem, IReadOnlyList<SimpleItem> collection, HashSet<SimpleItem> set)
+        public NestedSubitem Nested { get; }
+
+        public ComplexItem(
+            string id,
+            int? nint1,
+            int? nint2,
+            decimal @decimal,
+            float @float,
+            Guid guid,
+            SimpleItem subitem,
+            IReadOnlyList<SimpleItem> collection,
+            HashSet<SimpleItem> set,
+            NestedSubitem nested)
         {
             Id = id;
             Nint1 = nint1;
@@ -34,6 +56,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Unit
             Subitem = subitem;
             Collection = collection;
             Set = set;
+            Nested = nested;
         }
     }
 }

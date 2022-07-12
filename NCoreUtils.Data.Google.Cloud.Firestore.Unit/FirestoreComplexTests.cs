@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using NCoreUtils.Data.Build;
+using NCoreUtils.Linq;
 using Xunit;
 
 namespace NCoreUtils.Data.Google.Cloud.Firestore.Unit
@@ -17,6 +18,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Unit
                 b.SetKey(new [] { b.Property(e => e.Id).Property });
             });
             builder.Entity<SimpleItem>();
+            builder.Entity<NestedSubitem>();
         }
 
         public FirestoreComplexTests() : base(BuildModel) { }
@@ -46,7 +48,8 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Unit
                     new SimpleItem("subitem0", "string", 1, 1.0, true, now),
                     new SimpleItem("subitem1", "string", 1, 1.0, true, now),
                     new SimpleItem("subitem2", "string", 1, 1.0, true, now)
-                })
+                }),
+                new NestedSubitem(new SimpleItem("subitem", "string", 1, 1.0, false, now))
             );
             var item = await repo.PersistAsync(item0);
             Assert.NotNull(item);
@@ -88,6 +91,14 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Unit
                 Assert.True(subitem.BooleanValue);
                 Assert.Equal(now, subitem.DateValue);
             }
+            // subpath selection
+            // var item1 = await repo.Items.Where(e => e.Subitem.NumValue == 1).FirstOrDefaultAsync(default);
+            // Assert.NotNull(item1);
+            // Assert.Null(await repo.Items.Where(e => e.Subitem.NumValue == 100).FirstOrDefaultAsync(default));
+            // deep subpath selection
+            var item2 = await repo.Items.Where(e => e.Nested.Data.NumValue == 1).FirstOrDefaultAsync(default);
+            Assert.NotNull(item2);
+            Assert.Null(await repo.Items.Where(e => e.Nested.Data.NumValue == 100).FirstOrDefaultAsync(default));
         });
     }
 }
