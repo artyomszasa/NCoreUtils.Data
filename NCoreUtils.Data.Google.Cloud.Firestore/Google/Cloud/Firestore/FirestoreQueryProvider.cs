@@ -19,15 +19,23 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
     {
         protected ILogger Logger { get; }
 
+        protected IFirestoreConfiguration Configuration { get; }
+
         protected FirestoreModel Model { get; }
 
         protected IFirestoreDbAccessor DbAccessor { get; }
 
         protected FirestoreMaterializer Materializer { get; }
 
-        public FirestoreQueryProvider(ILogger<FirestoreQueryProvider> logger, FirestoreModel model, IFirestoreDbAccessor dbAccessor, FirestoreMaterializer materializer)
+        public FirestoreQueryProvider(
+            ILogger<FirestoreQueryProvider> logger,
+            IFirestoreConfiguration configuration,
+            FirestoreModel model,
+            IFirestoreDbAccessor dbAccessor,
+            FirestoreMaterializer materializer)
         {
             Logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            Configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             Model = model ?? throw new ArgumentNullException(nameof(model));
             DbAccessor = dbAccessor ?? throw new ArgumentNullException(nameof(dbAccessor));
             Materializer = materializer ?? throw new ArgumentNullException(nameof(materializer));
@@ -78,7 +86,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             query = db.Collection(source.Collection);
             foreach (var condition in source.Conditions)
             {
-                query = condition.Apply(query, source.Collection);
+                query = condition.Apply(query, Configuration, source.Collection);
             }
             return true;
         }
