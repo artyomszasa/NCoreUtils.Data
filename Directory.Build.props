@@ -5,6 +5,7 @@
     <Nullable>enable</Nullable>
     <IsTrimmable>true</IsTrimmable>
     <FxNugetVersion Condition=" '$(TargetFramework)' == 'net6.0' ">6.0.0</FxNugetVersion>
-    <FxNugetVersion Condition=" '$(TargetFramework)' != 'net6.0' ">3.1.16</FxNugetVersion>
+    <FxNugetVersion Condition=" '$(TargetFramework)' == 'net7.0' ">7.0.0</FxNugetVersion>
+    <FxNugetVersion Condition=" '$(TargetFramework)' != 'net6.0' And '$(TargetFramework)' != 'net7.0' ">3.1.16</FxNugetVersion>
   </PropertyGroup>
 </Project>
