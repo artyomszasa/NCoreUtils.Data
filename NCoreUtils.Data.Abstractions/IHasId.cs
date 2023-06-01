@@ -1,13 +1,12 @@
-namespace NCoreUtils.Data
+namespace NCoreUtils.Data;
+
+/// <summary>
+/// Defines functionality to retrieve business key of the data entity.
+/// </summary>
+public interface IHasId<T>
 {
     /// <summary>
-    /// Defines functionality to retrieve business key of the data entity.
+    /// Gets business key of the actual data entity instance.
     /// </summary>
-    public interface IHasId<T>
-    {
-        /// <summary>
-        /// Gets business key of the actual data entity instance.
-        /// </summary>
-        T Id { get; }
-    }
+    T Id { get; }
 }
