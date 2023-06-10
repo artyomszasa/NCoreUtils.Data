@@ -301,7 +301,10 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                     query = query.Limit(q.Limit.Value);
                 }
                 // apply fields selection
-                query = query.Select(q.Selector.CollectFirestorePaths().ToArray());
+                var selectPaths = q.ShadowFields.Count == 0
+                    ? q.Selector.CollectFirestorePaths().ToArray()
+                    : q.Selector.CollectFirestorePaths().Concat(q.ShadowFields).ToArray();
+                query = query.Select(selectPaths);
                 LogFirestoreQuery(q);
                 return query.StreamAsync(cancellationToken);
             }

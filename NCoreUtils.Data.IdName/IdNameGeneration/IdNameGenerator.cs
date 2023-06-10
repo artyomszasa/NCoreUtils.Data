@@ -24,7 +24,7 @@ namespace NCoreUtils.Data.IdNameGeneration
         [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Used internally.")]
         private static Expression BoxedContstant(
             object? value,
-            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type type)
+            Type type)
         {
             var boxType = typeof(Box<>).MakeGenericType(type);
             var field = boxType.GetField(nameof(Box<int>.Value))

@@ -8,6 +8,7 @@ namespace NCoreUtils.Data.IdNameGeneration
     {
         static readonly ConcurrentDictionary<Type, IStoredProcedureGenerator> _cache = new();
 
+        [UnconditionalSuppressMessage("Trimming", "IL2067", Justification = "To be dropped.")]
         static IStoredProcedureGenerator CreateGenerator(Type type)
         {
             if (_cache.TryGetValue(type, out var generator))

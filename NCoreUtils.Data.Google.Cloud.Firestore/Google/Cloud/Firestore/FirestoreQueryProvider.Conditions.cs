@@ -8,12 +8,13 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using Google.Cloud.Firestore;
+using NCoreUtils.Data.Google.Cloud.Firestore.Expressions;
 
 namespace NCoreUtils.Data.Google.Cloud.Firestore
 {
     public partial class FirestoreQueryProvider
     {
-        protected struct PathOrValue
+        protected readonly struct PathOrValue
         {
             public static PathOrValue CreatePath(FieldPath path)
             {
@@ -51,11 +52,17 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             { FirestoreCondition.Op.In, FirestoreCondition.Op.ArrayContains },
         }.ToImmutableDictionary();
 
-        private static readonly MethodInfo _gmContains = GetMethod<IEnumerable<int>, int, bool>(Enumerable.Contains).GetGenericMethodDefinition();
+        private static readonly MethodInfo _gmContains
+            = GetMethod<IEnumerable<int>, int, bool>(Enumerable.Contains).GetGenericMethodDefinition();
 
-        private static readonly MethodInfo _gmContainsAny = GetMethod<IEnumerable<int>, IEnumerable<int>, bool>(FirestoreQueryableExtensions.ContainsAny).GetGenericMethodDefinition();
+        private static readonly MethodInfo _gmContainsAny
+            = GetMethod<IEnumerable<int>, IEnumerable<int>, bool>(FirestoreQueryableExtensions.ContainsAny).GetGenericMethodDefinition();
 
-        private static readonly MethodInfo _mHasFlag = GetMethod<Enum, bool>(default(NumberStyles).HasFlag);
+        private static readonly MethodInfo _gmShadowProperty
+            = GetMethod<object, string, string>(FirestoreQueryableExtensions.ShadowProperty<object, string>).GetGenericMethodDefinition();
+
+        private static readonly MethodInfo _mHasFlag
+            = GetMethod<Enum, bool>(default(NumberStyles).HasFlag);
 
         private static MethodInfo GetMethod<TArg, TResult>(Func<TArg, TResult> func) => func.Method;
 
@@ -225,7 +232,43 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                     return HandleEnumValues(PathOrValue.CreateValue(arrayValue), expression.Type);
                 }
             }
+            if (expression is MethodCallExpression call && call.Method.IsConstructedGenericMethod
+                && call.Method.GetGenericMethodDefinition() == _gmShadowProperty
+                && call.Arguments[1].TryExtractConstant(out var boxedShadowPath) && boxedShadowPath is string shadowPath)
+            {
+                var shadowHost = call.Arguments[0];
+                if (IsMappedCtor(shadowHost, arg))
+                {
+                    // rooted shadow path
+                    memberType = call.Method.GetGenericArguments()[1];
+                    return PathOrValue.CreatePath(new FieldPath(shadowPath.Split('.')));
+                }
+                if (TryResolvePath(call.Arguments[0], arg, out var shadowHostPath, out _))
+                {
+                    // nested shadow path
+                    memberType = call.Method.GetGenericArguments()[1];
+                    // TODO: find better solution
+                    var shadowFullPath = new FieldPath((shadowHostPath.ToString() + shadowPath).Split('.'));
+                    return PathOrValue.CreatePath(shadowFullPath);
+                }
+            }
             throw new InvalidOperationException($"Unable to resolve path {expression}.");
+
+            static bool IsMappedCtor(Expression expression, ParameterExpression arg)
+            {
+                if (expression is CtorExpression ctor)
+                {
+                    foreach (var ctorArg in ctor.Arguments)
+                    {
+                        if (!(ctorArg is FirestoreFieldExpression field && field.Instance.Equals(arg)))
+                        {
+                            return false;
+                        }
+                    }
+                    return true;
+                }
+                return false;
+            }
         }
 
         protected PathOrValue ExtractPathOrValue(ParameterExpression arg, Expression expression)
