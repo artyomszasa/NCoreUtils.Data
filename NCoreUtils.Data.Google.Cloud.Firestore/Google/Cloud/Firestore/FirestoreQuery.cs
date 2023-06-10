@@ -33,6 +33,8 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
         public ImmutableList<FirestoreOrdering> Ordering { get; }
 
+        public ImmutableHashSet<FieldPath> ShadowFields { get; }
+
         public int Offset { get; }
 
         public int? Limit { get; }
@@ -44,6 +46,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             string collection,
             ImmutableHashSet<FirestoreCondition> conditions,
             ImmutableList<FirestoreOrdering> ordering,
+            ImmutableHashSet<FieldPath> shadowFields,
             int offset,
             int? limit)
         {
@@ -51,6 +54,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             Collection = collection;
             Conditions = conditions;
             Ordering = ordering;
+            ShadowFields = shadowFields;
             Offset = offset;
             Limit = limit;
         }
@@ -60,6 +64,8 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
         protected abstract IEnumerator GetBoxedEnumerator();
 
         public abstract FirestoreQuery ReplaceConditions(ImmutableHashSet<FirestoreCondition> conditions);
+
+        public abstract FirestoreQuery AddShadowField(FieldPath path);
     }
 
     public class FirestoreQuery<T> : FirestoreQuery, IOrderedQueryable<T>
@@ -76,9 +82,10 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             Expression<Func<DocumentSnapshot, T>> selector,
             ImmutableHashSet<FirestoreCondition> conditions,
             ImmutableList<FirestoreOrdering> ordering,
+            ImmutableHashSet<FieldPath> shadowFields,
             int offset,
             int? limit)
-            : base(provider, collection, conditions, ordering, offset, limit)
+            : base(provider, collection, conditions, ordering, shadowFields, offset, limit)
             => Selector = selector ?? throw new ArgumentNullException(nameof(selector));
 
         protected override IEnumerator GetBoxedEnumerator()
@@ -94,6 +101,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 Selector.ChainSimplified(selector, true),
                 Conditions,
                 Ordering,
+                ShadowFields,
                 Offset,
                 Limit
             );
@@ -105,6 +113,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 Selector,
                 Conditions.Add(condition),
                 Ordering,
+                ShadowFields,
                 Offset,
                 Limit
             );
@@ -116,6 +125,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 Selector,
                 conditions.Aggregate(Conditions, (set, condition) => set.Add(condition)),
                 Ordering,
+                ShadowFields,
                 Offset,
                 Limit
             );
@@ -127,6 +137,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 Selector,
                 conditions,
                 Ordering,
+                ShadowFields,
                 Offset,
                 Limit
             );
@@ -138,6 +149,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 Selector,
                 Conditions,
                 Ordering.Add(ordering),
+                ShadowFields,
                 Offset,
                 Limit
             );
@@ -152,6 +164,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 Ordering
                     .Select(o => new FirestoreOrdering(o.Path, o.Direction == FirestoreOrderingDirection.Ascending ? FirestoreOrderingDirection.Descending : FirestoreOrderingDirection.Ascending))
                     .ToImmutableList(),
+                ShadowFields,
                 Offset,
                 Limit
             );
@@ -163,6 +176,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 Selector,
                 Conditions,
                 Ordering,
+                ShadowFields,
                 offset,
                 Limit
             );
@@ -174,6 +188,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 Selector,
                 Conditions,
                 Ordering,
+                ShadowFields,
                 Offset,
                 limit
             );
@@ -186,6 +201,19 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 Conditions,
                 // TODO: optimize
                 Ordering.Select(o => o.Revert()).ToImmutableList(),
+                ShadowFields,
+                Offset,
+                Limit
+            );
+
+        public override FirestoreQuery AddShadowField(FieldPath path)
+            => new FirestoreQuery<T>(
+                Provider,
+                Collection,
+                Selector,
+                Conditions,
+                Ordering,
+                ShadowFields.Add(path),
                 Offset,
                 Limit
             );

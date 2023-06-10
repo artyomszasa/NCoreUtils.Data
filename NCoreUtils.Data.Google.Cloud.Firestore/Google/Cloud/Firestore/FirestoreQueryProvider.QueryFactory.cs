@@ -18,6 +18,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 Model.GetInitialSelector<T>(),
                 ImmutableHashSet<FirestoreCondition>.Empty,
                 ImmutableList<FirestoreOrdering>.Empty,
+                ImmutableHashSet<global::Google.Cloud.Firestore.FieldPath>.Empty,
                 0,
                 default
             );
