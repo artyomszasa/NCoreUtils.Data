@@ -49,7 +49,6 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
         protected Ctor GetCtor(Type type)
             => _ctorCache.GetOrAdd(type, _ctorFactory);
 
-        [UnconditionalSuppressMessage("Trimming", "IL2062", Justification = "Element type should already be preserved.")]
         public Value ConvertToValue(object? value, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type sourceType)
         {
             // try custom converters
