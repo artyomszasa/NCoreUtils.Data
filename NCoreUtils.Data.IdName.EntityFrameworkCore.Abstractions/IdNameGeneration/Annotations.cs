@@ -62,11 +62,8 @@ namespace NCoreUtils.Data.IdNameGeneration
                     {
                         throw new InvalidOperationException("Raw annotation is null.");
                     }
-                    var data = JsonSerializer.Deserialize(raw, IdNameGenerationAnnotationSerializationContext.Default.IdNameSourcePropertyData);
-                    if (data is null)
-                    {
-                        throw new InvalidOperationException("Unable to deserialize raw annotation.");
-                    }
+                    var data = JsonSerializer.Deserialize(raw, IdNameGenerationAnnotationSerializationContext.Default.IdNameSourcePropertyData)
+                        ?? throw new InvalidOperationException("Unable to deserialize raw annotation.");
                     var ty = ResolveType(data.TypeName);
                     var resolver = new PropertyResolver(ty);
                     var sourceNameProperty = resolver.ResolvePropertyOrThrow(data.SourcePropertyName);

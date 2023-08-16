@@ -177,10 +177,7 @@ namespace NCoreUtils.Data.EntityFrameworkCore
                             }
                             else
                             {
-                                if (p.CurrentValue is null)
-                                {
-                                    p.CurrentValue = originalValues[p.Metadata.Name];
-                                }
+                                p.CurrentValue ??= originalValues[p.Metadata.Name];
                             }
                         }
                     }

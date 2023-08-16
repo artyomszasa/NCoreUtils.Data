@@ -4,6 +4,9 @@
     <LangVersion>10.0</LangVersion>
     <Nullable>enable</Nullable>
     <IsTrimmable>true</IsTrimmable>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <EnableSingleFileAnalyzer>true</EnableSingleFileAnalyzer>
+    <EnableAotAnalyzer>true</EnableAotAnalyzer>
     <FxNugetVersion Condition=" '$(TargetFramework)' == 'net6.0' ">6.0.0</FxNugetVersion>
     <FxNugetVersion Condition=" '$(TargetFramework)' == 'net7.0' ">7.0.0</FxNugetVersion>
     <FxNugetVersion Condition=" '$(TargetFramework)' != 'net6.0' And '$(TargetFramework)' != 'net7.0' ">3.1.16</FxNugetVersion>
