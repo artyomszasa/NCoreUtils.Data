@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using NCoreUtils.Rest;
 
 namespace NCoreUtils.Data.Rest
@@ -7,9 +8,9 @@ namespace NCoreUtils.Data.Rest
     {
         IRestClient CreateRestClient(Type entityType);
 
-        IDataRestClient<TData> GetClient<TData>();
+        IDataRestClient<TData> GetClient<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TData>();
 
-        IDataRestClient<TData, TId> GetClient<TData, TId>()
+        IDataRestClient<TData, TId> GetClient<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TData, TId>()
             where TData : IHasId<TId>;
     }
 }

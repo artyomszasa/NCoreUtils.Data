@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -6,7 +7,7 @@ using NCoreUtils.Rest;
 
 namespace NCoreUtils.Data.Rest
 {
-    public class DataRestClient<TData, TId> : IDataRestClient<TData, TId>
+    public class DataRestClient<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TData, TId> : IDataRestClient<TData, TId>
         where TData : IHasId<TId>
     {
         private readonly IRestClient _client;

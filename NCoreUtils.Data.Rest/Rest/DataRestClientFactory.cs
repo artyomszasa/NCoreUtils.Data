@@ -10,7 +10,7 @@ namespace NCoreUtils.Data.Rest
 {
     public class DataRestClientFactory : IDataRestClientFactory
     {
-        public class DataRestClient<TData, TId> : Rest.DataRestClient<TData, TId>
+        public class DataRestClient<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TData, TId> : Rest.DataRestClient<TData, TId>
             where TData : IHasId<TId>
         {
             public DataRestClient(IDataRestClientFactory factory)
@@ -52,13 +52,13 @@ namespace NCoreUtils.Data.Rest
         protected virtual IRestClient CreateRestClient(IHttpRestClient httpRestClient)
             => new DefaultRestClient(DataUtils, ExpressionParser, httpRestClient);
 
-        public virtual IDataRestClient<TData, TId> GetClient<TData, TId>() where TData : IHasId<TId>
+        public virtual IDataRestClient<TData, TId> GetClient<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TData, TId>() where TData : IHasId<TId>
             => new DataRestClient<TData, TId>(this);
 
         [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(DataRestClientFactory))]
         [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Generic method is preserved using dynamic dependency.")]
         [UnconditionalSuppressMessage("Trimming", "IL2060", Justification = "Argument types are preserved during registration.")]
-        public IDataRestClient<TData> GetClient<TData>()
+        public IDataRestClient<TData> GetClient<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TData>()
         {
             var m = _getClient.MakeGenericMethod(typeof(TData), Configuration[typeof(TData)].IdType);
             return (IDataRestClient<TData>)m.Invoke(this, Array.Empty<object>())!;
