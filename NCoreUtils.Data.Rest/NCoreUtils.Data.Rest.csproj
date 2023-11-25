@@ -2,13 +2,13 @@
   <PropertyGroup>
     <TargetFrameworks>net7.0;net6.0</TargetFrameworks>
     <RootNamespace>NCoreUtils.Data</RootNamespace>
-    <Version>7.0.0-rc02</Version>
+    <Version>7.0.0-rc04</Version>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\NCoreUtils.Data.Abstractions\NCoreUtils.Data.Abstractions.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="NCoreUtils.AspNetCore.Rest.Client" Version="7.0.0-rc02" />
+    <PackageReference Include="NCoreUtils.AspNetCore.Rest.Client" Version="7.0.0-rc04" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="$(FxNugetVersion)" />
   </ItemGroup>
 </Project>
