@@ -333,7 +333,10 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 int? limit)
             {
                 var consumed = 0;
-                var candidates = enumerators.MapToArray(_ => new Maybe<DocumentSnapshot>());
+                // NOTE: split query my result in duplicates --> elemets matched by more than one query
+                // To handle this we track emitted item ids and skip duplicates
+                var consumedIds = new HashSet<string>();
+                var candidates = enumerators.MapToArray(static _ => new Maybe<DocumentSnapshot>());
                 while (!limit.HasValue || consumed < offset + limit.Value)
                 {
                     // fill
@@ -362,12 +365,14 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                     {
                         yield break;
                     }
-                    // consume and yield the value
+                    // consume and yield the value (if not already yield)
                     enumerators[selectedIndex].Consume();
-                    ++consumed;
-                    if (consumed - offset >= 0)
+                    if (consumedIds.Add(selectedValue.Id))
                     {
-                        yield return selectedValue;
+                        if (consumed++ >= offset)
+                        {
+                            yield return selectedValue;
+                        }
                     }
                 }
             }
