@@ -3,7 +3,6 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using NCoreUtils.Data.Events;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using NCoreUtils.Data.IdNameGeneration;
@@ -48,11 +47,14 @@ namespace NCoreUtils.Data.EntityFrameworkCore
             {
                 return result;
             }
-            return _idNameSourceProperties.GetOrAdd(elementType, etype => dbContext
+            return _idNameSourceProperties.GetOrAdd(elementType, DoFind);
+
+            [UnconditionalSuppressMessage("Trimming", "IL2067")]
+            Maybe<(PropertyInfo, ImmutableArray<PropertyInfo>)> DoFind(Type etype) => dbContext
                 .Model
                 .FindEntityType(etype)!
                 .GetProperties()
-                .MaybePick(picker!));
+                .MaybePick(picker!);
 
             static Maybe<(PropertyInfo, ImmutableArray<PropertyInfo>)> picker(Microsoft.EntityFrameworkCore.Metadata.IProperty e)
             {
@@ -102,7 +104,7 @@ namespace NCoreUtils.Data.EntityFrameworkCore
         public virtual IStringDecomposer DecomposeName => DummyStringDecomposition.Decomposer;
     }
 
-    public abstract class DataRepository<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] TData>
+    public abstract class DataRepository<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TData>
         : DataRepository, IDataRepository<TData>
         where TData : class
     {
@@ -142,13 +144,10 @@ namespace NCoreUtils.Data.EntityFrameworkCore
 
         public IServiceProvider ServiceProvider { get; }
 
-        public IDataEventHandlers? EventHandlers { get; }
-
-        public DataRepository(IServiceProvider serviceProvider, DataRepositoryContext context, IDataEventHandlers? eventHandlers = default)
+        public DataRepository(IServiceProvider serviceProvider, DataRepositoryContext context)
             : base(context)
         {
             ServiceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
-            EventHandlers = eventHandlers;
         }
 
         protected abstract ValueTask<EntityEntry<TData>> AttachNewOrUpdateAsync(EntityEntry<TData> entry, CancellationToken cancellationToken);
@@ -156,7 +155,7 @@ namespace NCoreUtils.Data.EntityFrameworkCore
         [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "Only types of the preserved properties are used.")]
         protected virtual async Task PrepareUpdatedEntityAsync(EntityEntry<TData> entry, CancellationToken cancellationToken = default)
         {
-            await EventHandlers.TriggerUpdateAsync(ServiceProvider, this, entry.Entity, cancellationToken);
+            // await EventHandlers.TriggerUpdateAsync(ServiceProvider, this, entry.Entity, cancellationToken);
             // Speciális mezőket nem kell frissíteni...
             var originalValues = await entry.GetDatabaseValuesAsync(cancellationToken);
             if (originalValues is not null)
@@ -199,7 +198,8 @@ namespace NCoreUtils.Data.EntityFrameworkCore
         }
 
         protected virtual ValueTask PrepareAddedEntityAsync(EntityEntry<TData> entry, CancellationToken cancellationToken = default)
-            => EventHandlers.TriggerInsertAsync(ServiceProvider, this, entry.Entity, cancellationToken);
+            //=> EventHandlers.TriggerInsertAsync(ServiceProvider, this, entry.Entity, cancellationToken);
+            => default;
 
         public virtual async Task<TData> PersistAsync(TData item, CancellationToken cancellationToken = default)
         {
@@ -210,14 +210,14 @@ namespace NCoreUtils.Data.EntityFrameworkCore
             {
                 entry = await AttachNewOrUpdateAsync(entry, cancellationToken);
             }
-            else if (entry.State == EntityState.Added)
-            {
-                await EventHandlers.TriggerInsertAsync(ServiceProvider, this, entry.Entity, cancellationToken);
-            }
-            else if (entry.State == EntityState.Modified)
-            {
-                await EventHandlers.TriggerUpdateAsync(ServiceProvider, this, entry.Entity, cancellationToken);
-            }
+            // else if (entry.State == EntityState.Added)
+            // {
+            //     await EventHandlers.TriggerInsertAsync(ServiceProvider, this, entry.Entity, cancellationToken);
+            // }
+            // else if (entry.State == EntityState.Modified)
+            // {
+            //     await EventHandlers.TriggerUpdateAsync(ServiceProvider, this, entry.Entity, cancellationToken);
+            // }
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             return entry.Entity;
         }
@@ -231,7 +231,7 @@ namespace NCoreUtils.Data.EntityFrameworkCore
             {
                 throw new InvalidOperationException("Trying to remove detached entity.");
             }
-            await EventHandlers.TriggerDeleteAsync(ServiceProvider, this, entry.Entity, cancellationToken);
+            // await EventHandlers.TriggerDeleteAsync(ServiceProvider, this, entry.Entity, cancellationToken);
             if (!force && item is IHasState statefullEntity)
             {
                 statefullEntity.State = State.Deleted;
@@ -244,12 +244,12 @@ namespace NCoreUtils.Data.EntityFrameworkCore
         }
     }
 
-    public class DataRepository<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] TData, TId>
+    public class DataRepository<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TData, TId>
         : DataRepository<TData>, IDataRepository<TData, TId>
         where TData : class, IHasId<TId>
         where TId : IComparable<TId>
     {
-        public DataRepository(IServiceProvider serviceProvider, DataRepositoryContext context, IDataEventHandlers? eventHandlers = default) : base(serviceProvider, context, eventHandlers) { }
+        public DataRepository(IServiceProvider serviceProvider, DataRepositoryContext context) : base(serviceProvider, context) { }
 
 
         protected virtual ValueTask<bool> ShouldUpdateEntity(EntityEntry<TData> entry, CancellationToken cancellationToken)

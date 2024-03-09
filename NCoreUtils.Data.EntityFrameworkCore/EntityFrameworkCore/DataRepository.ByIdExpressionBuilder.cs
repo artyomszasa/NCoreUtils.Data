@@ -6,6 +6,8 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using NCoreUtils.Linq;
 
+#pragma warning disable IL2110, IL2111
+
 namespace NCoreUtils.Data.EntityFrameworkCore
 {
     partial class DataRepository
@@ -31,6 +33,7 @@ namespace NCoreUtils.Data.EntityFrameworkCore
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields
                 | DynamicallyAccessedMemberTypes.PublicConstructors)]
             private static readonly Type _idBoxType = typeof(IdBox<TId>);
+
 
             private static Expression<Func<TData, TId>> GetIdProperty()
             {
@@ -69,3 +72,5 @@ namespace NCoreUtils.Data.EntityFrameworkCore
         }
     }
 }
+
+#pragma warning restore IL2110, IL2111

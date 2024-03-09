@@ -8,7 +8,7 @@ namespace NCoreUtils.Data
 {
     public static class ServiceCollectionEntityFrameworkCoreDataRepositoryExtensions
     {
-        private static IDataRepository<TData, TId> GetDownCasted<TRepository, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] TData, TId>(
+        private static IDataRepository<TData, TId> GetDownCasted<TRepository, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TData, TId>(
             IServiceProvider serviceProvider)
             where TRepository : class, IDataRepository<TData, TId>
             where TData : class, IHasId<TId>
@@ -24,7 +24,9 @@ namespace NCoreUtils.Data
                 .AddScoped<DataRepositoryContext>(provider => provider.GetRequiredService<DataRepositoryContext<TContext>>())
                 .AddScoped<IDataRepositoryContext>(provider => provider.GetRequiredService<DataRepositoryContext<TContext>>());
 
-        public static IServiceCollection AddEntityFrameworkCoreDataRepository<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TRepository, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] TData, TId>(
+        [UnconditionalSuppressMessage("Trimming", "IL2110")]
+        [UnconditionalSuppressMessage("Trimming", "IL2111")]
+        public static IServiceCollection AddEntityFrameworkCoreDataRepository<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TRepository, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TData, TId>(
             this IServiceCollection services)
             where TRepository : class, IDataRepository<TData, TId>
             where TData : class, IHasId<TId>
@@ -32,7 +34,9 @@ namespace NCoreUtils.Data
                 .AddScoped(GetDownCasted<TRepository, TData, TId>)
                 .AddScoped<IDataRepository<TData>>(GetDownCasted<TRepository, TData, TId>);
 
-        public static IServiceCollection AddEntityFrameworkCoreDataRepository<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] TData, TId>(this IServiceCollection services)
+        [UnconditionalSuppressMessage("Trimming", "IL2110")]
+        [UnconditionalSuppressMessage("Trimming", "IL2111")]
+        public static IServiceCollection AddEntityFrameworkCoreDataRepository<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TData, TId>(this IServiceCollection services)
             where TData : class, IHasId<TId>
             where TId : IComparable<TId>
             => services.AddEntityFrameworkCoreDataRepository<DataRepository<TData, TId>, TData, TId>();

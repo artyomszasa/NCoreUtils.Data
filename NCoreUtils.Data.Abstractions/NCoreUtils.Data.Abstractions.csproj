@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>net6.0;netstandard2.1</TargetFrameworks>
+    <TargetFrameworks>net8.0;net7.0;net6.0;netstandard2.1</TargetFrameworks>
     <!-- NuGet -->
     <PackageId>NCoreUtils.Data.Abstractions</PackageId>
     <Title>$(PackageId)</Title>
@@ -19,12 +19,14 @@
     <!-- <GenerateDocumentationFile>true</GenerateDocumentationFile> -->
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
-  <ItemGroup Condition=" '$(TargetFramework)' == 'net6.0' ">
+  <ItemGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net6.0'))">
     <Compile Remove="CodeAnalysis\**" />
   </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="NCoreUtils.Extensions.Expressions" Version="6.0.1" />
-    <PackageReference Include="NCoreUtils.Maybe" Version="2.0.0" />
+  <ItemGroup Condition="!$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net6.0'))">
     <PackageReference Include="System.Collections.Immutable" Version="6.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="NCoreUtils.Extensions.Expressions" Version="8.0.0" />
+    <PackageReference Include="NCoreUtils.Maybe" Version="3.0.2" />
   </ItemGroup>
 </Project>

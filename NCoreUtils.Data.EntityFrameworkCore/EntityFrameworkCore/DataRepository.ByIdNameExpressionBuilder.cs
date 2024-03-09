@@ -14,6 +14,7 @@ namespace NCoreUtils.Data.EntityFrameworkCore
             private static readonly Func<Type, ByIdNameExpressionBuilder> _createBuilder = CreateBuilder;
 
             [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Handled by static ctor attributes.")]
+            [UnconditionalSuppressMessage("Trimming", "IL3050", Justification = "Handled by static ctor attributes.")]
             private static ByIdNameExpressionBuilder CreateBuilder(Type entityType)
             {
                 if (typeof(IHasIdName).IsAssignableFrom(entityType))

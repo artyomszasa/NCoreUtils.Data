@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>net6.0;netstandard2.1</TargetFrameworks>
+    <TargetFrameworks>net8.0;net6.0;netstandard2.1</TargetFrameworks>
     <!-- NuGet -->
     <PackageId>NCoreUtils.Data.IdName.EntityFrameworkCore.Abstractions</PackageId>
     <Title>$(PackageId)</Title>
@@ -23,6 +23,6 @@
     <ProjectReference Include="..\NCoreUtils.Data.IdName.Abstractions\NCoreUtils.Data.IdName.Abstractions.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="System.Text.Json" Version="6.0.0" />
+    <PackageReference Include="System.Text.Json" Version="8.0.0" />
   </ItemGroup>
 </Project>

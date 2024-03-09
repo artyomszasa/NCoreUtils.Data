@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>net6.0;netstandard2.1</TargetFrameworks>
+    <TargetFrameworks>net8.0;net6.0;netstandard2.1</TargetFrameworks>
     <!-- NuGet -->
     <PackageId>NCoreUtils.Data.EntityFrameworkCore</PackageId>
     <Title>$(PackageId)</Title>
@@ -34,11 +34,6 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="$(FxNugetVersion)" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="NCoreUtils.Linq.Abstractions" Version="6.0.0" />
-    <PackageReference Include="System.Buffers" Version="4.5.1" />
-    <PackageReference Include="System.Collections" Version="4.3.0" />
-    <PackageReference Include="System.Collections.Immutable" Version="6.0.0" />
-    <PackageReference Include="System.Memory" Version="4.5.4" />
-    <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="6.0.0" />
+    <PackageReference Include="NCoreUtils.Linq.Abstractions" Version="8.0.0" />
   </ItemGroup>
 </Project>

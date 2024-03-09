@@ -19,11 +19,8 @@ namespace NCoreUtils.Data.Build
             return this;
         }
 
-        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(DataEntityBuilder<>))]
-        [DynamicDependency(DynamicallyAccessedMemberTypes.PublicMethods, typeof(DataModelBuilder))] // TODO: only single method
-        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Dynamic dependency should handle preserving.")]
-        [UnconditionalSuppressMessage("Trimming", "IL2060", Justification = "Dynamic dependency should handle preserving.")]
-        [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "Dynamic dependency should handle preserving.")]
+        [RequiresUnreferencedCode(S.MethodUsesReflection)]
+        [RequiresDynamicCode(S.MethodUsesReflection)]
         public DataEntityBuilder Entity([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] Type entityType)
         {
             var gmEntity = typeof(DataModelBuilder)
@@ -32,6 +29,7 @@ namespace NCoreUtils.Data.Build
             return (DataEntityBuilder)gmEntity.MakeGenericMethod(entityType).Invoke(this, Array.Empty<object>())!;
         }
 
+        [RequiresDynamicCode(S.MethodUsesReflection)]
         public DataEntityBuilder<T> Entity<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T>()
         {
             if (_entities.TryGetValue(typeof(T), out var boxed))
@@ -43,6 +41,8 @@ namespace NCoreUtils.Data.Build
             return builder;
         }
 
+        [RequiresDynamicCode(S.MethodUsesReflection)]
+        [RequiresUnreferencedCode(S.MethodUsesReflection)]
         public DataModelBuilder Entity(
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] Type entityType,
             Action<DataEntityBuilder> configure)
@@ -51,6 +51,7 @@ namespace NCoreUtils.Data.Build
             return this;
         }
 
+        [RequiresDynamicCode(S.MethodUsesReflection)]
         public DataModelBuilder Entity<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T>(Action<DataEntityBuilder<T>> configure)
         {
             configure(Entity<T>());

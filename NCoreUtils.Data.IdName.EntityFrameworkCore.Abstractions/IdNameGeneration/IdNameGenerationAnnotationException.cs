@@ -3,7 +3,9 @@ using System.Runtime.Serialization;
 
 namespace NCoreUtils.Data.IdNameGeneration
 {
+#if !NET8_0_OR_GREATER
     [Serializable]
+#endif
     public class IdNameGenerationAnnotationException : FormatException
     {
         public IdNameGenerationAnnotationException(string message)
@@ -14,6 +16,8 @@ namespace NCoreUtils.Data.IdNameGeneration
             : base(message, innerException)
         { }
 
+#if !NET8_0_OR_GREATER
         protected IdNameGenerationAnnotationException(SerializationInfo info, StreamingContext context) : base(info, context) { }
+#endif
     }
 }
