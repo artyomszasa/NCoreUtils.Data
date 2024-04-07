@@ -37,14 +37,15 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             return true;
         }
 
-        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Both key and value are preserved types.")]
-        [UnconditionalSuppressMessage("Trimming", "IL2062", Justification = "Both key and value are preserved types.")]
-        [UnconditionalSuppressMessage("Trimming", "IL2067", Justification = "Both key and value are preserved types.")]
-        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(KeyValuePair<,>))]
+        // [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Both key and value are preserved types.")]
+        // [UnconditionalSuppressMessage("Trimming", "IL2062", Justification = "Both key and value are preserved types.")]
+        // [UnconditionalSuppressMessage("Trimming", "IL2067", Justification = "Both key and value are preserved types.")]
+        // [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(KeyValuePair<,>))]
         protected IEnumerable CollectionFromValue(
             Value value,
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type targetType,
-            CollectionFactory collectionFactory, bool strictMode)
+            CollectionFactory collectionFactory,
+            bool strictMode)
         {
             if (value.ValueTypeCase == Value.ValueTypeOneofCase.NullValue && !strictMode)
             {
@@ -57,8 +58,8 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 builder.AddRange(items);
                 return builder.Build();
 
-                [UnconditionalSuppressMessage("Trimming", "IL2062", Justification = "Element type should already be preserved.")]
-                [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "Element type should already be preserved.")]
+                // [UnconditionalSuppressMessage("Trimming", "IL2062", Justification = "Element type should already be preserved.")]
+                // [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "Element type should already be preserved.")]
                 object? selector(Value item) => ConvertFromValue(item, collectionFactory.ElementType);
             }
             if (value.ValueTypeCase == Value.ValueTypeOneofCase.MapValue && targetType.IsDictionaryType(out var keyType, out var valueType))

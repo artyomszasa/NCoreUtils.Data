@@ -21,7 +21,6 @@ namespace NCoreUtils.Data
                 .AddSingleton(sp => new InMemoryDataRepository<TData, TId>(
                     sp,
                     sp.GetRequiredService<InMemoryDataRepositoryContext>(),
-                    sp.GetService<IDataEventHandlers>(),
                     data)
                 )
                 .AddSingleton<IDataRepository<TData, TId>>(sp => sp.GetRequiredService<InMemoryDataRepository<TData, TId>>())

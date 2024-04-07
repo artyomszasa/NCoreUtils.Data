@@ -2,18 +2,15 @@ using System.Collections.Generic;
 
 namespace NCoreUtils.Data.Google.Cloud.Firestore;
 
-public readonly struct FirestoreMultiQuery
+public readonly struct FirestoreMultiQuery(IReadOnlyList<FirestoreQuery> queries)
 {
-    private static readonly IReadOnlyList<FirestoreQuery> _noQueries = System.Array.Empty<FirestoreQuery>();
+    private static readonly IReadOnlyList<FirestoreQuery> _noQueries = [];
 
-    private readonly IReadOnlyList<FirestoreQuery>? _queries;
+    private readonly IReadOnlyList<FirestoreQuery>? _queries = queries;
 
     public IReadOnlyList<FirestoreQuery> Queries
         => _queries ?? _noQueries;
 
     public bool IsDefault
         => _queries is null;
-
-    public FirestoreMultiQuery(IReadOnlyList<FirestoreQuery> queries)
-        => _queries = queries;
 }

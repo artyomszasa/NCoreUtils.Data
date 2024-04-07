@@ -9,6 +9,7 @@ using Google.Cloud.Firestore;
 using Microsoft.Extensions.Logging;
 using NCoreUtils.Data.Build;
 using NCoreUtils.Data.Google.Cloud.Firestore.Expressions;
+using NCoreUtils.Data.Google.Cloud.Firestore.Internal;
 using NCoreUtils.Data.Model;
 
 namespace NCoreUtils.Data.Google.Cloud.Firestore
@@ -79,13 +80,16 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 ctor.Properties.Select(p =>
                 {
                     var ptype = p.TargetProperty.PropertyType;
-                    var pdata = entity.Properties.First(e => e.Property == p.TargetProperty);
-                    if (entity.Key != null && entity.Key.Count == 1 && entity.Key[0].Property.Equals(p.TargetProperty))
-                    {
-                        // FIXME: keys on nested entities are not allowed...
-                        return new FirestoreFieldExpression(Converter, snapshot, FieldPath.DocumentId, ptype);
-                    }
-                    return new FirestoreFieldExpression(Converter, snapshot, ImmutableList.Create(pdata.Name), ptype);
+                    var pdata = entity.Properties.FirstByProperty(p.TargetProperty);
+                    // FIXME:NET8: Model must have generated FirestoreFieldExpressionFactory
+                    var factory = pdata.GetFirestoreFieldExpressionFactory();
+                    // if (entity.Key != null && entity.Key.Count == 1 && entity.Key[0].Property.Equals(p.TargetProperty))
+                    // {
+                    //     // FIXME: keys on nested entities are not allowed...
+                    //     return new FirestoreFieldExpression(Converter, snapshot, FieldPath.DocumentId, ptype);
+                    // }
+                    // return new FirestoreFieldExpression(Converter, snapshot, ImmutableList.Create(pdata.Name), ptype);
+                    return factory.Create(entity, pdata, Converter, snapshot);
                 })
             );
         }

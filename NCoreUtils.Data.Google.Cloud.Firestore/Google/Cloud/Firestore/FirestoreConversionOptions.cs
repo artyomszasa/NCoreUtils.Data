@@ -1,35 +1,26 @@
 using System;
 using System.Collections.Generic;
 
-namespace NCoreUtils.Data.Google.Cloud.Firestore
+namespace NCoreUtils.Data.Google.Cloud.Firestore;
+
+public class FirestoreConversionOptions(
+    bool strictMode,
+    FirestoreDecimalHandling decimalHandling,
+    FirestoreEnumHandling enumHandling,
+    IReadOnlyList<FirestoreValueConverter> converters)
 {
-    public class FirestoreConversionOptions
-    {
-        public static FirestoreConversionOptions Default { get; } = new FirestoreConversionOptions(
-            true,
-            FirestoreDecimalHandling.AsString,
-            FirestoreEnumHandling.AlwaysAsString,
-            Array.Empty<FirestoreValueConverter>()
-        );
+    public static FirestoreConversionOptions Default { get; } = new FirestoreConversionOptions(
+        true,
+        FirestoreDecimalHandling.AsString,
+        FirestoreEnumHandling.AlwaysAsString,
+        []
+    );
 
-        public bool StrictMode { get; }
+    public bool StrictMode { get; } = strictMode;
 
-        public FirestoreDecimalHandling DecimalHandling { get; }
+    public FirestoreDecimalHandling DecimalHandling { get; } = decimalHandling;
 
-        public FirestoreEnumHandling EnumHandling { get; }
+    public FirestoreEnumHandling EnumHandling { get; } = enumHandling;
 
-        public IReadOnlyList<FirestoreValueConverter> Converters { get; }
-
-        public FirestoreConversionOptions(
-            bool strictMode,
-            FirestoreDecimalHandling decimalHandling,
-            FirestoreEnumHandling enumHandling,
-            IReadOnlyList<FirestoreValueConverter> converters)
-        {
-            StrictMode = strictMode;
-            DecimalHandling = decimalHandling;
-            EnumHandling = enumHandling;
-            Converters = converters ?? throw new ArgumentNullException(nameof(converters));
-        }
-    }
+    public IReadOnlyList<FirestoreValueConverter> Converters { get; } = converters ?? throw new ArgumentNullException(nameof(converters));
 }

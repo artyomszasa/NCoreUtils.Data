@@ -4,7 +4,7 @@ using Google.Cloud.Firestore;
 
 namespace NCoreUtils.Data.Google.Cloud.Firestore;
 
-public readonly struct FirestoreOrdering : IEquatable<FirestoreOrdering>
+public readonly struct FirestoreOrdering(FieldPath path, FirestoreOrderingDirection direction) : IEquatable<FirestoreOrdering>
 {
     private static readonly EqualityComparer<FieldPath> _pathComparer = EqualityComparer<FieldPath>.Default;
 
@@ -14,15 +14,9 @@ public readonly struct FirestoreOrdering : IEquatable<FirestoreOrdering>
     public static bool operator!=(FirestoreOrdering a, FirestoreOrdering b)
         => !a.Equals(b);
 
-    public FieldPath Path { get; }
+    public FieldPath Path { get; } = path ?? throw new ArgumentNullException(nameof(path));
 
-    public FirestoreOrderingDirection Direction { get; }
-
-    public FirestoreOrdering(FieldPath path, FirestoreOrderingDirection direction)
-    {
-        Path = path ?? throw new ArgumentNullException(nameof(path));
-        Direction = direction;
-    }
+    public FirestoreOrderingDirection Direction { get; } = direction;
 
     public override bool Equals(object? obj)
         => obj is FirestoreOrdering other && Equals(other);

@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <IsPackable>false</IsPackable>
-    <FxNugetVersion>6.0.0</FxNugetVersion>
+    <FxNugetVersion>8.0.0</FxNugetVersion>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="$(FxNugetVersion)" />
@@ -22,7 +22,7 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\NCoreUtils.Data.Google.Cloud.Firestore\NCoreUtils.Data.Google.Cloud.Firestore.csproj" />
+    <ProjectReference Include="..\NCoreUtils.Data.Google.Cloud.Firestore.Reflection\NCoreUtils.Data.Google.Cloud.Firestore.Reflection.csproj" />
   </ItemGroup>
   <!-- **** -->
   <Target Name="BeforeRunCoverageTests">

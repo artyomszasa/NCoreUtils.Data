@@ -1,26 +1,24 @@
 using System;
 using System.Data;
-using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace NCoreUtils.Data.Rest
+namespace NCoreUtils.Data.Rest;
+
+public sealed class RestDataRepositoryContext : IDataRepositoryContext
 {
-    public sealed class RestDataRepositoryContext : IDataRepositoryContext
+    internal IDataTransaction? _tx;
+
+    public IDataTransaction? CurrentTransaction => _tx;
+
+    public ValueTask<IDataTransaction> BeginTransactionAsync(IsolationLevel isolationLevel, CancellationToken cancellationToken = default)
     {
-        internal IDataTransaction? _tx;
-
-        public IDataTransaction? CurrentTransaction => _tx;
-
-        public ValueTask<IDataTransaction> BeginTransactionAsync(IsolationLevel isolationLevel, CancellationToken cancellationToken = default)
+        if (null == Interlocked.CompareExchange(ref _tx, new RestDataTransaction(this), null))
         {
-            if (null == Interlocked.CompareExchange(ref _tx, new RestDataTransaction(this), null))
-            {
-                return new ValueTask<IDataTransaction>(_tx);
-            }
-            throw new InvalidOperationException($"Multiple transactions are not allowed (current ttransaction = {_tx.Guid}).");
+            return new ValueTask<IDataTransaction>(_tx);
         }
-
-        public void Dispose() { /* noop */ }
+        throw new InvalidOperationException($"Multiple transactions are not allowed (current ttransaction = {_tx.Guid}).");
     }
+
+    public void Dispose() { /* noop */ }
 }

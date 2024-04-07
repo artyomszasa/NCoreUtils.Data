@@ -5,7 +5,6 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using NCoreUtils.Data.Events;
 using NCoreUtils.Linq;
 
 namespace NCoreUtils.Data.InMemory
@@ -48,19 +47,15 @@ namespace NCoreUtils.Data.InMemory
 
         public InMemoryDataRepositoryContext Context { get; }
 
-        public IDataEventHandlers? Handlers { get; }
-
         public IServiceProvider ServiceProvider { get; }
 
         public InMemoryDataRepository(
             IServiceProvider serviceProvider,
             InMemoryDataRepositoryContext context,
-            IDataEventHandlers? handlers = default,
             IList<TData>? data = default)
         {
             ServiceProvider = serviceProvider;
             Context = context;
-            Handlers = handlers;
             Data = data ?? new List<TData>();
         }
 
@@ -79,16 +74,10 @@ namespace NCoreUtils.Data.InMemory
                 {
                     property.SetValue(item, Data.Count == 0 ? 1 : Inc(Data.Max(e => e.Id)!));
                 }
-                Handlers?.TriggerInsertAsync(ServiceProvider, this, item, cancellationToken)
-                    .AsTask()
-                    .Wait(CancellationToken.None);
                 Data.Add(item);
             }
             else
             {
-                Handlers?.TriggerUpdateAsync(ServiceProvider, this, item, cancellationToken)
-                    .AsTask()
-                    .Wait(CancellationToken.None);
                 Data[index] = item;
             }
             return Task.FromResult(item);
@@ -99,9 +88,6 @@ namespace NCoreUtils.Data.InMemory
             var index = Data.FindIndex(e => e.Id.Equals(item.Id));
             if (-1 != index)
             {
-                Handlers?.TriggerDeleteAsync(ServiceProvider, this, item, cancellationToken)
-                    .AsTask()
-                    .Wait(CancellationToken.None);
                 Data.RemoveAt(index);
             }
             return Task.CompletedTask;

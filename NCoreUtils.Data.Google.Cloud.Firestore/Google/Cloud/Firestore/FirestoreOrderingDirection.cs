@@ -1,8 +1,7 @@
-namespace NCoreUtils.Data.Google.Cloud.Firestore
+namespace NCoreUtils.Data.Google.Cloud.Firestore;
+
+public enum FirestoreOrderingDirection
 {
-    public enum FirestoreOrderingDirection
-    {
-        Ascending = 0,
-        Descending = 1
-    }
+    Ascending = 0,
+    Descending = 1
 }

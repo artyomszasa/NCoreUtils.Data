@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using Google.Cloud.Firestore.V1;
 using Google.Protobuf;
+using NCoreUtils.Data.Google.Cloud.Firestore.Internal;
 
 namespace NCoreUtils.Data.Google.Cloud.Firestore
 {
@@ -23,13 +24,13 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
         //     .GetMethods(BindingFlags.Static | BindingFlags.Public)
         //     .First(m => m.Name == nameof(ToEnum) && m.IsGenericMethodDefinition);
 
-        private static readonly MethodInfo _gmEnumToValue = typeof(FirestoreConvert)
-            .GetMethods(BindingFlags.Static | BindingFlags.Public)
-            .First(m => m.Name == nameof(ToValue) && m.IsGenericMethodDefinition && m.GetParameters().Length == 2 && m.GetParameters()[1].ParameterType == typeof(FirestoreEnumHandling));
+        // private static readonly MethodInfo _gmEnumToValue = typeof(FirestoreConvert)
+        //     .GetMethods(BindingFlags.Static | BindingFlags.Public)
+        //     .First(m => m.Name == nameof(ToValue) && m.IsGenericMethodDefinition && m.GetParameters().Length == 2 && m.GetParameters()[1].ParameterType == typeof(FirestoreEnumHandling));
 
-        private static readonly MethodInfo _gmEnumToFlagsString = typeof(FirestoreConvert)
-            .GetMethods(BindingFlags.Static | BindingFlags.NonPublic)
-            .First(m => m.Name == nameof(EnumToFlagsString) && m.IsGenericMethodDefinition);
+        // private static readonly MethodInfo _gmEnumToFlagsString = typeof(FirestoreConvert)
+        //     .GetMethods(BindingFlags.Static | BindingFlags.NonPublic)
+        //     .First(m => m.Name == nameof(EnumToFlagsString) && m.IsGenericMethodDefinition);
 
         internal static IReadOnlyList<string> ThruthyValues => _truthy;
 
@@ -842,46 +843,45 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             }
         }
 
-        internal static string EnumToFlagsString<TEnum>(TEnum value)
-            where TEnum : Enum
+        internal static string EnumToFlagsString<TEnum>(TEnum value, IEnumInfo<TEnum> enumInfo)
+            where TEnum : struct, Enum
         {
             return string.Join(
                 '|',
-                Enum.GetValues(typeof(TEnum))
-                    .Cast<TEnum>()
+                enumInfo.GetValues()
                     .Where(v => value.HasFlag(v))
                     .Select(v => v.ToString())
             );
         }
 
-        [DynamicDependency("EnumToFlagsString`1", typeof(FirestoreConvert))]
-        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Dynamic dependency.")]
-        [UnconditionalSuppressMessage("Trimming", "IL2060", Justification = "Dynamic dependency.")]
-        internal static string EnumToFlagsString(Type enumType, object value)
-        {
-            if (!enumType.IsEnum)
-            {
-                throw new ArgumentException($"{enumType} is not an enum.", nameof(enumType));
-            }
-            return (string)_gmEnumToFlagsString
-                .MakeGenericMethod(enumType)
-                .Invoke(null, new object[] { value })!;
-        }
+        // [DynamicDependency("EnumToFlagsString`1", typeof(FirestoreConvert))]
+        // [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Dynamic dependency.")]
+        // [UnconditionalSuppressMessage("Trimming", "IL2060", Justification = "Dynamic dependency.")]
+        // internal static string EnumToFlagsString(Type enumType, object value)
+        // {
+        //     if (!enumType.IsEnum)
+        //     {
+        //         throw new ArgumentException($"{enumType} is not an enum.", nameof(enumType));
+        //     }
+        //     return (string)_gmEnumToFlagsString
+        //         .MakeGenericMethod(enumType)
+        //         .Invoke(null, new object[] { value })!;
+        // }
 
-        public static Value ToValue<TEnum>(TEnum value, FirestoreEnumHandling enumHandling)
-            where TEnum : Enum, IConvertible
+        public static Value ToValue<TEnum>(TEnum value, IEnumInfo<TEnum> enumInfo, FirestoreEnumHandling enumHandling)
+            where TEnum : struct, Enum, IConvertible
         {
             return enumHandling switch
             {
                 FirestoreEnumHandling.AsSingleNumber => ToNumber(value),
                 FirestoreEnumHandling.AsNumberOrNumberArray => typeof(TEnum).IsDefined(typeof(FlagsAttribute), true)
-                    ? ToNumberArray(value)
+                    ? ToNumberArray(value, enumInfo)
                     : ToNumber(value),
                 FirestoreEnumHandling.AlwaysAsString => typeof(TEnum).IsDefined(typeof(FlagsAttribute), true)
-                    ? ToFlagsString(value)
+                    ? ToFlagsString(value, enumInfo)
                     : ToString(value),
                 FirestoreEnumHandling.AsStringOrStringArray => typeof(TEnum).IsDefined(typeof(FlagsAttribute), true)
-                    ? ToStringArray(value)
+                    ? ToStringArray(value, enumInfo)
                     : ToString(value),
                 _ => throw new InvalidOperationException("should never happen")
             };
@@ -889,13 +889,13 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             static Value ToString(TEnum value)
                 => new() { StringValue = value.ToString() };
 
-            static Value ToFlagsString(TEnum value)
-                => new() { StringValue = EnumToFlagsString(value) };
+            static Value ToFlagsString(TEnum value, IEnumInfo<TEnum> enumInfo)
+                => new() { StringValue = EnumToFlagsString(value, enumInfo) };
 
-            static Value ToStringArray(TEnum value)
+            static Value ToStringArray(TEnum value, IEnumInfo<TEnum> enumInfo)
             {
                 var arr = new ArrayValue();
-                foreach (TEnum v in Enum.GetValues(typeof(TEnum)))
+                foreach (TEnum v in enumInfo.GetValues())
                 {
                     if (value.HasFlag(v))
                     {
@@ -908,10 +908,10 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             static Value ToNumber(TEnum value)
                 => new() { IntegerValue = value.ToInt64(CultureInfo.InvariantCulture) };
 
-            static Value ToNumberArray(TEnum value)
+            static Value ToNumberArray(TEnum value, IEnumInfo<TEnum> enumInfo)
             {
                 var arr = new ArrayValue();
-                foreach (TEnum v in Enum.GetValues(typeof(TEnum)))
+                foreach (TEnum v in enumInfo.GetValues())
                 {
                     if (value.HasFlag(v))
                     {
@@ -922,23 +922,23 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             }
         }
 
-        [DynamicDependency("ToValue`1", typeof(FirestoreConvert))]
-        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Dynamic dependency.")]
-        [UnconditionalSuppressMessage("Trimming", "IL2060", Justification = "Dynamic dependency.")]
-        public static Value ToValue(Type enumType, object value, FirestoreEnumHandling enumHandling)
-        {
-            if (!enumType.IsEnum)
-            {
-                throw new ArgumentException($"{enumType} is not an enum.", nameof(enumType));
-            }
-            if (value is null || value.GetType() != enumType)
-            {
-                throw new ArgumentException($"{value} is not an enum of type {enumType}.", nameof(value));
-            }
-            return (Value)_gmEnumToValue
-                .MakeGenericMethod(enumType)
-                .Invoke(null, new object[] { value, enumHandling })!;
-        }
+        // [DynamicDependency("ToValue`1", typeof(FirestoreConvert))]
+        // [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Dynamic dependency.")]
+        // [UnconditionalSuppressMessage("Trimming", "IL2060", Justification = "Dynamic dependency.")]
+        // public static Value ToValue(Type enumType, object value, FirestoreEnumHandling enumHandling)
+        // {
+        //     if (!enumType.IsEnum)
+        //     {
+        //         throw new ArgumentException($"{enumType} is not an enum.", nameof(enumType));
+        //     }
+        //     if (value is null || value.GetType() != enumType)
+        //     {
+        //         throw new ArgumentException($"{value} is not an enum of type {enumType}.", nameof(value));
+        //     }
+        //     return (Value)_gmEnumToValue
+        //         .MakeGenericMethod(enumType)
+        //         .Invoke(null, new object[] { value, enumHandling })!;
+        // }
 
         public static Value ToValue(DateTimeOffset value)
             => new() { TimestampValue = global::Google.Protobuf.WellKnownTypes.Timestamp.FromDateTimeOffset(value) };

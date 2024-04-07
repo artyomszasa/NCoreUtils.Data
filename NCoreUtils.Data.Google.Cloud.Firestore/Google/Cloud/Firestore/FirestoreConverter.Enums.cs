@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
 using Google.Cloud.Firestore.V1;
+using NCoreUtils.Data.Google.Cloud.Firestore.Internal;
 
 namespace NCoreUtils.Data.Google.Cloud.Firestore
 {
@@ -10,7 +11,8 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
         {
             if (sourceType.IsEnum)
             {
-                result = FirestoreConvert.ToValue(sourceType, value!, Options.EnumHandling);
+                var helper = Model.GetEnumConversionHelpers().GetHelper(sourceType);
+                result = helper.Convert(value!, Options.EnumHandling);
                 return true;
             }
             result = default;

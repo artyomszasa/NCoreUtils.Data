@@ -32,6 +32,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Unit
             configure?.Invoke(config);
             var modelBuilder = new DataModelBuilder();
             buildModel(modelBuilder);
+            modelBuilder.AddReflectionBasedFirestoreDecorations();
             _serviceProvider = new ServiceCollection()
                 .AddLogging(b => b.ClearProviders().SetMinimumLevel(LogLevel.Debug).AddConsole().AddDebug())
                 .AddSingleton(builder.Build())

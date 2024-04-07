@@ -1,36 +1,35 @@
 using System;
 using Google.Cloud.Firestore.V1;
 
-namespace NCoreUtils.Data.Google.Cloud.Firestore
+namespace NCoreUtils.Data.Google.Cloud.Firestore;
+
+public abstract class FirestoreValueConverter
 {
-    public abstract class FirestoreValueConverter
-    {
-        internal abstract object? ConvertToConditionArgument(object? value);
+    internal abstract object? ConvertToConditionArgument(object? value);
 
-        internal abstract object? ConvertFromValue(Value value, Type targetType, FirestoreConverter converter);
+    internal abstract object? ConvertFromValue(Value value, Type targetType, FirestoreConverter converter);
 
-        internal abstract Value ConvertToValue(object? value, Type sourceType, FirestoreConverter converter);
+    internal abstract Value ConvertToValue(object? value, Type sourceType, FirestoreConverter converter);
 
-        public abstract bool CanConvert(Type type);
-    }
+    public abstract bool CanConvert(Type type);
+}
 
-    public abstract class FirestoreValueConverter<T> : FirestoreValueConverter
-    {
-        protected virtual object? ToConditionArgument(T value) => value;
+public abstract class FirestoreValueConverter<T> : FirestoreValueConverter
+{
+    protected virtual object? ToConditionArgument(T value) => value;
 
-        protected abstract T FromValue(Value value, Type targetType, FirestoreConverter converter);
+    protected abstract T FromValue(Value value, Type targetType, FirestoreConverter converter);
 
-        protected abstract Value ToValue(T value, Type sourceType, FirestoreConverter converter);
+    protected abstract Value ToValue(T value, Type sourceType, FirestoreConverter converter);
 
-        internal sealed override object? ConvertToConditionArgument(object? value)
-            => ToConditionArgument((T)value!);
+    internal sealed override object? ConvertToConditionArgument(object? value)
+        => ToConditionArgument((T)value!);
 
-        internal sealed override object? ConvertFromValue(Value value, Type targetType, FirestoreConverter converter)
-            => FromValue(value, targetType, converter);
+    internal sealed override object? ConvertFromValue(Value value, Type targetType, FirestoreConverter converter)
+        => FromValue(value, targetType, converter);
 
-        internal sealed override Value ConvertToValue(object? value, Type sourceType, FirestoreConverter converter)
-            => ToValue((T)value!, sourceType, converter);
+    internal sealed override Value ConvertToValue(object? value, Type sourceType, FirestoreConverter converter)
+        => ToValue((T)value!, sourceType, converter);
 
-        public override bool CanConvert(Type type) => type.Equals(typeof(T));
-    }
+    public override bool CanConvert(Type type) => type.Equals(typeof(T));
 }
