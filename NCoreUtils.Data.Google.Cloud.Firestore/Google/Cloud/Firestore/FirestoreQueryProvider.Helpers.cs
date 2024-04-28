@@ -1,13 +1,17 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Google.Cloud.Firestore;
+using Microsoft.Extensions.Logging;
 using NCoreUtils.Data.Google.Cloud.Firestore.Expressions;
+using NCoreUtils.Data.Google.Cloud.Firestore.Internal;
 
 namespace NCoreUtils.Data.Google.Cloud.Firestore;
 
@@ -19,16 +23,77 @@ public partial class FirestoreQueryProvider
 
         public ValueTask DisposeAsync() => default;
 
-        public ValueTask<bool> MoveNextAsync() => default;
+        public ValueTask<bool> MoveNextAsync() => new(false);
     }
 
     private sealed class EmptyAsyncEnumerable<T> : IAsyncEnumerable<T>
     {
         private static readonly EmptyAsyncEnumerator<T> _enumerator = new();
 
+        public static EmptyAsyncEnumerable<T> Singleton { get; } = new();
+
+        private EmptyAsyncEnumerable() { }
+
         public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
             => _enumerator;
     }
+
+    private sealed class LoggingAsyncEnumerator<T>(IAsyncEnumerator<T> source, ILogger logger) : IAsyncEnumerator<T>
+    {
+        private static FixSizePool<Stopwatch> StopwatchPool { get; } = new(128);
+
+        private readonly Stopwatch stopwatch = StopwatchPool.TryRent(out var instance) ? instance : new();
+
+        private InterlockedBoolean disposed;
+
+        private InterlockedBoolean started;
+
+        private InterlockedBoolean finished;
+
+        public T Current => source.Current;
+
+        private void Finish()
+        {
+            if (finished.TrySet())
+            {
+                stopwatch.Stop();
+                logger.LogQueryExecuted(stopwatch.ElapsedMilliseconds);
+            }
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            if (disposed.TrySet())
+            {
+                Finish();
+                await source.DisposeAsync();
+                StopwatchPool.Return(stopwatch);
+            }
+        }
+
+        public ValueTask<bool> MoveNextAsync()
+        {
+            if (started.TrySet())
+            {
+                stopwatch.Restart();
+            }
+            return source.MoveNextAsync();
+        }
+    }
+
+    private sealed class LoggingAsyncEnumerable<T>(IAsyncEnumerable<T> source, ILogger logger) : IAsyncEnumerable<T>
+    {
+        public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
+            => new LoggingAsyncEnumerator<T>(source.GetAsyncEnumerator(cancellationToken), logger);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static LoggingAsyncEnumerable<T> LogExecution<T>(IAsyncEnumerable<T> source, ILogger logger)
+        => new(source, logger);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private LoggingAsyncEnumerable<T> LogExecution<T>(IAsyncEnumerable<T> source)
+        => LogExecution(source, Logger);
 
     [Obsolete("TryResolveSubpath(...) is an internal mathod, use TryResolvePath(...).")]
     private bool TryResolveSubpath(

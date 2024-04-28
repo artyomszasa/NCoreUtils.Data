@@ -146,9 +146,9 @@ public partial class FirestoreQueryProvider
         };
     }
 
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(IReadOnlyList<>))]
-    [UnconditionalSuppressMessage("Trimming", "IL2067", Justification = "Element type should be preserved.")]
-    private PathOrValue HandleEnumValues(PathOrValue source, Type expressionType)
+    // [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(IReadOnlyList<>))]
+    // [UnconditionalSuppressMessage("Trimming", "IL2067", Justification = "Element type should be preserved.")]
+    private PathOrValue HandleEnumValues(PathOrValue source, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type expressionType)
     {
         if (source.IsPath)
         {
@@ -164,24 +164,26 @@ public partial class FirestoreQueryProvider
             }
             return PathOrValue.CreateValue(PrepareEnumValue(source.Value, expressionType));
         }
-        if (CollectionFactory.IsCollection(expressionType, out var elementType) && elementType.IsEnum)
+        var collectionFactoryFactory = Model.GetCollectionFactoryFactory();
+        if (collectionFactoryFactory.IsCollection(expressionType, out var elementType) && elementType.IsEnum)
         {
-            var targetElementType = (Model.Configuration.ConversionOptions ?? FirestoreConversionOptions.Default).EnumHandling switch
+            var readonlyListType = (Model.Configuration.ConversionOptions ?? FirestoreConversionOptions.Default).EnumHandling switch
             {
-                FirestoreEnumHandling.AlwaysAsString => typeof(string),
-                FirestoreEnumHandling.AsNumberOrNumberArray => typeof(long),
-                FirestoreEnumHandling.AsSingleNumber => typeof(long),
-                FirestoreEnumHandling.AsStringOrStringArray => typeof(string),
+                FirestoreEnumHandling.AlwaysAsString => typeof(IReadOnlyList<string>),
+                FirestoreEnumHandling.AsNumberOrNumberArray => typeof(IReadOnlyList<long>),
+                FirestoreEnumHandling.AsSingleNumber => typeof(IReadOnlyList<long>),
+                FirestoreEnumHandling.AsStringOrStringArray => typeof(IReadOnlyList<string>),
                 _ => throw new InvalidOperationException("should never happen")
             };
             // source is a colection which elements has enum type.
-            if (source.Value is null || !CollectionFactory.TryCreate(typeof(IReadOnlyList<>).MakeGenericType(targetElementType), out var factory))
+            var sourceValue = source.Value;
+            if (sourceValue is null || !collectionFactoryFactory.TryCreate(readonlyListType, out var factory))
             {
                 // no conversion for null values
                 return source;
             }
             var builder = factory.CreateBuilder();
-            foreach (var item in (System.Collections.IEnumerable)source.Value)
+            foreach (var item in (System.Collections.IEnumerable)sourceValue)
             {
                 builder.Add(PrepareEnumValue(item, elementType));
             }
@@ -199,7 +201,7 @@ public partial class FirestoreQueryProvider
         if (expression.TryExtractConstant(out var value))
         {
             memberType = value?.GetType();
-            return HandleEnumValues(PathOrValue.CreateValue(value!), expression.Type);
+            return HandleEnumValues(PathOrValue.CreateValue(value!), MarkAsPreserved(expression.Type));
         }
         if (expression.TryExtractInstance(out var newValue))
         {
@@ -212,12 +214,12 @@ public partial class FirestoreQueryProvider
         }
         if (expression is UnaryExpression u && u.NodeType == ExpressionType.Convert)
         {
-            return HandleEnumValues(ExtractPathOrValue(arg, u.Operand, out memberType), expression.Type);
+            return HandleEnumValues(ExtractPathOrValue(arg, u.Operand, out memberType), MarkAsPreserved(expression.Type));
         }
         if (expression is NewArrayExpression arrayExpr)
         {
             memberType = arrayExpr.Type.GetElementType()!;
-            var arrayValue = Array.CreateInstance(memberType, arrayExpr.Expressions.Count);
+            var arrayValue = CreateArrayForPreservedType(memberType, arrayExpr.Expressions.Count);
             var i = 0;
             foreach (var expr in arrayExpr.Expressions)
             {
@@ -232,7 +234,7 @@ public partial class FirestoreQueryProvider
             }
             if (i == arrayValue.Length)
             {
-                return HandleEnumValues(PathOrValue.CreateValue(arrayValue), expression.Type);
+                return HandleEnumValues(PathOrValue.CreateValue(arrayValue), MarkAsPreserved(expression.Type));
             }
         }
         if (expression is MethodCallExpression call && call.Method.IsConstructedGenericMethod
@@ -272,6 +274,16 @@ public partial class FirestoreQueryProvider
             }
             return false;
         }
+
+        [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [SuppressMessage("Trimming", "IL2068:Target method return value does not satisfy 'DynamicallyAccessedMembersAttribute' requirements. The parameter of method does not have matching annotations.", Justification = "Type preserved when the source expression is constructed.")]
+        static Type MarkAsPreserved(Type type) => type;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [SuppressMessage("AOT", "IL3050:Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling.", Justification = "Array type is ncessarly preserved.")]
+        static Array CreateArrayForPreservedType(Type elementType, int count)
+            => Array.CreateInstance(elementType, count);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

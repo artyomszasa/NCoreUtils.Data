@@ -32,10 +32,12 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="$(FxNugetVersion)" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="$(FxNugetVersion)" />
     <PackageReference Include="NCoreUtils.Extensions.AsyncEnumerable" Version="8.0.0" />
+    <PackageReference Include="NCoreUtils.Extensions.Collections" Version="8.0.0" />
+    <PackageReference Include="NCoreUtils.Extensions.Primitives" Version="8.0.0" />
     <PackageReference Include="System.Threading.Tasks.Dataflow" Version="8.0.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\NCoreUtils.Data.Internal\NCoreUtils.Data.Internal.csproj" />
-    <ProjectReference Include="..\NCoreUtils.Data.Mapping\NCoreUtils.Data.Mapping.csproj" />
+    <ProjectReference Include="..\NCoreUtils.Data.Mapping.Abstractions\NCoreUtils.Data.Mapping.Abstractions.csproj" />
   </ItemGroup>
 </Project>

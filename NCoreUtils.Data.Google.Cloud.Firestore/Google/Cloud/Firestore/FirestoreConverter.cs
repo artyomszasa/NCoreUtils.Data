@@ -3,22 +3,18 @@ using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using Google.Cloud.Firestore.V1;
 using Microsoft.Extensions.Logging;
+using NCoreUtils.Data.Google.Cloud.Firestore.Internal;
 
 namespace NCoreUtils.Data.Google.Cloud.Firestore;
 
-public partial class FirestoreConverter
+public partial class FirestoreConverter(ILogger<FirestoreConverter> logger, FirestoreConversionOptions options, FirestoreModel model)
 {
     internal delegate bool TryGetValueDelegate(string name, [NotNullWhen(true)] out Value? value);
 
-    private sealed class CanConvertPredicate
+    private sealed class CanConvertPredicate([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type targetType)
     {
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-        private Type TargetType { get; }
-
-        public CanConvertPredicate([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type targetType)
-        {
-            TargetType = targetType;
-        }
+        private Type TargetType { get; } = targetType;
 
         public bool Invoke(FirestoreValueConverter c)
             => c.CanConvert(TargetType);
@@ -33,18 +29,11 @@ public partial class FirestoreConverter
     private static Ctor CtorFactory(Type type)
         => Ctor.GetCtor(type);
 
-    public ILogger Logger { get; }
+    public ILogger Logger { get; } = logger ?? throw new ArgumentNullException(nameof(logger));
 
-    public FirestoreConversionOptions Options { get; }
+    public FirestoreConversionOptions Options { get; } = options ?? throw new ArgumentNullException(nameof(options));
 
-    public FirestoreModel Model { get; }
-
-    public FirestoreConverter(ILogger<FirestoreConverter> logger, FirestoreConversionOptions options, FirestoreModel model)
-    {
-        Logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        Options = options ?? throw new ArgumentNullException(nameof(options));
-        Model = model ?? throw new ArgumentNullException(nameof(model));
-    }
+    public FirestoreModel Model { get; } = model ?? throw new ArgumentNullException(nameof(model));
 
     protected Ctor GetCtor(Type type)
         => _ctorCache.GetOrAdd(type, _ctorFactory);
@@ -90,7 +79,6 @@ public partial class FirestoreConverter
 
     public Value ConvertToValue<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>(T value) => ConvertToValue(value, typeof(T));
 
-    [UnconditionalSuppressMessage("Trimming", "IL2062", Justification = "Element type should already be preserved.")]
     public object? ConvertFromValue(Value value, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type targetType)
     {
         // try custom converters
@@ -118,7 +106,7 @@ public partial class FirestoreConverter
             return result;
         }
         // try as collection
-        if (CollectionFactory.TryCreate(targetType, out var collectionFactory))
+        if (Model.GetCollectionFactoryFactory().TryCreate(targetType, out var collectionFactory))
         {
             return CollectionFromValue(value, targetType, collectionFactory, Options.StrictMode);
         }

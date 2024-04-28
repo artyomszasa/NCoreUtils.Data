@@ -8,7 +8,9 @@ namespace NCoreUtils.Data;
 // FIXME: move to NCoreUtils.Extensions.Reflection
 public static class ReflectionExtensions
 {
-    public static bool IsNullable(this Type type, [NotNullWhen(true)] out Type? elementType)
+    public static bool IsNullable(
+        this Type type,
+        [NotNullWhen(true)] out Type? elementType)
     {
         if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>))
         {

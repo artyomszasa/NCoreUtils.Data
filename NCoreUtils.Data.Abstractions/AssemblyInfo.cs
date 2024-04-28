@@ -11,6 +11,7 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("NCoreUtils.Data.IdName.Unit")]
 [assembly: InternalsVisibleTo("NCoreUtils.Data.Internal")]
 [assembly: InternalsVisibleTo("NCoreUtils.Data.Mapping")]
+[assembly: InternalsVisibleTo("NCoreUtils.Data.Mapping.Abstractions")]
 [assembly: InternalsVisibleTo("NCoreUtils.Data.Google.Cloud.Firestore")]
 [assembly: InternalsVisibleTo("NCoreUtils.Data.Rest")]
 [assembly: InternalsVisibleTo("NCoreUtils.Data.InMemory")]

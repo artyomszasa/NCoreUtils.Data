@@ -383,15 +383,13 @@ public partial class FirestoreQueryProvider : QueryProviderBase
         var q = Cast(source);
         if (q.IsAlwaysFalse())
         {
-            return new EmptyAsyncEnumerable<TElement>();
+            return EmptyAsyncEnumerable<TElement>.Singleton;
         }
-        return new DelayedAsyncEnumerable<TElement>(cancellationToken => new ValueTask<IAsyncEnumerable<TElement>>(DbAccessor.ExecuteAsync(db =>
+        return LogExecution(new DelayedAsyncEnumerable<TElement>(cancellationToken => new ValueTask<IAsyncEnumerable<TElement>>(DbAccessor.ExecuteAsync(db =>
         {
             var stream = StreamQueryAsync(db, q, cancellationToken);
             return Task.FromResult(Materializer.Materialize(stream, q.Selector));
-        })));
-
-
+        }))));
     }
 
     /// <summary>
@@ -407,7 +405,7 @@ public partial class FirestoreQueryProvider : QueryProviderBase
     {
         if (query.Conditions.TryGetFirst(c => c.Operation == FirestoreCondition.Op.ArrayContainsAny, out var c))
         {
-            var wrapper = CollectionWrapper.Create(c.Value!);
+            var wrapper = Model.GetCollectionWrapperFactory().Create(c.Value!);
             if (wrapper.Count > 10)
             {
                 // FIXME: pool

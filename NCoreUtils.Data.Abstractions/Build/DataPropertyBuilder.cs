@@ -4,12 +4,9 @@ using NCoreUtils.Data.Model;
 
 namespace NCoreUtils.Data.Build;
 
-public abstract class DataPropertyBuilder : MetadataBuilder
+public abstract class DataPropertyBuilder(PropertyInfo property) : MetadataBuilder
 {
-    public PropertyInfo Property { get; }
-
-    protected DataPropertyBuilder(PropertyInfo property)
-        => Property = property ?? throw new ArgumentNullException(nameof(property));
+    public PropertyInfo Property { get; } = property ?? throw new ArgumentNullException(nameof(property));
 
     internal abstract DataProperty Build();
 

@@ -57,5 +57,12 @@ namespace NCoreUtils.Data.Build
             configure(Entity<T>());
             return this;
         }
+
+        public DataModelBuilder AddEntityBuilder<T>(T builder)
+            where T : DataEntityBuilder
+        {
+            _entities.Add(builder.EntityType, builder);
+            return this;
+        }
     }
 }

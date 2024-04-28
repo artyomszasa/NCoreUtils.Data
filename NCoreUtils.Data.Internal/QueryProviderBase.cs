@@ -199,6 +199,7 @@ namespace NCoreUtils.Data.Internal
 
         [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Only preserved types should be handled here.")]
         [UnconditionalSuppressMessage("Trimming", "IL2060", Justification = "Only preserved types should be handled here.")]
+        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Only preserved types should be handled here.")]
         [DynamicDependency("Execute`1", typeof(QueryProviderBase))]
         public virtual object Execute(Expression expression)
         {
@@ -211,19 +212,20 @@ namespace NCoreUtils.Data.Internal
             {
                 resultType = expression.Type;
             }
-            return _gmExecute.MakeGenericMethod(resultType).Invoke(this, new object[] { expression })!;
+            return _gmExecute.MakeGenericMethod(resultType).Invoke(this, [expression])!;
         }
 
         [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Only preserved types should be handled here.")]
         [UnconditionalSuppressMessage("Trimming", "IL2060", Justification = "Only preserved types should be handled here.")]
         [UnconditionalSuppressMessage("Trimming", "IL2087", Justification = "If interface type is not preserved the function makes no sense anyway.")]
+        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Only preserved types should be handled here.")]
         [DynamicDependency("ExecuteEnumerable`1", typeof(QueryProviderBase))]
         public virtual TResult Execute<TResult>(
             Expression expression)
         {
             if (TryGetEnumerableElementType(typeof(TResult), out var elementType))
             {
-                return (TResult)_gmExecuteEnumerable.MakeGenericMethod(elementType).Invoke(this, new object[] { expression })!;
+                return (TResult)_gmExecuteEnumerable.MakeGenericMethod(elementType).Invoke(this, [expression])!;
             }
             return ExecuteAsync<TResult>(expression, CancellationToken.None).GetAwaiter().GetResult();
         }

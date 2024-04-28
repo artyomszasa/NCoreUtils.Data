@@ -1,86 +1,96 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
+using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
-namespace NCoreUtils.Data.Google.Cloud.Firestore.Internal
+namespace NCoreUtils.Data.Google.Cloud.Firestore.Internal;
+
+#if !NET6_0_OR_GREATER
+
+public readonly struct CollectionSource<T>
 {
-    public abstract class CollectionWrapper
+    private readonly T[] _array;
+
+    internal CollectionSource(T[] array)
     {
-        private static bool IsReadOnlyList(
-            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] Type collectionType,
-            [NotNullWhen(true)] out Type? elementType)
+        _array = array;
+    }
+
+    public ReadOnlySpan<T> Span => _array.AsSpan();
+}
+
+#else
+
+public readonly struct CollectionSource<T>
+{
+    private readonly List<T>? _list;
+
+    private readonly T[]? _array;
+
+    internal CollectionSource(List<T>? list, T[]? array)
+    {
+        _list = list;
+        _array = array;
+    }
+
+    internal CollectionSource(T[] array)
+        : this(default, array)
+    { }
+
+    public ReadOnlySpan<T> Span => _list is null
+        ? _array is null
+            ? throw new InvalidOperationException("Should never happen.")
+            : _array.AsSpan()
+        : CollectionsMarshal.AsSpan(_list);
+}
+
+#endif
+
+public static class CollectionSource
+{
+    public static CollectionSource<T> Create<T>(IEnumerable<T> source)
+    {
+        if (source is T[] array)
         {
-            if (collectionType.IsInterface)
-            {
-                elementType = default;
-                return false;
-            }
-            if (collectionType.GetInterfaces().TryGetFirst(ty => ty.IsConstructedGenericType && ty.GetGenericTypeDefinition() == typeof(IReadOnlyList<>), out var ifaceType))
-            {
-                elementType = ifaceType.GetGenericArguments()[0];
-                return true;
-            }
-            elementType = default;
-            return false;
-        }
 
-        private static bool IsEnumerable(
-            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] Type collectionType,
-            [NotNullWhen(true)] out Type? elementType)
+            return new(array);
+        }
+        if (source is List<T> list)
         {
-            if (collectionType.IsInterface)
-            {
-                elementType = default;
-                return false;
-            }
-            if (collectionType.GetInterfaces().TryGetFirst(ty => ty.IsConstructedGenericType && ty.GetGenericTypeDefinition() == typeof(IEnumerable<>), out var ifaceType))
-            {
-                elementType = ifaceType.GetGenericArguments()[0];
-                return true;
-            }
-            elementType = default;
-            return false;
+#if NET6_0_OR_GREATER
+            return new(list, default);
+#else
+            return new(list.ToArray());
+#endif
         }
+        return new(source.ToArray());
+    }
+}
 
-        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ArrayWrapper<>))]
-        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ReadOnlyListWrapper<>))]
-        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(EnumerableWrapper<>))]
-        [UnconditionalSuppressMessage("Trimming", "IL2026")]
-        [UnconditionalSuppressMessage("Trimming", "IL2072")]
-        [UnconditionalSuppressMessage("Trimming", "IL2111")]
-        public static CollectionWrapper Create(object source)
+public class AnyCollectionWrapper<T>(CollectionSource<T> source) : ICollectionWrapper
+{
+    protected ReadOnlySpan<T> Span
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => source.Span;
+    }
+
+    public int Count => Span.Length;
+
+    public AnyCollectionWrapper(IEnumerable<T> source)
+        : this(CollectionSource.Create(source))
+    { }
+
+    public void SplitIntoChunks(int chunkSize, List<object> results)
+    {
+        var span = Span;
+        for (var offset = 0; offset < span.Length; offset += chunkSize)
         {
-            if (source is null)
-            {
-                throw new ArgumentNullException(nameof(source));
-            }
-            var type = source.GetType();
-            if (type.IsArray)
-            {
-                return (CollectionWrapper)Activator.CreateInstance(
-                    typeof(ArrayWrapper<>).MakeGenericType(type.GetElementType()!),
-                    new object[] { source }
-                )!;
-            }
-            if (IsReadOnlyList(type, out var elementType))
-            {
-                return (CollectionWrapper)Activator.CreateInstance(
-                    typeof(ReadOnlyListWrapper<>).MakeGenericType(elementType),
-                    new object[] { source }
-                )!;
-            }
-            if (IsEnumerable(type, out elementType))
-            {
-                return (CollectionWrapper)Activator.CreateInstance(
-                    typeof(EnumerableWrapper<>).MakeGenericType(elementType),
-                    new object[] { source }
-                )!;
-            }
-            throw new InvalidOperationException($"Unable to create collection wrapper for \"{type}\".");
+            var size = Math.Min(span.Length - offset, chunkSize);
+            var chunk = new T[size];
+            span[offset .. (offset + size)].CopyTo(chunk.AsSpan());
+            results.Add(chunk);
         }
-
-        public abstract int Count { get; }
-
-        public abstract void SplitIntoChunks(int chunkSize, List<object> results);
     }
 }

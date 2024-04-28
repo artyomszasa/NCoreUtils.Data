@@ -62,6 +62,13 @@ public abstract class DataEntityBuilder : MetadataBuilder
 
 public class DataEntityBuilder<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T> : DataEntityBuilder
 {
+    [Obsolete("Used by generator and should not be used directly.")]
+    protected DataEntityBuilder(
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] Type entityType,
+        IReadOnlyDictionary<PropertyInfo, DataPropertyBuilder> properties)
+        : base(entityType, properties)
+    { }
+
     [RequiresDynamicCode(S.CtorUsesReflection)]
     public DataEntityBuilder() : base(typeof(T)) { }
 

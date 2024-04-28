@@ -7,24 +7,18 @@ using System.Reflection;
 
 namespace NCoreUtils.Data
 {
-    public abstract partial class Ctor : IEquatable<Ctor>
+    public partial class Ctor(ConstructorInfo constructor, IReadOnlyList<PropertyMapping> properties) : IEquatable<Ctor>
     {
-        public ConstructorInfo Constructor { get; }
+        public ConstructorInfo Constructor { get; } = constructor ?? throw new ArgumentNullException(nameof(constructor));
 
-        public IReadOnlyList<PropertyMapping> Properties { get; }
+        public IReadOnlyList<PropertyMapping> Properties { get; } = properties ?? throw new ArgumentNullException(nameof(properties));
 
         public Type Type => Constructor.DeclaringType ?? throw new InvalidOperationException("Unable to get constructor declaring type.");
-
-        internal Ctor(ConstructorInfo constructor, IReadOnlyList<PropertyMapping> properties)
-        {
-            Constructor = constructor ?? throw new ArgumentNullException(nameof(constructor));
-            Properties = properties ?? throw new ArgumentNullException(nameof(properties));
-        }
 
         public CtorExpression CreateExpression(IEnumerable<Expression> arguments)
             => new(this, arguments);
 
-        public object Instantiate(IEnumerable values)
+        public virtual object Instantiate(IEnumerable values)
         {
             var arguments = new object[Constructor.GetParameters().Length];
             var valueEnumerator = values.GetEnumerator();
@@ -73,12 +67,5 @@ namespace NCoreUtils.Data
             }
             return hash.ToHashCode();
         }
-    }
-
-    public sealed class Ctor<T> : Ctor
-    {
-        internal Ctor(ConstructorInfo constructor, IReadOnlyList<PropertyMapping> properties)
-            : base(constructor, properties)
-        { }
     }
 }

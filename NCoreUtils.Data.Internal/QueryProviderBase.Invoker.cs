@@ -21,10 +21,12 @@ namespace NCoreUtils.Data.Internal
             private static readonly Func<(Type, Type), TwoArgsInvoker> _factory2 = CreateTwoArgInvoker;
 
             [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Type arguments from expressions should already be preserved.")]
+            [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Type arguments from expressions should already be preserved.")]
             private static OneArgInvoker CreateOneArgInvoker(Type type)
                 => (OneArgInvoker)Activator.CreateInstance(typeof(OneArgInvoker<>).MakeGenericType(type))!;
 
             [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Type arguments from expressions should already be preserved.")]
+            [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Type arguments from expressions should already be preserved.")]
             private static TwoArgsInvoker CreateTwoArgInvoker((Type, Type) types)
                 => (TwoArgsInvoker)Activator.CreateInstance(typeof(TwoArgsInvoker<,>).MakeGenericType(types.Item1, types.Item2))!;
 
