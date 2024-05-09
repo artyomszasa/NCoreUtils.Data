@@ -98,7 +98,7 @@ public static class FirestoreMetadataExtensions
         this DataModel model,
         [MaybeNullWhen(false)] out ICollectionWrapperFactory factory)
     {
-        if (model.TryGetValue(KeyCollectionFactoryFactory, out var boxed)
+        if (model.TryGetValue(KeyCollectionWrapperFactory, out var boxed)
             && boxed is ICollectionWrapperFactory f)
         {
             factory = f;

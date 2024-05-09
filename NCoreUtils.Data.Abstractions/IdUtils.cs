@@ -122,7 +122,7 @@ public static class IdUtils
     /// </returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     [DebuggerStepThrough]
-    public static bool IsValidId(string? id) => id is not null;
+    public static bool IsValidId(string? id) => !string.IsNullOrEmpty(id);
 
     /// <summary>
     /// Checks whether the specified business key is valid.

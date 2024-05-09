@@ -51,7 +51,7 @@ namespace NCoreUtils.Data.Build
 
         public DataEntityAttribute(System.Type entityType)
         {
-            EntityType = entityType ?? throw new ArgumentNullException(nameof(entityType));
+            EntityType = entityType ?? throw new System.ArgumentNullException(nameof(entityType));
         }
     }
 
