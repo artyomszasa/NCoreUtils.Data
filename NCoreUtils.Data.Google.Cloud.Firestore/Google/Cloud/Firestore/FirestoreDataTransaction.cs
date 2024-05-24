@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Google.Cloud.Firestore;
+using Grpc.Core;
 using Microsoft.Extensions.Logging;
 
 namespace NCoreUtils.Data.Google.Cloud.Firestore;
@@ -92,20 +93,33 @@ public sealed partial class FirestoreDataTransaction : IDataTransaction
     {
         try
         {
+            if (_task.IsCanceled)
+            {
+                return true;
+            }
             return _task.Wait(milliseconds);
+        }
+        catch (OperationCanceledException)
+        {
+            return true;
         }
         catch (AggregateException aexn)
         {
             if (1 == aexn.InnerExceptions.Count)
             {
-                if (aexn.InnerExceptions[0] is AbortTransactionException)
+                switch (aexn.InnerExceptions[0])
                 {
-                    // aborted normally
-                    _logger.LogDebug("Firestore transaction {Guid} has been rolled back.", Guid);
-                }
-                else
-                {
-                    _logger.LogError(aexn.InnerExceptions[0], "Unexpected exception while disposing firebase transaction {Guid}.", Guid);
+                    case AbortTransactionException:
+                        // aborted normally
+                        _logger.LogDebug("Firestore transaction {Guid} has been rolled back.", Guid);
+                        break;
+                    case RpcException rpcException when rpcException.StatusCode == StatusCode.Cancelled:
+                    case OperationCanceledException:
+                        // Cancelled --> finished without perfomring anything.
+                        break;
+                    default:
+                        _logger.LogError(aexn.InnerExceptions[0], "Unexpected exception while disposing firebase transaction {Guid}.", Guid);
+                        break;
                 }
             }
             else
@@ -136,14 +150,14 @@ public sealed partial class FirestoreDataTransaction : IDataTransaction
             {
                 // still in transaction
                 Rollback(true);
-                if (!WaitNoThrow(20))
+            }
+            if (!WaitNoThrow(20))
+            {
+                // executor task has not finished
+                _cancellation.Cancel();
+                if (!WaitNoThrow(50))
                 {
-                    // executor task has not finished
-                    _cancellation.Cancel();
-                    if (!WaitNoThrow(50))
-                    {
-                        _logger.LogError("Firebase transaction have not finished.");
-                    }
+                    _logger.LogError("Firebase transaction have not finished.");
                 }
             }
             _queue.Complete();

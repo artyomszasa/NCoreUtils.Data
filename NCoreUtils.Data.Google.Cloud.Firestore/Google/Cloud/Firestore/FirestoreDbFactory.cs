@@ -1,14 +1,17 @@
 using Google.Cloud.Firestore;
+using Microsoft.Extensions.Logging;
 
 namespace NCoreUtils.Data.Google.Cloud.Firestore;
 
-public class FirestoreDbFactory(IFirestoreConfiguration configuration)
+public class FirestoreDbFactory(IFirestoreConfiguration configuration, ILoggerFactory? loggerFactory = default)
 {
     private readonly object _sync = new();
 
     private FirestoreDb? _db;
 
     public IFirestoreConfiguration Configuration { get; } = configuration ?? new FirestoreConfiguration();
+
+    public ILoggerFactory? LoggerFactory { get; } = loggerFactory;
 
     public FirestoreDb GetOrCreateFirestoreDb()
     {
@@ -22,7 +25,14 @@ public class FirestoreDbFactory(IFirestoreConfiguration configuration)
                     {
                         ProjectId = Configuration.ProjectId,
 #if NET6_0_OR_GREATER
-                        GrpcAdapter = global::Google.Api.Gax.Grpc.GrpcNetClientAdapter.Default
+                        Logger = LoggerFactory?.CreateLogger("NCoreUtils.Data.Google.Cloud.Firestore.Client"),
+                        GrpcAdapter = global::Google.Api.Gax.Grpc.GrpcNetClientAdapter.Default.WithAdditionalOptions(opts =>
+                        {
+                            if (LoggerFactory is not null)
+                            {
+                                opts.LoggerFactory = LoggerFactory;
+                            }
+                        })
 #endif
                     };
                     _db = builder.Build();
