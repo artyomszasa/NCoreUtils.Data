@@ -27,6 +27,8 @@ public abstract class FirestoreFieldExpression : Expression, IExtensionExpressio
         _pDocumentSnapshotId = (PropertyInfo)((MemberExpression)e2.Body).Member;
     }
 
+    protected static Value CreateNullValueValue() => new() { NullValue = default };
+
     public override bool CanReduce => true;
 
     public override ExpressionType NodeType => ExpressionType.Extension;
@@ -79,7 +81,7 @@ public class FirestoreFieldExpression<[DynamicallyAccessedMembers(DynamicallyAcc
         = (doc, converter, path) => converter.ConvertFromValue<T>(
             doc.ContainsField(path)
                 ? doc.GetValue<Value>(path)
-                : new Value { NullValue = default }
+                : CreateNullValueValue()
         );
 
     protected override Expression ReduceToNonExtension()

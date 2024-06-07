@@ -24,6 +24,10 @@ public static class ServiceCollectionFirestoreDataExtensions
                 {
                     c.ConversionOptions = configuration.ConversionOptions;
                 }
+                if (configuration.GoogleCredential is not null)
+                {
+                    c.GoogleCredential = configuration.GoogleCredential;
+                }
             });
         }
         services.AddTransient<IFirestoreConfiguration>(serviceProvider => serviceProvider.GetRequiredService<IOptionsMonitor<FirestoreConfiguration>>().CurrentValue);

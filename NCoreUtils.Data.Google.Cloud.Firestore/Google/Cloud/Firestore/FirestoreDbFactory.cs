@@ -25,6 +25,7 @@ public class FirestoreDbFactory(IFirestoreConfiguration configuration, ILoggerFa
                     {
                         ProjectId = Configuration.ProjectId,
 #if NET6_0_OR_GREATER
+                        GoogleCredential = configuration.GoogleCredential,
                         Logger = LoggerFactory?.CreateLogger("NCoreUtils.Data.Google.Cloud.Firestore.Client"),
                         GrpcAdapter = global::Google.Api.Gax.Grpc.GrpcNetClientAdapter.Default.WithAdditionalOptions(opts =>
                         {
