@@ -29,4 +29,7 @@
     <PackageReference Include="NCoreUtils.Extensions.Expressions" Version="8.0.0" />
     <PackageReference Include="NCoreUtils.Maybe" Version="3.0.2" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\NCoreUtils.Data.CoreInterfaces\NCoreUtils.Data.CoreInterfaces.csproj" />
+  </ItemGroup>
 </Project>
