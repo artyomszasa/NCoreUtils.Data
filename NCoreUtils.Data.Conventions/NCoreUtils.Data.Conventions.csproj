@@ -4,6 +4,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\NCoreUtils.Data.Abstractions\NCoreUtils.Data.Abstractions.csproj" />
+    <ProjectReference Include="..\NCoreUtils.Data.Model\NCoreUtils.Data.Model.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="NCoreUtils.Text" Version="8.0.0" />

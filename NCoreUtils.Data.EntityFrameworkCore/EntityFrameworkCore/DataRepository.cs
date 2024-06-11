@@ -161,6 +161,7 @@ namespace NCoreUtils.Data.EntityFrameworkCore
                 throw new InvalidOperationException("Trying to remove detached entity.");
             }
             // await EventHandlers.TriggerDeleteAsync(ServiceProvider, this, entry.Entity, cancellationToken);
+#pragma warning disable CS0618 // Type or member is obsolete
             if (!force && item is IHasState statefullEntity)
             {
                 statefullEntity.State = State.Deleted;
@@ -169,6 +170,7 @@ namespace NCoreUtils.Data.EntityFrameworkCore
             {
                 dbContext.Remove(item);
             }
+#pragma warning restore CS0618 // Type or member is obsolete
             await dbContext.SaveChangesAsync(cancellationToken);
         }
     }

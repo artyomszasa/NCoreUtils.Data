@@ -31,7 +31,6 @@ public static class DataRepositoryContextExtensions
         {
             return asyncRes.Result;
         }
-        // NOTE: Should never happen.
         return asyncRes.AsTask().GetAwaiter().GetResult();
     }
 

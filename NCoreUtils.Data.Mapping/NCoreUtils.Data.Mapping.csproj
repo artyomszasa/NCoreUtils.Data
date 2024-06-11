@@ -7,6 +7,9 @@
     <EnableTrimAnalyzer>false</EnableTrimAnalyzer>
     <EnableAotAnalyzer>false</EnableAotAnalyzer>
   </PropertyGroup>
+  <ItemGroup Condition="!$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net6.0'))">
+    <Compile Include="..\Shared\Trimming\**" />
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="NCoreUtils.Extensions.Collections" Version="8.0.0" />
   </ItemGroup>

@@ -122,6 +122,7 @@ public static class LinqExtensions
     /// </summary>
     /// <param name="source">Source query.</param>
     /// <returns>Result query.</returns>
+    [Obsolete("Will be removed in future versions")]
 #if NET7_0
     [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Should be handaled by the provider.")]
 #endif
@@ -145,6 +146,7 @@ public static class LinqExtensions
     /// </summary>
     /// <param name="source">Source query.</param>
     /// <returns>Result query.</returns>
+    [Obsolete("Will be removed in future versions")]
 #if NET7_0
     [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Should be handaled by the provider.")]
 #endif
@@ -168,6 +170,7 @@ public static class LinqExtensions
     /// </summary>
     /// <param name="source">Source query.</param>
     /// <returns>Result query.</returns>
+    [Obsolete("Will be removed in future versions")]
 #if NET7_0
     [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Should be handaled by the provider.")]
 #endif
@@ -191,6 +194,7 @@ public static class LinqExtensions
     /// </summary>
     /// <param name="source">Source query.</param>
     /// <returns>Result query.</returns>
+    [Obsolete("Will be removed in future versions")]
 #if NET7_0
     [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Should be handaled by the provider.")]
 #endif
