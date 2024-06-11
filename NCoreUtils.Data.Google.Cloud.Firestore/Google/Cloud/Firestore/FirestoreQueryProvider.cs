@@ -249,7 +249,11 @@ public partial class FirestoreQueryProvider : QueryProviderBase
     }
 
     protected override Task<int> ExecuteCount<TElement>(IQueryable<TElement> source, CancellationToken cancellationToken)
+#if NET6_0_OR_GREATER
+        => DbAccessor.ExecuteAsync(async db => (int)await CountQueryAsync(db, Cast(source), cancellationToken));
+#else
         => throw new NotSupportedException("Executing .Count(...) would result in querying all entities.");
+#endif
 
     protected override Task<TElement> ExecuteFirst<TElement>(IQueryable<TElement> source, CancellationToken cancellationToken)
         => ExecuteQuery(source.Skip(0).Take(1)).FirstAsync(cancellationToken).AsTask();
@@ -284,6 +288,21 @@ public partial class FirestoreQueryProvider : QueryProviderBase
             _ => throw new InvalidOperationException("Sequence contains multiple elements."),
         };
     }
+
+#if NET6_0_OR_GREATER
+    protected virtual async Task<long> CountQueryAsync<TElement>(
+        FirestoreDb db,
+        FirestoreQuery<TElement> q,
+        CancellationToken cancellationToken)
+    {
+        if (TryCreateUnboundQuery(db, q, out var query, out var mq))
+        {
+            var snapshot = await query.Count().GetSnapshotAsync(cancellationToken);
+            return snapshot.Count ?? 0;
+        }
+        throw new NotSupportedException("Only simple (natively supported by Firestore) queries are supported.");
+    }
+#endif
 
     protected virtual IAsyncEnumerable<DocumentSnapshot> StreamQueryAsync<TElement>(
         FirestoreDb db,

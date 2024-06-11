@@ -25,7 +25,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\NCoreUtils.Data.Abstractions\NCoreUtils.Data.Abstractions.csproj" />
-    <ProjectReference Include="..\NCoreUtils.Data.IdName.EntityFrameworkCore.Abstractions\NCoreUtils.Data.IdName.EntityFrameworkCore.Abstractions.csproj" />
   </ItemGroup>
   <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard2.1' ">
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="[$(FxNugetVersion), 4.0.0)" />

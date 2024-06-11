@@ -5,7 +5,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
-using NCoreUtils.Data.IdNameGeneration;
 using System.Reflection;
 using System.Collections.Concurrent;
 using System.Linq.Expressions;
@@ -16,15 +15,9 @@ namespace NCoreUtils.Data.EntityFrameworkCore
     /// <summary>
     /// Common implmentation of repository backed by entity framework core context.
     /// </summary>
-    public abstract partial class DataRepository : ISupportsIdNameGeneration
+    public abstract partial class DataRepository
     {
         static readonly ConcurrentDictionary<Type, Maybe<(PropertyInfo, ImmutableArray<PropertyInfo>)>> _idNameSourceProperties
-            = new();
-
-        /// <summary>
-        /// Internal Id name descriptions cache.
-        /// </summary>
-        protected static readonly ConcurrentDictionary<Type, Maybe<IdNameDescription>> _idNameDesciptionCache
             = new();
 
         /// <summary>
@@ -41,38 +34,10 @@ namespace NCoreUtils.Data.EntityFrameworkCore
             Linq.AsyncQueryAdapters.Add(new QueryProviderAdapter());
         }
 
-        protected static Maybe<(PropertyInfo, ImmutableArray<PropertyInfo>)> MaybeIdNameSourceProperty(Type elementType, DbContext dbContext)
-        {
-            if (_idNameSourceProperties.TryGetValue(elementType, out var result))
-            {
-                return result;
-            }
-            return _idNameSourceProperties.GetOrAdd(elementType, DoFind);
-
-            [UnconditionalSuppressMessage("Trimming", "IL2067")]
-            Maybe<(PropertyInfo, ImmutableArray<PropertyInfo>)> DoFind(Type etype) => dbContext
-                .Model
-                .FindEntityType(etype)!
-                .GetProperties()
-                .MaybePick(picker!);
-
-            static Maybe<(PropertyInfo, ImmutableArray<PropertyInfo>)> picker(Microsoft.EntityFrameworkCore.Metadata.IProperty e)
-            {
-                var annotation = e.FindAnnotation(Annotations.IdNameSourceProperty);
-                if (null == annotation)
-                {
-                    return Maybe.Nothing;
-                }
-                var a = Annotations.IdNameSourcePropertyAnnotation.Unpack(annotation.Value as string);
-                return (a.SourceNameProperty, a.AdditionalIndexProperties).Just()!;
-            }
-        }
-
         /// <summary>
         /// Unredlying repository context.
         /// </summary>
-        [Obsolete("Use EFCoreContext property instead.")]
-        protected readonly DataRepositoryContext _context;
+        private readonly DataRepositoryContext _context;
 
         /// <summary>
         /// Gets element type handled by the repository.
@@ -82,9 +47,7 @@ namespace NCoreUtils.Data.EntityFrameworkCore
         /// <summary>
         /// Unredlying repository context.
         /// </summary>
-        #pragma warning disable 0618
         public DataRepositoryContext EFCoreContext => _context;
-        #pragma warning restore 0618
 
         /// <summary>
         /// Initializes new instance of repository from the specified context.
@@ -92,53 +55,19 @@ namespace NCoreUtils.Data.EntityFrameworkCore
         /// <param name="context"></param>
         public DataRepository(DataRepositoryContext context)
         {
-            #pragma warning disable 0618
             _context = context ?? throw new ArgumentNullException(nameof(context));
-            #pragma warning restore 0618
         }
-
-        public virtual bool GenerateIdNameOnInsert => MaybeIdNameSourceProperty(ElementType, EFCoreContext.DbContext).HasValue;
-
-        public abstract IdNameDescription IdNameDescription { get; }
-
-        public virtual IStringDecomposer DecomposeName => DummyStringDecomposition.Decomposer;
     }
 
     public abstract class DataRepository<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TData>
         : DataRepository, IDataRepository<TData>
         where TData : class
     {
-        public static IdNameDescription GetIdNameDescription(Type elementType, DbContext dbContext, IStringDecomposer decomposer)
-        {
-            if (!_idNameDesciptionCache.TryGetValue(elementType, out var desc))
-            {
-                var maybeSelector = ByIdNameExpressionBuilder.MaybeGetExpression(elementType).As<Expression<Func<TData, string>>>();
-                if (!maybeSelector.TryGetValue(out var selector) || !MaybeIdNameSourceProperty(elementType, dbContext).TryGetValue(out var annotation))
-                {
-                    _idNameDesciptionCache[elementType] = Maybe.Nothing;
-                    desc = Maybe.Nothing;
-                }
-                else
-                {
-                    var d = new IdNameDescription(selector!.ExtractProperty(), annotation.Item1, decomposer, annotation.Item2);
-                    _idNameDesciptionCache[elementType] = d.Just();
-                    desc = d.Just();
-                }
-            }
-            if (desc.TryGetValue(out var result))
-            {
-                return result!;
-            }
-            throw new InvalidOperationException($"No id name description for {typeof(TData).FullName}.");
-        }
-
         protected virtual ImmutableHashSet<string> SpecialPropertyNames => _defaultSpecialPropertyNames;
 
         public virtual IQueryable<TData> Items => EFCoreContext.DbContext.Set<TData>();
 
         public override Type ElementType => typeof(TData);
-
-        public override IdNameDescription IdNameDescription => GetIdNameDescription(ElementType, EFCoreContext.DbContext, DecomposeName);
 
         public IDataRepositoryContext Context => EFCoreContext;
 

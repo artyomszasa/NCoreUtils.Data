@@ -14,16 +14,6 @@ namespace NCoreUtils.Data
             return builder;
         }
 
-        public static EntityTypeBuilder<TEntity> HasTimeTracking<TEntity>(this EntityTypeBuilder<TEntity> builder)
-            where TEntity : class, IHasTimeTracking
-        {
-            var createdSelector = LinqExtensions.ReplaceExplicitProperties<Func<TEntity, object?>>(e => e.Created);
-            var updatedSelector = LinqExtensions.ReplaceExplicitProperties<Func<TEntity, object?>>(e => e.Updated);
-            builder.HasIndex(createdSelector!);
-            builder.HasIndex(updatedSelector!);
-            return builder;
-        }
-
         public static PropertyBuilder<string> StringProperty<TEntity>(
             this EntityTypeBuilder<TEntity> builder,
             Expression<Func<TEntity, string>> selector,
