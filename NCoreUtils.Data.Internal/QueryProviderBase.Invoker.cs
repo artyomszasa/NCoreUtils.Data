@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -35,6 +36,14 @@ namespace NCoreUtils.Data.Internal
                 var gargs = expression.Type.GetGenericArguments();
                 return (gargs[0], gargs[^1]);
             }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public static bool RegisterInvoker<TArg>()
+                => _cache1.TryAdd(typeof(TArg), new OneArgInvoker<TArg>());
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public static bool RegisterInvoker<TArg1, TArg2>()
+                => _cache2.TryAdd((typeof(TArg1), typeof(TArg2)), new TwoArgsInvoker<TArg1, TArg2>());
 
             [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TwoArgsInvoker<,>))]
             public static IQueryable ApplyOfType(QueryProviderBase provider, IQueryable source, Type targetType)
@@ -260,5 +269,11 @@ namespace NCoreUtils.Data.Internal
                 return provider.ApplyThenByDescending(src, sel);
             }
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool RegisterInvoker<TArg>() => Invoker.RegisterInvoker<TArg>();
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool RegisterInvoker<TArg1, TArg2>() => Invoker.RegisterInvoker<TArg1, TArg2>();
     }
 }

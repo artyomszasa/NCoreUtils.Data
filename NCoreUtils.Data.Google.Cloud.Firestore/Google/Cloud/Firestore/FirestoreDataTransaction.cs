@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -6,6 +7,7 @@ using System.Threading.Tasks.Dataflow;
 using Google.Cloud.Firestore;
 using Grpc.Core;
 using Microsoft.Extensions.Logging;
+using NCoreUtils.Data.Google.Cloud.Firestore.Internal;
 
 namespace NCoreUtils.Data.Google.Cloud.Firestore;
 
@@ -61,13 +63,19 @@ public sealed partial class FirestoreDataTransaction : IDataTransaction
         await Task.Yield();
         try
         {
+            var stopwatch = new Stopwatch();
             var shouldExit = false;
             while (!shouldExit)
             {
+                _logger.LogTransactionWaitForMessages(Guid);
                 var message = await _queue.ReceiveAsync(tx.CancellationToken);
+                _logger.LogTransactionExecutingMessage(Guid, message.ToString());
+                stopwatch.Restart();
                 shouldExit = await message.RunAsync(tx);
+                stopwatch.Stop();
+                _logger.LogTransactionExecutedMessage(Guid, message.ToString(), stopwatch.ElapsedMilliseconds, shouldExit);
             }
-            _logger.LogDebug("Committing firestore transaction {Guid}.", Guid);
+            _logger.LogTransactionCommitting(Guid);
         }
         finally
         {
@@ -78,10 +86,14 @@ public sealed partial class FirestoreDataTransaction : IDataTransaction
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void ThrowIfDisposed()
     {
+#if NET8_0_OR_GREATER
+        ObjectDisposedException.ThrowIf(0 != Interlocked.CompareExchange(ref _isDisposed, 0, 0), this);
+#else
         if (0 != Interlocked.CompareExchange(ref _isDisposed, 0, 0))
         {
             throw new ObjectDisposedException(nameof(FirestoreDataTransaction));
         }
+#endif
     }
 
     private void Unlink()
@@ -111,20 +123,20 @@ public sealed partial class FirestoreDataTransaction : IDataTransaction
                 {
                     case AbortTransactionException:
                         // aborted normally
-                        _logger.LogDebug("Firestore transaction {Guid} has been rolled back.", Guid);
+                        _logger.LogTransactionRollback(Guid);
                         break;
                     case RpcException rpcException when rpcException.StatusCode == StatusCode.Cancelled:
                     case OperationCanceledException:
                         // Cancelled --> finished without perfomring anything.
                         break;
-                    default:
-                        _logger.LogError(aexn.InnerExceptions[0], "Unexpected exception while disposing firebase transaction {Guid}.", Guid);
+                    case var innerException:
+                        _logger.LogTransactionUnexpectedExceptionOnDispose(innerException, Guid);
                         break;
                 }
             }
             else
             {
-                _logger.LogError(aexn.InnerExceptions[0], "Unexpected exception while disposing firebase transaction {Guid}.", Guid);
+                _logger.LogTransactionUnexpectedExceptionOnDispose(aexn, Guid);
             }
             return true;
         }
@@ -149,15 +161,16 @@ public sealed partial class FirestoreDataTransaction : IDataTransaction
             if (!IsCompleted)
             {
                 // still in transaction
+                _logger.LogTransactionRollbackOnDispose(Guid);
                 Rollback(true);
             }
-            if (!WaitNoThrow(20))
+            if (!WaitNoThrow(milliseconds: 20))
             {
                 // executor task has not finished
                 _cancellation.Cancel();
-                if (!WaitNoThrow(50))
+                if (!WaitNoThrow(milliseconds: 50))
                 {
-                    _logger.LogError("Firebase transaction have not finished.");
+                    _logger.LogTransactionTaskNotFinished(Guid);
                 }
             }
             _queue.Complete();

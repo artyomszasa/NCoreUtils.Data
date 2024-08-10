@@ -25,6 +25,8 @@ public partial class FirestoreDataTransaction
         {
             return new ValueTask<bool>(true);
         }
+
+        public override string ToString() => "Commit";
     }
 
     private class RollbackMessage : Message
@@ -33,6 +35,8 @@ public partial class FirestoreDataTransaction
         {
             throw new AbortTransactionException();
         }
+
+        public override string ToString() => "Rollback";
     }
 
     class ActionMessage<T>(Func<Transaction, Task<T>> action) : Message
@@ -51,9 +55,9 @@ public partial class FirestoreDataTransaction
             }
             catch (Exception exn)
             {
-                if (exn is OperationCanceledException)
+                if (exn is OperationCanceledException cancelled)
                 {
-                    Completion.TrySetCanceled();
+                    Completion.TrySetCanceled(cancelled.CancellationToken);
                 }
                 else
                 {
@@ -62,5 +66,7 @@ public partial class FirestoreDataTransaction
                 throw new AbortTransactionException();
             }
         }
+
+        public override string ToString() => "Action";
     }
 }
