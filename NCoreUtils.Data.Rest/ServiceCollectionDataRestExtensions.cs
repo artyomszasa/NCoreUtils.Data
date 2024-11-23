@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization.Metadata;
 using Microsoft.Extensions.Configuration;
@@ -51,7 +52,7 @@ public static class ServiceCollectionDataRestExtensions
         where TData : class, IHasId<TId>
         where TId : IEquatable<TId>
         => services
-            .AddRemoteRestType<TData, TId>(configuration.Endpoint, configuration.HttpClientConfiguration, configuration.IdHandler)
+            .AddRemoteRestType<TData, TId>(configuration.Endpoint, configuration.HttpClientConfiguration, configuration.IdHandler, configuration.ErrorHandlers)
             .AddScoped<TRepository>()
             .AddScoped<IDataRepository<TData, TId>>(GetRequiredService<TRepository, TData, TId>)
             .AddScoped<IDataRepository<TData>>(GetRequiredService<TRepository, TData, TId>);
@@ -70,23 +71,25 @@ public static class ServiceCollectionDataRestExtensions
         this IServiceCollection services,
         string endpoint,
         string? httpClient = default,
-        IRestIdHandler<TId>? idHandler = default)
+        IRestIdHandler<TId>? idHandler = default,
+        IReadOnlyList<IRestClientErrorHandler>? errorHandlers = default)
         where TRepository : RestDataRepository<TData, TId>
         where TData : class, IHasId<TId>
         where TId : IEquatable<TId>
         => services.AddRestDataRepository<TRepository, TData, TId>(
-            new RemoteRestTypeConfiguration<TId>(endpoint, httpClient, idHandler)
+            new RemoteRestTypeConfiguration<TId>(endpoint, httpClient, idHandler, errorHandlers)
         );
 
     public static IServiceCollection AddRestDataRepository<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TData, TId>(
         this IServiceCollection services,
         string endpoint,
         string? httpClient = default,
-        IRestIdHandler<TId>? idHandler = default)
+        IRestIdHandler<TId>? idHandler = default,
+        IReadOnlyList<IRestClientErrorHandler>? errorHandlers = default)
         where TData : class, IHasId<TId>
         where TId : IEquatable<TId>
         => services.AddRestDataRepository<RestDataRepository<TData, TId>, TData, TId>(
-            new RemoteRestTypeConfiguration<TId>(endpoint, httpClient, idHandler)
+            new RemoteRestTypeConfiguration<TId>(endpoint, httpClient, idHandler, errorHandlers)
         );
 
     public static IServiceCollection AddRestDataRepository<
