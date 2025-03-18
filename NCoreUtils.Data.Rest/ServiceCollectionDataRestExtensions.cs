@@ -36,11 +36,23 @@ public static class ServiceCollectionDataRestExtensions
     public static IServiceCollection AddRestDataRepositoryContext(this IServiceCollection services, IJsonTypeInfoResolver jsonTypeInfoResolver)
         => services.AddRestDataRepositoryContext(new RestClientJsonTypeInfoResolver(jsonTypeInfoResolver));
 
-    private static TRepository GetRequiredService<TRepository, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] TData, TId>(
-        IServiceProvider serviceProvider)
+    private static class GetRequiredServiceHelper<
+        TRepository,
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] TData,
+        TId>
         where TRepository : RestDataRepository<TData, TId>
         where TData : IHasId<TId>
-        => serviceProvider.GetRequiredService<TRepository>();
+    {
+        public static Func<IServiceProvider, IDataRepository<TData, TId>> GetAsIDataRepositoryOfTDataAndTId = DoGetAsIDataRepositoryOfTDataAndTId;
+
+        public static Func<IServiceProvider, IDataRepository<TData>> GetAsIDataRepositoryOfTData = DoGetAsIDataRepositoryOfTData;
+
+        private static IDataRepository<TData, TId> DoGetAsIDataRepositoryOfTDataAndTId(IServiceProvider serviceProvider)
+            => serviceProvider.GetRequiredService<TRepository>();
+
+        private static IDataRepository<TData> DoGetAsIDataRepositoryOfTData(IServiceProvider serviceProvider)
+            => serviceProvider.GetRequiredService<TRepository>();
+    }
 
     public static IServiceCollection AddRestDataRepository<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TRepository,
@@ -54,8 +66,8 @@ public static class ServiceCollectionDataRestExtensions
         => services
             .AddRemoteRestType<TData, TId>(configuration.Endpoint, configuration.HttpClientConfiguration, configuration.IdHandler, configuration.ErrorHandlers)
             .AddScoped<TRepository>()
-            .AddScoped<IDataRepository<TData, TId>>(GetRequiredService<TRepository, TData, TId>)
-            .AddScoped<IDataRepository<TData>>(GetRequiredService<TRepository, TData, TId>);
+            .AddScoped(GetRequiredServiceHelper<TRepository, TData, TId>.GetAsIDataRepositoryOfTDataAndTId)
+            .AddScoped(GetRequiredServiceHelper<TRepository, TData, TId>.GetAsIDataRepositoryOfTData);
 
     public static IServiceCollection AddRestDataRepository<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TData, TId>(
         this IServiceCollection services,

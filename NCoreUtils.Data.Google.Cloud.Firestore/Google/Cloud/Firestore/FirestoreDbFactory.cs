@@ -33,6 +33,7 @@ public class FirestoreDbFactory(IFirestoreConfiguration configuration, ILoggerFa
                             {
                                 opts.LoggerFactory = LoggerFactory;
                             }
+                            Configuration.ConfigureGrpcChannelOptions?.Invoke(opts);
                         })
 #endif
                     };
