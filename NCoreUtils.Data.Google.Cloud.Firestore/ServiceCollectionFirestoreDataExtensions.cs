@@ -28,6 +28,12 @@ public static class ServiceCollectionFirestoreDataExtensions
                 {
                     c.GoogleCredential = configuration.GoogleCredential;
                 }
+#if NET6_0_OR_GREATER
+                if (configuration.ConfigureGrpcChannelOptions is not null)
+                {
+                    c.ConfigureGrpcChannelOptions = configuration.ConfigureGrpcChannelOptions;
+                }
+#endif
             });
         }
         services.AddTransient<IFirestoreConfiguration>(serviceProvider => serviceProvider.GetRequiredService<IOptionsMonitor<FirestoreConfiguration>>().CurrentValue);
