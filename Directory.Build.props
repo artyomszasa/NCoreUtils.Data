@@ -1,6 +1,7 @@
 <Project>
   <PropertyGroup>
-    <Version>8.0.1-rc07</Version>
+    <!-- FIXME: once bumped to 8.0.1-rc11, remove explicit version from NU.D.EFC.E.Generator-->
+    <Version>8.0.1-rc09</Version>
     <LangVersion>12.0</LangVersion>
     <Nullable>enable</Nullable>
     <IsTrimmable Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net6.0'))">true</IsTrimmable>
