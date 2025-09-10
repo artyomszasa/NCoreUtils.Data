@@ -14,11 +14,11 @@ public class ConverterGenerator : IIncrementalGenerator
 {
     private readonly struct TargetOrError
     {
-        public ConverterTarget? Target { get; }
+        public TargetData? Target { get; }
 
         public DiagnosticData? Error { get; }
 
-        private TargetOrError(ConverterTarget? target, DiagnosticData? error)
+        private TargetOrError(TargetData? target, DiagnosticData? error)
         {
             if (target is null && error is null)
             {
@@ -28,9 +28,13 @@ public class ConverterGenerator : IIncrementalGenerator
             Error = error;
         }
 
-        public TargetOrError(ConverterTarget target) : this(target, default) { }
+        public TargetOrError(TargetData target)
+            : this(target ?? throw new ArgumentNullException(nameof(target)), default)
+        { }
 
-        public TargetOrError(DiagnosticData error) : this(default, error) { }
+        public TargetOrError(DiagnosticData error)
+            : this(default, error ?? throw new ArgumentNullException(nameof(error)))
+        { }
     }
 
     private const string AttributesSource = @"
@@ -46,6 +50,8 @@ namespace NCoreUtils.Data
         public string DefaultValue { get; set; }
 
         public System.Type Comparer { get; set; }
+
+        public bool Nullable { get; set; }
 
         public AsJsonStringConverterAttribute(System.Type target, System.Type serializerContext)
         {
@@ -72,7 +78,7 @@ namespace NCoreUtils.Data
     {
         context.RegisterPostInitializationOutput(context => context.AddSource("JsonConversionAttributes.g.cs", SourceText.From(AttributesSource, Utf8)));
 
-        var targets = context.SyntaxProvider.ForAttributeWithMetadataName<TargetOrError>(
+        var targetsAndErrors = context.SyntaxProvider.ForAttributeWithMetadataName(
             "NCoreUtils.Data.AsJsonStringConverterAttribute",
             (node, _) => node is ClassDeclarationSyntax or RecordDeclarationSyntax,
             (ctx, cancellationToken) =>
@@ -110,7 +116,7 @@ namespace NCoreUtils.Data
                             ctx.TargetNode.GetLocation(),
                             Array.Empty<object>()
                         ));
-                    var serializerContext = attr.ConstructorArguments[1].Value as ITypeSymbol
+                    var serializerContext = attr.ConstructorArguments[1].Value as INamedTypeSymbol
                         ?? throw new BuilderGenerationException(new DiagnosticData(
                             DiagnosticDescriptors.InvalidSerializerContextType,
                             ctx.TargetNode.GetLocation(),
@@ -129,23 +135,37 @@ namespace NCoreUtils.Data
                         }
                         defaultValue = s;
                     }
-                    SymbolName comparer = default;
-                    if (attr.NamedArguments.TryGetFirst(a => a.Key == "Comparer", out arg))
+                    INamedTypeSymbol? comparer = default;
+                    if (attr.NamedArguments.TryGetFirst(static a => a.Key == "Comparer", out arg))
                     {
-                        if (arg.Value.Value is not ITypeSymbol comparerType)
+                        if (arg.Value.Value is not INamedTypeSymbol comparerType)
                         {
                             throw new InvalidOperationException("Comparer is " + (arg.Value.Value?.GetType().FullName ?? "null"));
                         }
-                        comparer = new(comparerType);
+                        comparer = comparerType;
                     }
-                    return new TargetOrError(new ConverterTarget(
-                        (TypeDeclarationSyntax)ctx.TargetNode,
-                        new(namedTypeSymbol),
-                        new(target),
-                        new(serializerContext),
-                        defaultValue,
-                        comparer
-                    ));
+                    bool? nullable = default;
+                    if (attr.NamedArguments.TryGetFirst(static a => a.Key == "Nullable", out arg))
+                    {
+                        if (arg.Value.Kind != TypedConstantKind.Primitive)
+                        {
+                            throw new InvalidOperationException("Nullable flag is " + arg.Value.Kind.ToString());
+                        }
+                        if (arg.Value.Value is not bool b)
+                        {
+                            throw new InvalidOperationException("Nullable flag is " + (arg.Value.Value?.GetType().FullName ?? "null"));
+                        }
+                        nullable = b;
+                    }
+                    var targetData = TargetData.Create(
+                        host: namedTypeSymbol,
+                        target: target,
+                        serializerContext: serializerContext,
+                        defaultValue: defaultValue,
+                        nullable: nullable,
+                        comparer: comparer
+                    );
+                    return new TargetOrError(targetData);
                 }
                 catch (Exception exn)
                 {
@@ -156,15 +176,17 @@ namespace NCoreUtils.Data
                     return new TargetOrError(new DiagnosticData(
                         DiagnosticDescriptors.UnexpectedError,
                         ctx.TargetNode.GetLocation(),
-                        new object[] { exn.GetType().FullName, exn.Message, AsOneLine(exn.StackTrace) ?? string.Empty }
+                        [exn.GetType().FullName, exn.Message, AsOneLine(exn.StackTrace) ?? string.Empty]
                     ));
                 }
             }
         );
+        var targets = targetsAndErrors.Where(static e => e.Target is not null).Select(static(e, _) => e.Target!);
+        var errors = targetsAndErrors.Where(static e => e.Error is not null).Select(static (e, _) => e.Error!);
 
-        var needsExtensions = targets.Collect().Select((targets, _) => targets.Any(e => e.Target is ConverterTarget target && !target.Comparer.HasValue && target.IsArrayLike));
+        var needHelpers = targets.Collect().Select((targets, _) => targets.Any(target => target.Comparer is null && target.IsArrayLike));
 
-        context.RegisterSourceOutput(needsExtensions, (ctx, shouldEmit) =>
+        context.RegisterSourceOutput(needHelpers, (ctx, shouldEmit) =>
         {
             ctx.CancellationToken.ThrowIfCancellationRequested();
             if (shouldEmit)
@@ -188,26 +210,25 @@ namespace NCoreUtils.Data
                     ctx.ReportDiagnostic(Diagnostic.Create(
                         descriptor: DiagnosticDescriptors.UnexpectedError,
                         location: default,
-                        messageArgs: new object[] { exn.GetType().FullName, exn.Message, AsOneLine(exn.StackTrace) ?? string.Empty }
+                        messageArgs: [exn.GetType().FullName, exn.Message, AsOneLine(exn.StackTrace) ?? string.Empty]
                     ));
                 }
             }
         });
 
-        context.RegisterSourceOutput(targets, (ctx, targetOrError) =>
+        context.RegisterSourceOutput(errors, (ctx, error) =>
         {
             ctx.CancellationToken.ThrowIfCancellationRequested();
-            if (targetOrError.Target is null)
-            {
-                var error = targetOrError.Error;
-                ctx.ReportDiagnostic(Diagnostic.Create(
-                    error?.Descriptor ?? DiagnosticDescriptors.UnexpectedError,
-                    error?.Location,
-                    error?.MessageArgs ?? new object[] { string.Empty, string.Empty, string.Empty }
-                ));
-                return;
-            }
-            var target = targetOrError.Target;
+            ctx.ReportDiagnostic(Diagnostic.Create(
+                error?.Descriptor ?? DiagnosticDescriptors.UnexpectedError,
+                error?.Location,
+                error?.MessageArgs ?? [string.Empty, string.Empty, string.Empty]
+            ));
+        });
+
+        context.RegisterSourceOutput(targets, (ctx, target) =>
+        {
+            ctx.CancellationToken.ThrowIfCancellationRequested();
             try
             {
                 var syntax = ConverterEmitter.EmitCompilationUnit(target);
@@ -218,7 +239,8 @@ namespace NCoreUtils.Data
                 var err = exn.DiagnosticData;
                 ctx.ReportDiagnostic(Diagnostic.Create(
                     descriptor: err.Descriptor,
-                    location: err.Location ?? target.Node.GetLocation(),
+                    // FIXME: propagate location
+                    location: err.Location, // ?? target.Node.GetLocation(),
                     messageArgs: err.MessageArgs
                 ));
             }
@@ -227,7 +249,7 @@ namespace NCoreUtils.Data
                 ctx.ReportDiagnostic(Diagnostic.Create(
                     descriptor: DiagnosticDescriptors.UnexpectedError,
                     location: default,
-                    messageArgs: new object[] { exn.GetType().FullName, exn.Message, AsOneLine(exn.StackTrace) ?? string.Empty }
+                    messageArgs: [exn.GetType().FullName, exn.Message, AsOneLine(exn.StackTrace) ?? string.Empty]
                 ));
             }
         });

@@ -1,5 +1,6 @@
 using System;
 using System.Buffers;
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -9,7 +10,11 @@ namespace NCoreUtils.Data;
 
 internal class ConverterEmitter
 {
+    private static readonly string SelfVersion = typeof(ConverterEmitter).Assembly.GetName()?.Version.ToString() ?? string.Empty;
+
     private static TypeSyntax StringTypeSyntax { get; } = ParseTypeName("string");
+
+    private static NullableTypeSyntax NullableStringTypeSyntax { get; } = NullableType(StringTypeSyntax);
 
     private static ExpressionSyntax STJSerializerExpression { get; } = IdentifierName("System.Text.Json.JsonSerializer");
 
@@ -29,31 +34,13 @@ internal class ConverterEmitter
 
     private static LiteralExpressionSyntax StringLiteralExpression(string value) => LiteralExpression(SyntaxKind.StringLiteralExpression, Literal(value));
 
-    private static string GetJsonSerializerContextPropertyName(INamedTypeSymbol symbol)
-    {
-        if (!symbol.IsGenericType)
-        {
-            return symbol.Name;
-        }
-        var buffer = ArrayPool<char>.Shared.Rent(8 * 1024);
-        try
-        {
-            symbol.ConstructedFrom.Name.AsSpan().CopyTo(buffer.AsSpan());
-            var offset = symbol.ConstructedFrom.Name.Length;
-            foreach (var argument in symbol.TypeArguments)
-            {
-                var name = GetJsonSerializerContextPropertyName((INamedTypeSymbol)argument);
-                var span = buffer.AsSpan(offset);
-                name.AsSpan().CopyTo(span);
-                offset += name.Length;
-            }
-            return new string(buffer, 0, offset);
-        }
-        finally
-        {
-            ArrayPool<char>.Shared.Return(buffer);
-        }
-    }
+    private static LiteralExpressionSyntax TrueLiteralExpression { get; } = LiteralExpression(SyntaxKind.TrueLiteralExpression);
+
+    private static LiteralExpressionSyntax FalseLiteralExpression { get; } = LiteralExpression(SyntaxKind.FalseLiteralExpression);
+
+    private static LiteralExpressionSyntax BooleanLiteralExpression(bool value) => value
+        ? TrueLiteralExpression
+        : FalseLiteralExpression;
 
     private static PropertyDeclarationSyntax EmitSingletonProperty(TypeSyntax type)
     {
@@ -69,7 +56,8 @@ internal class ConverterEmitter
             .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
     }
 
-    private static MethodDeclarationSyntax EmitToJsonMethod(ConverterTarget target)
+    [SuppressMessage("Style", "IDE0300:Simplify collection initialization", Justification = "For better compatiibility")]
+    private static MethodDeclarationSyntax EmitToJsonMethod(TargetData target)
     {
         var serializeExpression = InvocationExpression(
             SimpleMemberAccessExpression(STJSerializerExpression, IdentifierName("Serialize")),
@@ -81,7 +69,7 @@ internal class ConverterEmitter
                         ParseTypeName(target.SerializerContext.QualifiedName),
                         IdentifierName("Default")
                     ),
-                    IdentifierName(GetJsonSerializerContextPropertyName((INamedTypeSymbol)target.Target.Symbol!))
+                    IdentifierName(target.Target.JsonSerializerContextPropertyName)
                 ))
             }))
         );
@@ -91,23 +79,29 @@ internal class ConverterEmitter
                 IdentifierName("source"),
                 ConstantPattern(NullLiteralExpression)
             ),
-            LiteralExpression(SyntaxKind.StringLiteralExpression, Literal(target.DefaultValue)),
+            // nullable esetben NULL, egyébként alapértelmezett érték
+            target.IsNullable
+                ? LiteralExpression(SyntaxKind.NullLiteralExpression)
+                : LiteralExpression(SyntaxKind.StringLiteralExpression, Literal(target.DefaultValue)),
             serializeExpression
         );
 
-        return MethodDeclaration(StringTypeSyntax , "ToJson")
+        var targetTypeSyntax = ParseTypeName(target.Target.QualifiedName);
+        return MethodDeclaration(target.IsNullable ? NullableStringTypeSyntax : StringTypeSyntax , "ToJson")
             .WithModifiers(TokenList(Token(SyntaxKind.PrivateKeyword), Token(SyntaxKind.StaticKeyword)))
             .WithParameterList(ParameterList(SeparatedList(new ParameterSyntax[]
             {
-                Parameter(Identifier("source")).WithType(ParseTypeName(target.Target.QualifiedName))
+                Parameter(Identifier("source")).WithType(target.IsNullable ? NullableType(targetTypeSyntax) : targetTypeSyntax)
             })))
             .WithExpressionBody(ArrowExpressionClause(bodyExpression))
             .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
     }
 
-    private static MethodDeclarationSyntax EmitFromJsonMethod(ConverterTarget target)
+    [SuppressMessage("Style", "IDE0300:Simplify collection initialization", Justification = "For better compatiibility")]
+    private static MethodDeclarationSyntax EmitFromJsonMethod(TargetData target)
     {
-        var defaultValueExpression = target.IsArrayLike
+        var targetTypeSyntax = ParseTypeName(target.Target.QualifiedName);
+        var defaultValueExpression = target.IsArrayLike && !target.IsNullable
             ? (ExpressionSyntax)InvocationExpression(
                 MemberAccessExpression(
                     SyntaxKind.SimpleMemberAccessExpression,
@@ -115,7 +109,7 @@ internal class ConverterEmitter
                     GenericName(Identifier("Empty"), TypeArgumentList(SeparatedList(new [] { ParseTypeName(target.Item.QualifiedName) })))
                 )
             )
-            : DefaultExpression(ParseTypeName(target.Target.QualifiedName));
+            : DefaultExpression(targetTypeSyntax);
 
         var deserializeExpression = BinaryExpression(
             SyntaxKind.CoalesceExpression,
@@ -129,7 +123,7 @@ internal class ConverterEmitter
                             ParseTypeName(target.SerializerContext.QualifiedName),
                             IdentifierName("Default")
                         ),
-                        IdentifierName(GetJsonSerializerContextPropertyName((INamedTypeSymbol)target.Target.Symbol!))
+                        IdentifierName(target.Target.JsonSerializerContextPropertyName)
                     ))
                 }))
             ),
@@ -145,16 +139,42 @@ internal class ConverterEmitter
             null
         );
 
-        return MethodDeclaration(ParseTypeName(target.Target.QualifiedName), "FromJson")
+        StatementSyntax checkedDeserializeStatement;
+        if (target.IsNullable)
+        {
+            checkedDeserializeStatement = Block(
+                openBraceToken: Token(SyntaxKind.OpenBraceToken),
+                statements: List(new StatementSyntax[]
+                {
+                    IfStatement(
+                        condition: IsPatternExpression(
+                            IdentifierName("source"),
+                            ConstantPattern(NullLiteralExpression)
+                        ),
+                        statement: ReturnStatement(
+                            DefaultExpression(targetTypeSyntax)
+                        )
+                    ),
+                    safeDeserializeStatement
+                }),
+                closeBraceToken: Token(SyntaxKind.CloseBraceToken)
+            );
+        }
+        else
+        {
+            checkedDeserializeStatement = safeDeserializeStatement;
+        }
+
+        return MethodDeclaration(target.IsNullable ? NullableType(targetTypeSyntax) : targetTypeSyntax, "FromJson")
             .WithModifiers(TokenList(Token(SyntaxKind.PrivateKeyword), Token(SyntaxKind.StaticKeyword)))
             .WithParameterList(ParameterList(SeparatedList(new ParameterSyntax[]
             {
-                Parameter(Identifier("source")).WithType(StringTypeSyntax)
+                Parameter(Identifier("source")).WithType(target.IsNullable ? NullableStringTypeSyntax : StringTypeSyntax)
             })))
-            .WithBody(Block(safeDeserializeStatement));
+            .WithBody(Block(checkedDeserializeStatement));
     }
 
-    private static ConstructorDeclarationSyntax EmitCtor(ConverterTarget target)
+    private static ConstructorDeclarationSyntax EmitCtor(TargetData target)
     {
         return ConstructorDeclaration(target.Host.Name)
             .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
@@ -170,7 +190,7 @@ internal class ConverterEmitter
             .WithBody(Block());
     }
 
-    private static ClassDeclarationSyntax EmitComparerClass(ConverterTarget target)
+    private static ClassDeclarationSyntax EmitComparerClass(TargetData target)
     {
         var baseType = ParseTypeName($"Microsoft.EntityFrameworkCore.ChangeTracking.ValueComparer<{target.Target.QualifiedName}>");
 
@@ -226,7 +246,7 @@ internal class ConverterEmitter
 
     }
 
-    private static ClassDeclarationSyntax EmitClass(ConverterTarget target)
+    private static ClassDeclarationSyntax EmitClass(TargetData target)
     {
         var members = new System.Collections.Generic.List<MemberDeclarationSyntax>()
         {
@@ -235,20 +255,32 @@ internal class ConverterEmitter
             EmitFromJsonMethod(target),
             EmitCtor(target)
         };
-        if (!target.Comparer.HasValue)
+        if (target.Comparer is null)
         {
             members.Add(EmitComparerClass(target));
         }
 
-        var accessibilityToken = target.Host.Symbol!.DeclaredAccessibility switch
+        var accessibilityToken = target.Host.DeclaredAccessibility switch
         {
             Accessibility.Internal => SyntaxKind.InternalKeyword,
             _ => SyntaxKind.PublicKeyword
         };
 
-        var baseType = ParseTypeName($"Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<{target.Target.QualifiedName}, string>");
+        var baseType = target.IsNullable
+            ? ParseTypeName($"Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<{target.Target.QualifiedName}?, string?>")
+            : ParseTypeName($"Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<{target.Target.QualifiedName}, string>");
 
         return ClassDeclaration(target.Host.Name)
+            .AddAttributeLists(
+                AttributeList(SeparatedList(new AttributeSyntax[]
+                {
+                    Attribute(ParseName("System.CodeDom.Compiler.GeneratedCodeAttribute"), AttributeArgumentList(SeparatedList(new AttributeArgumentSyntax[]
+                    {
+                        AttributeArgument(LiteralExpression(SyntaxKind.StringLiteralExpression, Literal("NCoreUtils.Data.Builders"))),
+                        AttributeArgument(LiteralExpression(SyntaxKind.StringLiteralExpression, Literal(SelfVersion)))
+                    })))
+                }))
+            )
             .AddModifiers(
                 Token(TriviaList(Comment("/// <inheritdoc/>")), accessibilityToken, TriviaList()),
                 Token(SyntaxKind.PartialKeyword)
@@ -257,13 +289,17 @@ internal class ConverterEmitter
             .AddMembers(members.ToArray());
     }
 
-    private static ClassDeclarationSyntax EmitExtensions(ConverterTarget target)
+    private static ClassDeclarationSyntax EmitExtensions(TargetData target)
     {
+        var targetQualifiedName = target.IsNullable
+            ? $"{target.Target.QualifiedName}?"
+            : target.Target.QualifiedName;
+
         var extensionTypeName = $"PropertyBuilder{target.Host.Name}Extensions";
-        var propertyBuilderType = ParseTypeName($"Microsoft.EntityFrameworkCore.Metadata.Builders.PropertyBuilder<{target.Target.QualifiedName}>");
+        var propertyBuilderType = ParseTypeName($"Microsoft.EntityFrameworkCore.Metadata.Builders.PropertyBuilder<{targetQualifiedName}>");
         var comparerSingletonExpression = SimpleMemberAccessExpression(
-            target.Comparer.HasValue
-                ? IdentifierName(target.Comparer.QualifiedName)
+            target.Comparer is SymbolData { QualifiedName: var comparerQualifiedName }
+                ? IdentifierName(comparerQualifiedName)
                 : IdentifierName(target.Host.Name + ".Comparer"),
             "Singleton"
         );
@@ -281,9 +317,20 @@ internal class ConverterEmitter
         );
         expression = SimpleInvocationExpression(
             expression,
-            "HasDefaultValueSql",
-            Argument(StringLiteralExpression($"'{target.DefaultValue}'::jsonb"))
+            "IsRequired",
+            Argument(BooleanLiteralExpression(!target.IsNullable))
         );
+        expression = target.IsNullable
+            ? SimpleInvocationExpression(
+                expression,
+                "HasDefaultValue",
+                Argument(NullLiteralExpression)
+            )
+            : SimpleInvocationExpression(
+                expression,
+                "HasDefaultValueSql",
+                Argument(StringLiteralExpression($"'{target.DefaultValue}'::jsonb"))
+            );
         expression = SimpleMemberAccessExpression(expression, "Metadata");
         expression = SimpleInvocationExpression(
             expression,
@@ -292,6 +339,16 @@ internal class ConverterEmitter
         );
 
         return ClassDeclaration(extensionTypeName)
+            .AddAttributeLists(
+                AttributeList(SeparatedList(new AttributeSyntax[]
+                {
+                    Attribute(ParseName("System.CodeDom.Compiler.GeneratedCodeAttribute"), AttributeArgumentList(SeparatedList(new AttributeArgumentSyntax[]
+                    {
+                        AttributeArgument(LiteralExpression(SyntaxKind.StringLiteralExpression, Literal("NCoreUtils.Data.Builders"))),
+                        AttributeArgument(LiteralExpression(SyntaxKind.StringLiteralExpression, Literal(SelfVersion)))
+                    })))
+                }))
+            )
             .AddModifiers(
                 Token(TriviaList(Comment("/// <inheritdoc/>")), SyntaxKind.PublicKeyword, TriviaList()),
                 Token(SyntaxKind.StaticKeyword)
@@ -311,7 +368,7 @@ internal class ConverterEmitter
             );
     }
 
-    public static CompilationUnitSyntax EmitCompilationUnit(ConverterTarget target)
+    public static CompilationUnitSyntax EmitCompilationUnit(TargetData target)
     {
         SyntaxTriviaList syntaxTriviaList = TriviaList(
             Comment("// <auto-generated/>"),
