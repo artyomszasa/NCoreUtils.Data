@@ -24,6 +24,8 @@ public static partial class LoggingExtensions
         public const int TransactionTaskNotFinished = 2407;
 
         public const int TransactionUnexpectedExceptionOnDispose = 2408;
+
+        public const int TransactionUnexpectedRetry = 2409;
     }
 
 #if NET6_0_OR_GREATER
@@ -98,6 +100,14 @@ public static partial class LoggingExtensions
         Message = "{Guid} | Unexpected exception while disposing firestore transaction."
     )]
     public static partial void LogTransactionUnexpectedExceptionOnDispose(this ILogger logger, Exception exn, Guid guid);
+
+    [LoggerMessage(
+        EventId = EventIds.TransactionUnexpectedRetry,
+        EventName = nameof(EventIds.TransactionUnexpectedRetry),
+        Level = LogLevel.Error,
+        Message = "{Guid} | Unexpected retry."
+    )]
+    public static partial void LogTransactionUnexpectedRetry(this ILogger logger, Guid guid);
 
 #else
     public static void LogQueryExecuted(this ILogger logger, long elapsedMilliseconds)
@@ -208,6 +218,20 @@ public static partial class LoggingExtensions
                 eventId: new EventId(EventIds.TransactionUnexpectedExceptionOnDispose, nameof(EventIds.TransactionUnexpectedExceptionOnDispose)),
                 exception: exn,
                 message: "{Guid} | Unexpected exception while disposing firestore transaction.",
+                args: [guid]
+            );
+        }
+    }
+
+    public static void LogTransactionUnexpectedRetry(this ILogger logger, Guid guid)
+    {
+        if (logger.IsEnabled(LogLevel.Error))
+        {
+            logger.Log(
+                logLevel: LogLevel.Error,
+                eventId: new EventId(EventIds.TransactionUnexpectedRetry, nameof(EventIds.TransactionUnexpectedRetry)),
+                exception: default,
+                message: "{Guid} | Unexpected retry.",
                 args: [guid]
             );
         }

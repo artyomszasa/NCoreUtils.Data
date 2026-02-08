@@ -2,18 +2,24 @@ using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
-using System.Threading.Tasks.Dataflow;
 using Google.Cloud.Firestore;
-using Grpc.Core;
 using Microsoft.Extensions.Logging;
 using NCoreUtils.Data.Google.Cloud.Firestore.Internal;
+
+using RpcException = Grpc.Core.RpcException;
 
 namespace NCoreUtils.Data.Google.Cloud.Firestore;
 
 public sealed partial class FirestoreDataTransaction : IDataTransaction
 {
-    private readonly BufferBlock<Message> _queue = new();
+    private readonly Channel<Message> _queue = Channel.CreateUnbounded<Message>(new UnboundedChannelOptions
+    {
+        AllowSynchronousContinuations = false,
+        SingleReader = true,
+        SingleWriter = false
+    });
 
     private readonly CancellationTokenSource _cancellation = new();
 
@@ -43,13 +49,20 @@ public sealed partial class FirestoreDataTransaction : IDataTransaction
         _task = db.RunTransactionAsync(Run, TransactionOptions.ForMaxAttempts(1), _cancellation.Token);
     }
 
+    private bool DoPostMessage(Message message)
+        // NOTE: for unbounded channels it only returns false when channel is completed...
+        => _queue.Writer.TryWrite(message);
+
+    private ValueTask<Message> DoReceiveMessageAsync(CancellationToken cancellationToken)
+        => _queue.Reader.ReadAsync(cancellationToken);
+
     private void Rollback(bool ignoreDisposed)
     {
         if (!ignoreDisposed)
         {
             ThrowIfDisposed();
         }
-        if (!_queue.Post(Message.Rollback))
+        if (!DoPostMessage(Message.Rollback))
         {
             throw new InvalidOperationException("Failed to post rollback message.");
         }
@@ -61,6 +74,11 @@ public sealed partial class FirestoreDataTransaction : IDataTransaction
     {
         // force new task
         await Task.Yield();
+        if (IsCompleted)
+        {
+            // SHOULD NEVER HAPPEN DUE TO TransactionOptions.MaxAttempts == 1
+            _logger.LogTransactionUnexpectedRetry(Guid);
+        }
         try
         {
             var stopwatch = new Stopwatch();
@@ -68,7 +86,7 @@ public sealed partial class FirestoreDataTransaction : IDataTransaction
             while (!shouldExit)
             {
                 _logger.LogTransactionWaitForMessages(Guid);
-                var message = await _queue.ReceiveAsync(tx.CancellationToken);
+                var message = await DoReceiveMessageAsync(tx.CancellationToken);
                 _logger.LogTransactionExecutingMessage(Guid, message.ToString());
                 stopwatch.Restart();
                 shouldExit = await message.RunAsync(tx);
@@ -125,7 +143,7 @@ public sealed partial class FirestoreDataTransaction : IDataTransaction
                         // aborted normally
                         _logger.LogTransactionRollback(Guid);
                         break;
-                    case RpcException rpcException when rpcException.StatusCode == StatusCode.Cancelled:
+                    case RpcException rpcException when rpcException.StatusCode == Grpc.Core.StatusCode.Cancelled:
                     case OperationCanceledException:
                         // Cancelled --> finished without perfomring anything.
                         break;
@@ -145,7 +163,7 @@ public sealed partial class FirestoreDataTransaction : IDataTransaction
     public void Commit()
     {
         ThrowIfDisposed();
-        if (!_queue.Post(Message.Commit))
+        if (!DoPostMessage(Message.Commit))
         {
             throw new InvalidOperationException("Failed to post commit message.");
         }
@@ -173,7 +191,7 @@ public sealed partial class FirestoreDataTransaction : IDataTransaction
                     _logger.LogTransactionTaskNotFinished(Guid);
                 }
             }
-            _queue.Complete();
+            _queue.Writer.Complete();
             _cancellation.Dispose();
             try { _task.Dispose(); } catch { }
         }
@@ -182,7 +200,7 @@ public sealed partial class FirestoreDataTransaction : IDataTransaction
     public Task<T> ExecuteAsync<T>(Func<Transaction, Task<T>> action)
     {
         var message = Message.Action(action);
-        if (!_queue.Post(message))
+        if (!DoPostMessage(message))
         {
             throw new InvalidOperationException("Failed to post action message.");
         }
@@ -196,7 +214,7 @@ public sealed partial class FirestoreDataTransaction : IDataTransaction
             await action(tx);
             return default;
         });
-        if (!_queue.Post(message))
+        if (!DoPostMessage(message))
         {
             throw new InvalidOperationException("Failed to post action message.");
         }
