@@ -17,7 +17,7 @@ namespace NCoreUtils.Data.Internal
 
         // static readonly MethodInfo _gmExecuteEnumerableAsync;
 
-        static readonly MethodInfo _gmExecuteEnumerable;
+        // static readonly MethodInfo _gmExecuteEnumerable;
 
         [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "Generic mezhod only used on preserved types.")]
         static QueryProviderBase()
@@ -25,7 +25,7 @@ namespace NCoreUtils.Data.Internal
             var methods = typeof(QueryProviderBase).GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
             _gmExecute = methods.First(m => m.IsGenericMethodDefinition && m.Name == nameof(Execute));
             // _gmExecuteEnumerableAsync = methods.First(m => m.IsGenericMethodDefinition && m.Name == nameof(ExecuteEnumerableAsync));
-            _gmExecuteEnumerable = methods.First(m => m.IsGenericMethodDefinition && m.Name == nameof(ExecuteEnumerable));
+            // _gmExecuteEnumerable = methods.First(m => m.IsGenericMethodDefinition && m.Name == nameof(ExecuteEnumerable));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -220,12 +220,11 @@ namespace NCoreUtils.Data.Internal
         [UnconditionalSuppressMessage("Trimming", "IL2087", Justification = "If interface type is not preserved the function makes no sense anyway.")]
         [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Only preserved types should be handled here.")]
         [DynamicDependency("ExecuteEnumerable`1", typeof(QueryProviderBase))]
-        public virtual TResult Execute<TResult>(
-            Expression expression)
+        public virtual TResult Execute<TResult>(Expression expression)
         {
             if (TryGetEnumerableElementType(typeof(TResult), out var elementType))
             {
-                return (TResult)_gmExecuteEnumerable.MakeGenericMethod(elementType).Invoke(this, [expression])!;
+                return ReBox<TResult>(ExecuteEnumerableInvoker.ExecuteEnumerable(this, elementType, expression));
             }
             return ExecuteAsync<TResult>(expression, CancellationToken.None).GetAwaiter().GetResult();
         }

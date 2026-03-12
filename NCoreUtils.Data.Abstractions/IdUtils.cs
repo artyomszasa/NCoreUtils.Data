@@ -1,12 +1,15 @@
-using System;
-using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+#if NET8_0_OR_GREATER
+using System.Collections.Frozen;
+using IsValidIdDictionary = System.Collections.Frozen.FrozenDictionary<System.Type, System.Delegate>;
+#else
+using System.Collections.Immutable;
+using IsValidIdDictionary = System.Collections.Immutable.ImmutableDictionary<System.Type, System.Delegate>;
+#endif
 
 namespace NCoreUtils.Data;
 
@@ -28,7 +31,9 @@ public static class IdUtils
         [ExcludeFromCodeCoverage]
         static GenericIdCheck()
         {
-            _check = _idChecks.TryGetValue(typeof(T), out var check) ? (Func<T, bool>)check : throw new InvalidOperationException($"No invalid id check defined for {typeof(T).FullName}");
+            _check = _idChecks.TryGetValue(typeof(T), out var check)
+                ? (Func<T, bool>)check
+                : throw new InvalidOperationException($"No invalid id check defined for {typeof(T).FullName}");
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -36,7 +41,16 @@ public static class IdUtils
         public static bool IsValid(T id) => _check(id);
     }
 
-    private static readonly ImmutableDictionary<Type, Delegate> _idChecks = new Dictionary<Type, Delegate>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static IsValidIdDictionary ToImmutable(this Dictionary<Type, Delegate> source)
+#if NET8_0_OR_GREATER
+        => source.ToFrozenDictionary();
+#else
+        => source.ToImmutableDictionary();
+#endif
+
+    // FIXME: optimize
+    private static readonly IsValidIdDictionary _idChecks = new Dictionary<Type, Delegate>
     {
         { typeof(Guid), new Func<Guid, bool>(IsValidId) },
         { typeof(byte), new Func<byte, bool>(IsValidId) },
@@ -45,7 +59,7 @@ public static class IdUtils
         { typeof(int), new Func<int, bool>(IsValidId) },
         { typeof(long), new Func<long, bool>(IsValidId) },
         { typeof(string), new Func<string, bool>(IsValidId) },
-    }.ToImmutableDictionary();
+    }.ToImmutable();
 
     /// <summary>
     /// Checks whether the specified business key is valid.

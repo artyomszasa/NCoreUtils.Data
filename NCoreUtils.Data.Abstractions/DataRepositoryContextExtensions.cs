@@ -1,7 +1,4 @@
-using System;
 using System.Data;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace NCoreUtils.Data;
 
@@ -16,6 +13,7 @@ public static class DataRepositoryContextExtensions
     /// <param name="context">Data repository context.</param>
     /// <param name="isolationLevel">Isolation level.</param>
     /// <returns>Started transaction.</returns>
+    [Obsolete("Use async version when possible")]
     public static IDataTransaction BeginTransaction(this IDataRepositoryContext context, IsolationLevel isolationLevel)
     {
 #if NET6_0_OR_GREATER
@@ -27,11 +25,9 @@ public static class DataRepositoryContextExtensions
         }
 #endif
         var asyncRes = context.BeginTransactionAsync(isolationLevel, CancellationToken.None);
-        if (asyncRes.IsCompletedSuccessfully)
-        {
-            return asyncRes.Result;
-        }
-        return asyncRes.AsTask().GetAwaiter().GetResult();
+        return asyncRes.IsCompletedSuccessfully
+            ? asyncRes.Result
+            : asyncRes.AsTask().GetAwaiter().GetResult();
     }
 
     /// <summary>
@@ -42,7 +38,11 @@ public static class DataRepositoryContextExtensions
     /// <param name="isolationLevel">Isolation level.</param>
     /// <param name="action">Action to perform in a transacted context.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    public static async Task TransactedAsync(this IDataRepositoryContext context, IsolationLevel isolationLevel, Func<Task> action, CancellationToken cancellationToken = default)
+    public static async Task TransactedAsync(
+        this IDataRepositoryContext context,
+        IsolationLevel isolationLevel,
+        Func<Task> action,
+        CancellationToken cancellationToken = default)
     {
 #if NET6_0_OR_GREATER
         ArgumentNullException.ThrowIfNull(context);
@@ -57,9 +57,10 @@ public static class DataRepositoryContextExtensions
             throw new ArgumentNullException(nameof(action));
         }
 #endif
-        using var tx = await context.BeginTransactionAsync(isolationLevel, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        await using var tx = await context.BeginTransactionAsync(isolationLevel, cancellationToken);
         await action();
-        tx.Commit();
+        await tx.CommitAsync(cancellationToken);
     }
 
     /// <summary>
@@ -90,9 +91,10 @@ public static class DataRepositoryContextExtensions
             throw new ArgumentNullException(nameof(action));
         }
 #endif
-        using var tx = await context.BeginTransactionAsync(isolationLevel, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        await using var tx = await context.BeginTransactionAsync(isolationLevel, cancellationToken);
         var result = await action();
-        tx.Commit();
+        await tx.CommitAsync(cancellationToken);
         return result;
     }
 
@@ -103,6 +105,7 @@ public static class DataRepositoryContextExtensions
     /// <param name="context">Data repository context.</param>
     /// <param name="isolationLevel">Isolation level.</param>
     /// <param name="action">Action to perform in a transacted context.</param>
+    [Obsolete("Use async version when possible")]
     public static void Transacted(this IDataRepositoryContext context, IsolationLevel isolationLevel, Action action)
     {
 #if NET6_0_OR_GREATER
@@ -131,6 +134,7 @@ public static class DataRepositoryContextExtensions
     /// <param name="isolationLevel">Isolation level.</param>
     /// <param name="action">Action to perform in a transacted context.</param>
     /// <returns>Result of the action.</returns>
+    [Obsolete("Use async version when possible")]
     public static TResult Transacted<TResult>(this IDataRepositoryContext context, IsolationLevel isolationLevel, Func<TResult> action)
     {
 #if NET6_0_OR_GREATER

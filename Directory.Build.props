@@ -2,8 +2,9 @@
   <PropertyGroup>
     <!-- FIXME: once bumped to 8.0.1-rc11, remove explicit version from NU.D.EFC.E.Generator-->
     <Version>8.0.1-rc09</Version>
-    <LangVersion>12.0</LangVersion>
+    <LangVersion>14.0</LangVersion>
     <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
     <IsTrimmable Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net6.0'))">true</IsTrimmable>
     <EnableTrimAnalyzer Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net6.0'))">true</EnableTrimAnalyzer>
     <EnableSingleFileAnalyzer Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net7.0'))">true</EnableSingleFileAnalyzer>
@@ -12,6 +13,7 @@
     <FxNugetVersion Condition=" '$(TargetFramework)' == 'net6.0' ">6.0.0</FxNugetVersion>
     <FxNugetVersion Condition=" '$(TargetFramework)' == 'net7.0' ">7.0.0</FxNugetVersion>
     <FxNugetVersion Condition=" '$(TargetFramework)' == 'net8.0' ">8.0.0</FxNugetVersion>
+    <FxNugetVersion Condition=" '$(TargetFramework)' == 'net10.0' ">10.0.0</FxNugetVersion>
     <FxNugetVersion Condition=" '$(FxNugetVersion)' == '' ">3.1.16</FxNugetVersion>
   </PropertyGroup>
 </Project>

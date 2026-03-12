@@ -1,6 +1,4 @@
-using System;
 using System.Diagnostics.CodeAnalysis;
-using System.Threading;
 
 namespace NCoreUtils.Data;
 
@@ -19,6 +17,7 @@ public static class DataRepositoryExtensions
     /// Either data entity from persistent store that has the specified business key, <c>null</c> if no such entity
     /// exists.
     /// </returns>
+    [Obsolete("Use async version when possible")]
     public static TData? Lookup<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] TData, TId>(
         this IDataRepository<TData, TId> repository, TId id)
         where TData : IHasId<TId>
@@ -43,6 +42,7 @@ public static class DataRepositoryExtensions
     /// <param name="repository">Data repository.</param>
     /// <param name="item">Data entity instance to persist.</param>
     /// <returns>Updated data entity.</returns>
+    [Obsolete("Use async version when possible")]
     public static T Persist<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T>(
         this IDataRepository<T> repository, T item)
     {
@@ -69,6 +69,7 @@ public static class DataRepositoryExtensions
     /// may be updated instead of removing the entity. Setting <paramref name="force" /> to <c>true</c> suppresses
     /// this functionality.
     /// </param>
+    [Obsolete("Use async version when possible")]
     public static void Remove<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T>(
         this IDataRepository<T> repository, T item, bool force = false)
     {

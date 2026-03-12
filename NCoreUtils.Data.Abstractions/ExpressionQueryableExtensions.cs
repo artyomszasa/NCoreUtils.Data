@@ -1,6 +1,4 @@
-using System;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using System.Linq.Expressions;
 
 namespace NCoreUtils.Data;
@@ -34,7 +32,10 @@ public static class ExpressionQueryableExtensions
             .Supply(() =>
                 // try extract queryable call argument
                 source.MaybeExtractCall()
-                    .Where(m => m.method.IsStatic && (m.method.DeclaringType == typeof(Queryable) || Array.IndexOf(extensionTypes, m.method.DeclaringType) >= 0) && m.arguments.Count > 0)
+                    .Where(m => m.method.IsStatic
+                        && (m.method.DeclaringType == typeof(Queryable)
+                            || Array.IndexOf(extensionTypes, m.method.DeclaringType) >= 0)
+                        && m.arguments.Count > 0)
                     .Map(tup => tup.arguments[0])
                     .Bind(arg => arg is null ? default : MaybeExtractQueryable(arg, extensionTypes)));
     }
