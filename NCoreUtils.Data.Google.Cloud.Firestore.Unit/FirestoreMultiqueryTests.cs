@@ -52,10 +52,10 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Unit
             // query first item (mutliquery)
             var item = await repo.Items.Where(e => e.Values.ContainsAny(allLetters)).OrderBy(e => e.Name).FirstOrDefaultAsync(default);
             Assert.NotNull(item);
-            Assert.Equal(name0, item.Name);
+            Assert.Equal(name0, item!.Name);
             item = await repo.Items.Where(e => e.Values.ContainsAny(allLetters)).OrderByDescending(e => e.Name).FirstOrDefaultAsync(default);
             Assert.NotNull(item);
-            Assert.Equal(name2, item.Name);
+            Assert.Equal(name2, item!.Name);
             item = await repo.Items.Where(e => e.Values.ContainsAny(allLetters)).OrderBy(e => e.Name).FirstAsync(default);
             Assert.NotNull(item);
             Assert.Equal(name0, item.Name);

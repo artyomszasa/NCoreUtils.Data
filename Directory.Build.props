@@ -1,7 +1,6 @@
 <Project>
   <PropertyGroup>
-    <!-- FIXME: once bumped to 8.0.1-rc11, remove explicit version from NU.D.EFC.E.Generator-->
-    <Version>8.0.1-rc09</Version>
+    <Version>10.0.0-rc00</Version>
     <LangVersion>14.0</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>

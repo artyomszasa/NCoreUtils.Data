@@ -1,7 +1,4 @@
-using System;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using NCoreUtils.Data.Model;
@@ -88,7 +85,7 @@ public class DataEntityBuilder<[DynamicallyAccessedMembers(DynamicallyAccessedMe
         => SetMetadata(CommonMetadata.Key, properties);
 
     public DataEntityBuilder<T> SetKey(Expression<Func<T, object>> selector)
-        => SetKey(selector.ExtractProperties(true).ToArray());
+        => SetKey([.. selector.ExtractProperties(true)]);
 
     public DataPropertyBuilder<TProp> Property<TProp>(Expression<Func<T, TProp>> selector)
         => (DataPropertyBuilder<TProp>)Property(selector.ExtractProperty());

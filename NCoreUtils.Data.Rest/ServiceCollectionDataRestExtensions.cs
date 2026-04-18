@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization.Metadata;
 using Microsoft.Extensions.Configuration;
@@ -17,7 +15,7 @@ public static class ServiceCollectionDataRestExtensions
     {
         if (configuration is IConfigurationSection section)
         {
-            var endpoint = section[nameof(IRemoteRestTypeConfiguration<TId>.Endpoint)]
+            var endpoint = section[nameof(IRemoteRestTypeConfiguration<>.Endpoint)]
                 ?? throw new InvalidOperationException("Endpoint must be specified in remote rest type configuration");
             var httpClient = section["HttpClient"];
             return new RemoteRestTypeConfiguration<TId>(endpoint, httpClient);

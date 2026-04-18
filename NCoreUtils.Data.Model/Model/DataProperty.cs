@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Reflection;
 using NCoreUtils.Data.Build;
@@ -38,6 +36,6 @@ public abstract class DataProperty : Metadata
         => TryGetValue(CommonMetadata.DefaultValue, out value);
 }
 
-public class DataProperty<T>(DataPropertyBuilder<T> builder) : DataProperty(builder.Property, builder.Metadata.ToImmutableDictionary())
-{
-}
+public class DataProperty<T>(DataPropertyBuilder<T> builder)
+    : DataProperty(builder.Property, builder.Metadata.ToImmutableDictionary())
+{ }

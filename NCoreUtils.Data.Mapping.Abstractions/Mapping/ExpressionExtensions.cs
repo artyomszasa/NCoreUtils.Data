@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -45,10 +43,10 @@ public static class ExpressionExtensions
 
         readonly IReadOnlyList<Expression> _arguments = arguments;
 
-#if NETSTANDARD2_1
-        public bool TryGetOrigin(Expression instance, MemberInfo property, [NotNullWhen(true)] out Expression? origin)
+#if NETSTANDARD2_1 || NETSTANDARD
+        public bool TryGetOrigin(Expression instance, MemberInfo property, [MaybeNullWhen(false)] out Expression origin)
 #else
-        public bool TryGetOrigin(Expression instance, MemberInfo property, out Expression origin)
+        public bool TryGetOrigin(Expression instance, MemberInfo property, [MaybeNullWhen(false)] out Expression origin)
 #endif
         {
             if (_instance.Equals(instance))

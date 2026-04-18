@@ -1,16 +1,15 @@
-namespace NCoreUtils.Data
+namespace NCoreUtils.Data;
+
+public interface IPropertyMappingVisitor
 {
-    public interface IPropertyMappingVisitor
-    {
-        void Visit(PropertyMapping.ByCtorParameterMapping byCtorParameter);
+    void Visit(PropertyMapping.ByCtorParameterMapping byCtorParameter);
 
-        void Visit(PropertyMapping.BySetterMapping bySetter);
-    }
+    void Visit(PropertyMapping.BySetterMapping bySetter);
+}
 
-    public interface IPropertyMappingVisitor<T>
-    {
-        T Visit(PropertyMapping.ByCtorParameterMapping byCtorParameter);
+public interface IPropertyMappingVisitor<T>
+{
+    T Visit(PropertyMapping.ByCtorParameterMapping byCtorParameter);
 
-        T Visit(PropertyMapping.BySetterMapping bySetter);
-    }
+    T Visit(PropertyMapping.BySetterMapping bySetter);
 }

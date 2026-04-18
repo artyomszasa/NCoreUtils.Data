@@ -1,104 +1,161 @@
-using System;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
-using System.Threading;
 using Microsoft.EntityFrameworkCore.Storage;
 
-namespace NCoreUtils.Data.EntityFrameworkCore
+namespace NCoreUtils.Data.EntityFrameworkCore;
+
+public sealed class DataTransaction(DataRepositoryContext context, IDbContextTransaction dbTransaction)
+    : IDataTransaction
 {
-    public sealed class DataTransaction : IDataTransaction
+    readonly DataRepositoryContext _context = context ?? throw new ArgumentNullException(nameof(context));
+
+    readonly IDbContextTransaction _dbTransaction = dbTransaction ?? throw new ArgumentNullException(nameof(dbTransaction));
+
+    int _isDisposed;
+
+    int _isFinished;
+
+    public event EventHandler? OnCommit;
+
+    public event EventHandler? OnRollback;
+
+    [ExcludeFromCodeCoverage]
+    public Guid Guid { get; } = Guid.NewGuid();
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [DebuggerStepThrough]
+    [DoesNotReturn]
+    private static void ThrowAlreadyFinished()
     {
-        readonly DataRepositoryContext _context;
+        throw new InvalidOperationException("Transaction has already been finished.");
+    }
 
-        readonly IDbContextTransaction _dbTransaction;
+    // [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    // [DebuggerStepThrough]
+    // void ThrowIfDisposed()
+    // {
+    //     if (0 != _isDisposed)
+    //     {
+    //         throw new ObjectDisposedException(nameof(DataTransaction));
+    //     }
+    // }
 
-        int _isDisposed;
+    private ValueTask DoCommitAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        _context.ReleaseTransaction();
+        OnCommit?.Invoke(this, EventArgs.Empty);
+        return new(_dbTransaction.CommitAsync(cancellationToken));
+    }
 
-        int _isFinished;
+    private ValueTask DoRollbackAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        _context.ReleaseTransaction();
+        OnRollback?.Invoke(this, EventArgs.Empty);
+        return new(_dbTransaction.RollbackAsync(cancellationToken));
+    }
 
-        public event EventHandler? OnCommit;
+    [Obsolete("Use async version when possible")]
+    private void CommitImplementation()
+    {
+        _context.ReleaseTransaction();
+        OnCommit?.Invoke(this, EventArgs.Empty);
+        _dbTransaction.Commit();
+    }
 
-        public event EventHandler? OnRollback;
+    [Obsolete("Use async version when possible")]
+    private void RollbackImplementation()
+    {
+        _context.ReleaseTransaction();
+        OnRollback?.Invoke(this, EventArgs.Empty);
+        _dbTransaction.Rollback();
+    }
 
-        [ExcludeFromCodeCoverage]
-        public Guid Guid { get; } = Guid.NewGuid();
-
-        public DataTransaction(DataRepositoryContext context, IDbContextTransaction dbTransaction)
+    [Obsolete("Use async version when possible")]
+    public void Commit()
+    {
+        if (0 == Interlocked.CompareExchange(ref _isFinished, 1, 0))
         {
-            _context = context ?? throw new ArgumentNullException(nameof(context));
-            _dbTransaction = dbTransaction ?? throw new ArgumentNullException(nameof(dbTransaction));
+            CommitImplementation();
         }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [DebuggerStepThrough]
-        private static void ThrowAlreadyFinished()
+        else
         {
-            throw new InvalidOperationException("Transaction has already been finished.");
+            ThrowAlreadyFinished();
         }
+    }
 
-        // [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        // [DebuggerStepThrough]
-        // void ThrowIfDisposed()
-        // {
-        //     if (0 != _isDisposed)
-        //     {
-        //         throw new ObjectDisposedException(nameof(DataTransaction));
-        //     }
-        // }
-
-        void CommitImplementation()
+    public ValueTask CommitAsync(CancellationToken cancellationToken)
+    {
+        if (0 == Interlocked.CompareExchange(ref _isFinished, 1, 0))
         {
-            _context.ReleaseTransaction();
-            OnCommit?.Invoke(this, EventArgs.Empty);
-            _dbTransaction.Commit();
+            return DoCommitAsync(cancellationToken);
         }
-
-        void RollbackImplementation()
+        else
         {
-            _context.ReleaseTransaction();
-            OnRollback?.Invoke(this, EventArgs.Empty);
-            _dbTransaction.Rollback();
+            ThrowAlreadyFinished();
+            return default; // NOTE: dummy
         }
+    }
 
-        public void Commit()
+    public void Dispose()
+    {
+        if (0 == Interlocked.CompareExchange(ref _isDisposed, 1, 0))
         {
             if (0 == Interlocked.CompareExchange(ref _isFinished, 1, 0))
             {
-                CommitImplementation();
-            }
-            else
-            {
-                ThrowAlreadyFinished();
-            }
-        }
-
-        public void Dispose()
-        {
-            if (0 == Interlocked.CompareExchange(ref _isDisposed, 1, 0))
-            {
-                if (0 == Interlocked.CompareExchange(ref _isFinished, 1, 0))
+                try
                 {
-                    try
-                    {
-                        RollbackImplementation();
-                    }
-                    catch { } // TODO: valami loggolás?
+#pragma warning disable CS0618 // Type or member is obsolete
+                    RollbackImplementation();
+#pragma warning restore CS0618 // Type or member is obsolete
                 }
-                _dbTransaction.Dispose();
+                catch { } // TODO: valami loggolás?
             }
+            _dbTransaction.Dispose();
         }
+    }
 
-        public void Rollback()
+    public async ValueTask DisposeAsync()
+    {
+        if (0 == Interlocked.CompareExchange(ref _isDisposed, 1, 0))
         {
             if (0 == Interlocked.CompareExchange(ref _isFinished, 1, 0))
             {
-                RollbackImplementation();
+                try
+                {
+                    await DoRollbackAsync(CancellationToken.None);
+                }
+                catch { } // TODO: valami loggolás?
             }
-            else
-            {
-                ThrowAlreadyFinished();
-            }
+            _dbTransaction.Dispose();
+        }
+    }
+
+    [Obsolete("Use async version when possible")]
+    public void Rollback()
+    {
+        if (0 == Interlocked.CompareExchange(ref _isFinished, 1, 0))
+        {
+            RollbackImplementation();
+        }
+        else
+        {
+            ThrowAlreadyFinished();
+        }
+    }
+
+    public ValueTask RollbackAsync(CancellationToken cancellationToken)
+    {
+        if (0 == Interlocked.CompareExchange(ref _isFinished, 1, 0))
+        {
+            return DoRollbackAsync(cancellationToken);
+        }
+        else
+        {
+            ThrowAlreadyFinished();
+            return default; // NOTE: dummy
         }
     }
 }

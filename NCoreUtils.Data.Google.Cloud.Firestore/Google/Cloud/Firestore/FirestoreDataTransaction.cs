@@ -1,9 +1,6 @@
-using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Threading;
 using System.Threading.Channels;
-using System.Threading.Tasks;
 using Google.Cloud.Firestore;
 using Microsoft.Extensions.Logging;
 using NCoreUtils.Data.Google.Cloud.Firestore.Internal;
@@ -14,6 +11,29 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore;
 
 public sealed partial class FirestoreDataTransaction : IDataTransaction
 {
+#if NETSTANDARD2_1
+    private static async Task<bool> WaitForAsync(Task task, TimeSpan timeout)
+    {
+        await Task.WhenAny(task, Task.Delay(timeout));
+        if (task.IsCompletedSuccessfully)
+        {
+            return true;
+        }
+        if (task.IsFaulted || task.IsCanceled)
+        {
+            await task;
+            return true; // dummy
+        }
+        return false;
+    }
+#else
+    private static async Task<bool> WaitForAsync(Task task, TimeSpan timeout)
+    {
+        await task.WaitAsync(timeout);
+        return task.IsCompletedSuccessfully;
+    }
+#endif
+
     private readonly Channel<Message> _queue = Channel.CreateUnbounded<Message>(new UnboundedChannelOptions
     {
         AllowSynchronousContinuations = false,
@@ -70,6 +90,22 @@ public sealed partial class FirestoreDataTransaction : IDataTransaction
         Interlocked.CompareExchange(ref _isCompleted, 1, 0);
     }
 
+    private ValueTask RollbackAsync(bool ignoreDisposed, CancellationToken cancellationToken)
+    {
+        if (!ignoreDisposed)
+        {
+            ThrowIfDisposed();
+        }
+        var message = Message.RollbackAsync();
+        if (!DoPostMessage(message))
+        {
+            throw new InvalidOperationException("Failed to post rollback message.");
+        }
+        Unlink();
+        Interlocked.CompareExchange(ref _isCompleted, 1, 0);
+        return new(message.Completion.Task);
+    }
+
     private async Task Run(Transaction tx)
     {
         // force new task
@@ -87,11 +123,17 @@ public sealed partial class FirestoreDataTransaction : IDataTransaction
             {
                 _logger.LogTransactionWaitForMessages(Guid);
                 var message = await DoReceiveMessageAsync(tx.CancellationToken);
-                _logger.LogTransactionExecutingMessage(Guid, message.ToString());
+                if (_logger.IsEnabled(LogLevel.Trace))
+                {
+                    _logger.LogTransactionExecutingMessage(Guid, message.ToString());
+                }
                 stopwatch.Restart();
                 shouldExit = await message.RunAsync(tx);
                 stopwatch.Stop();
-                _logger.LogTransactionExecutedMessage(Guid, message.ToString(), stopwatch.ElapsedMilliseconds, shouldExit);
+                if (_logger.IsEnabled(LogLevel.Trace))
+                {
+                    _logger.LogTransactionExecutedMessage(Guid, message.ToString(), stopwatch.ElapsedMilliseconds, shouldExit);
+                }
             }
             _logger.LogTransactionCommitting(Guid);
         }
@@ -119,6 +161,31 @@ public sealed partial class FirestoreDataTransaction : IDataTransaction
         _context.Unlink(this);
     }
 
+    private void LogTxException(Exception exn)
+    {
+        if (exn is OperationCanceledException or RpcException { StatusCode: Grpc.Core.StatusCode.Cancelled })
+        {
+            // Cancelled --> finished without perfomring anything.
+            return;
+        }
+        else if (exn is AbortTransactionException)
+        {
+            // aborted normally
+            _logger.LogTransactionRollback(Guid);
+        }
+        else if (exn is AggregateException aexn)
+        {
+            foreach (var innerException in aexn.InnerExceptions)
+            {
+                LogTxException(exn);
+            }
+        }
+        else
+        {
+            _logger.LogTransactionUnexpectedExceptionOnDispose(exn, Guid);
+        }
+    }
+
     private bool WaitNoThrow(int milliseconds)
     {
         try
@@ -129,37 +196,31 @@ public sealed partial class FirestoreDataTransaction : IDataTransaction
             }
             return _task.Wait(milliseconds);
         }
-        catch (OperationCanceledException)
+        catch (Exception exn)
         {
-            return true;
-        }
-        catch (AggregateException aexn)
-        {
-            if (1 == aexn.InnerExceptions.Count)
-            {
-                switch (aexn.InnerExceptions[0])
-                {
-                    case AbortTransactionException:
-                        // aborted normally
-                        _logger.LogTransactionRollback(Guid);
-                        break;
-                    case RpcException rpcException when rpcException.StatusCode == Grpc.Core.StatusCode.Cancelled:
-                    case OperationCanceledException:
-                        // Cancelled --> finished without perfomring anything.
-                        break;
-                    case var innerException:
-                        _logger.LogTransactionUnexpectedExceptionOnDispose(innerException, Guid);
-                        break;
-                }
-            }
-            else
-            {
-                _logger.LogTransactionUnexpectedExceptionOnDispose(aexn, Guid);
-            }
+            LogTxException(exn);
             return true;
         }
     }
 
+    private async ValueTask<bool> WaitNoThrowAsync(TimeSpan timeout)
+    {
+        try
+        {
+            if (_task.IsCanceled)
+            {
+                return true;
+            }
+            return await WaitForAsync(_task, timeout);
+        }
+        catch (Exception exn)
+        {
+            LogTxException(exn);
+            return true;
+        }
+    }
+
+    [Obsolete("Use async version when possible")]
     public void Commit()
     {
         ThrowIfDisposed();
@@ -170,6 +231,21 @@ public sealed partial class FirestoreDataTransaction : IDataTransaction
         Unlink();
         // set early to avoid rollback in dispose
         Interlocked.CompareExchange(ref _isCompleted, 1, 0);
+    }
+
+    public ValueTask CommitAsync(CancellationToken cancellationToken)
+    {
+        ThrowIfDisposed();
+        cancellationToken.ThrowIfCancellationRequested();
+        var message = Message.CommitAsync();
+        if (!DoPostMessage(message))
+        {
+            throw new InvalidOperationException("Failed to post commit message.");
+        }
+        Unlink();
+        // set early to avoid rollback in dispose
+        Interlocked.CompareExchange(ref _isCompleted, 1, 0);
+        return new(message.Completion.Task);
     }
 
     public void Dispose()
@@ -186,7 +262,31 @@ public sealed partial class FirestoreDataTransaction : IDataTransaction
             {
                 // executor task has not finished
                 _cancellation.Cancel();
-                if (!WaitNoThrow(milliseconds: 50))
+                if (!WaitNoThrow(milliseconds: 200))
+                {
+                    _logger.LogTransactionTaskNotFinished(Guid);
+                }
+            }
+            _queue.Writer.Complete();
+            _cancellation.Dispose();
+            try { _task.Dispose(); } catch { }
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (0 == Interlocked.CompareExchange(ref _isDisposed, 1, 0))
+        {
+            if (!IsCompleted)
+            {
+                // still in transaction
+                _logger.LogTransactionRollbackOnDispose(Guid);
+                await RollbackAsync(true, CancellationToken.None);
+            }
+            if (!await WaitNoThrowAsync(timeout: TimeSpan.FromMilliseconds(20)))
+            {
+                _cancellation.Cancel();
+                if (!await WaitNoThrowAsync(timeout: TimeSpan.FromMilliseconds(200)))
                 {
                     _logger.LogTransactionTaskNotFinished(Guid);
                 }
@@ -221,6 +321,10 @@ public sealed partial class FirestoreDataTransaction : IDataTransaction
         return message.Completion.Task;
     }
 
+    [Obsolete("Use async version when possible")]
     public void Rollback()
         => Rollback(false);
+
+    public ValueTask RollbackAsync(CancellationToken cancellationToken)
+        => RollbackAsync(false, cancellationToken);
 }

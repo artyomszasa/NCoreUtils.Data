@@ -1,8 +1,5 @@
-using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using Google.Cloud.Firestore.V1;
 
 namespace NCoreUtils.Data.Google.Cloud.Firestore;
@@ -41,6 +38,11 @@ public partial class FirestoreConverter
         static Type MarkAsPreserved(Type t) => t;
     }
 
+    [UnconditionalSuppressMessage("Trimming", "IL2027", Justification = "FIXME")]
+    [UnconditionalSuppressMessage("Trimming", "IL2067", Justification = "FIXME")]
+    private object? DoConvertFromValue(Value item, Type elementType)
+        => ConvertFromValue(item, elementType);
+
     protected IEnumerable CollectionFromValue(
         Value value,
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type targetType,
@@ -58,7 +60,7 @@ public partial class FirestoreConverter
             builder.AddRange(items);
             return builder.Build();
 
-            object? selector(Value item) => ConvertFromValue(item, collectionFactory.ElementType);
+            object? selector(Value item) => DoConvertFromValue(item, collectionFactory.ElementType);
         }
         if (value.ValueTypeCase == Value.ValueTypeOneofCase.MapValue && targetType.IsDictionaryType(out var keyType, out var valueType))
         {

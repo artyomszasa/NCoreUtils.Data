@@ -1,12 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>net8.0;net6.0;netstandard2.1</TargetFrameworks>
+    <TargetFrameworks>net10.0;net8.0;net6.0;netstandard2.1;net48</TargetFrameworks>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>NCoreUtils.Data</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\NCoreUtils.Data.Abstractions\NCoreUtils.Data.Abstractions.csproj" />
     <ProjectReference Include="..\NCoreUtils.Data.Model\NCoreUtils.Data.Model.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="NCoreUtils.Text" Version="8.0.0" />
+    <PackageReference Include="NCoreUtils.Text" Version="10.0.0" />
   </ItemGroup>
 </Project>

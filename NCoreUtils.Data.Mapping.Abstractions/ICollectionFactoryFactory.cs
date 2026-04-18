@@ -1,4 +1,3 @@
-using System;
 using System.Diagnostics.CodeAnalysis;
 
 namespace NCoreUtils.Data;
@@ -8,6 +7,7 @@ public interface ICollectionFactoryFactory
     bool IsCollection(
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type collectionType,
         [MaybeNullWhen(false)] out Type elementType)
+#if !NETFRAMEWORK
     {
         if (collectionType.IsInterface)
         {
@@ -16,7 +16,7 @@ public interface ICollectionFactoryFactory
         }
         foreach (var ty in collectionType.GetInterfaces())
         {
-            if (ty.IsGenericType && ty.GetGenericTypeDefinition() == typeof(System.Collections.Generic.ICollection<>))
+            if (ty.IsGenericType && ty.GetGenericTypeDefinition() == typeof(ICollection<>))
             {
                 elementType = ty.GetGenericArguments()[0];
                 return true;
@@ -25,6 +25,9 @@ public interface ICollectionFactoryFactory
         elementType = default;
         return false;
     }
+#else
+    ;
+#endif
 
     bool TryCreate(
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type collectionType,
