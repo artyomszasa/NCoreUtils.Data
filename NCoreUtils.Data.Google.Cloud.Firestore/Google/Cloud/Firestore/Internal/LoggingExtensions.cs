@@ -26,6 +26,10 @@ public static partial class LoggingExtensions
         public const int TransactionUnexpectedExceptionOnDispose = 2408;
 
         public const int TransactionUnexpectedRetry = 2409;
+
+        public const int TransactionWaitFailed = 2410;
+
+        public const int TransactionWaitTimeout = 2411;
     }
 
 #if NET6_0_OR_GREATER
@@ -57,8 +61,8 @@ public static partial class LoggingExtensions
         EventId = EventIds.TransactionExecutedMessage,
         EventName = nameof(EventIds.TransactionExecutedMessage),
         Level = LogLevel.Trace,
-        Message = "{Guid} | Executed message {Message} ({ElapsedMilliseconds}ms) => {Result}."
-    )]
+        Message = "{Guid} | Executed message {Message} ({ElapsedMilliseconds}ms) => {Result}.",
+        SkipEnabledCheck = false)]
     public static partial void LogTransactionExecutedMessage(this ILogger logger, Guid guid, string? message, long elapsedMilliseconds, bool result);
 
     [LoggerMessage(
@@ -81,9 +85,9 @@ public static partial class LoggingExtensions
         EventId = EventIds.TransactionTaskNotFinished,
         EventName = nameof(EventIds.TransactionTaskNotFinished),
         Level = LogLevel.Error,
-        Message = "{Guid} | Firestore transaction have not finished."
+        Message = "{Guid} | Firestore transaction have not finished ({Status}, IsCancelled = {IsCancelled}, IsCompleted = {IsCompleted}, IsFaulted = {IsFaulted})."
     )]
-    public static partial void LogTransactionTaskNotFinished(this ILogger logger, Guid guid);
+    public static partial void LogTransactionTaskNotFinished(this ILogger logger, Guid guid, TaskStatus status, bool isCancelled, bool isCompleted, bool isFaulted);
 
     [LoggerMessage(
         EventId = EventIds.TransactionRollback,
@@ -108,6 +112,22 @@ public static partial class LoggingExtensions
         Message = "{Guid} | Unexpected retry."
     )]
     public static partial void LogTransactionUnexpectedRetry(this ILogger logger, Guid guid);
+
+    [LoggerMessage(
+        EventId = EventIds.TransactionWaitFailed,
+        EventName = nameof(EventIds.TransactionWaitFailed),
+        Level = LogLevel.Trace,
+        Message = "{Guid} | Task did not finished ({Status}, IsCancelled = {IsCancelled}, IsCompleted = {IsCompleted}, IsFaulted = {IsFaulted}).",
+        SkipEnabledCheck = false)]
+    public static partial void LogTransactionWaitFailed(this ILogger logger, Guid guid, TaskStatus status, bool isCancelled, bool isCompleted, bool isFaulted);
+
+    [LoggerMessage(
+        EventId = EventIds.TransactionWaitTimeout,
+        EventName = nameof(EventIds.TransactionWaitTimeout),
+        Level = LogLevel.Trace,
+        Message = "{Guid} | Task did not finished (timeout, {Status}, IsCancelled = {IsCancelled}, IsCompleted = {IsCompleted}, IsFaulted = {IsFaulted}).",
+        SkipEnabledCheck = false)]
+    public static partial void LogTransactionWaitTimeout(this ILogger logger, Guid guid, TaskStatus status, bool isCancelled, bool isCompleted, bool isFaulted);
 
 #else
     public static void LogQueryExecuted(this ILogger logger, long elapsedMilliseconds)
@@ -183,15 +203,15 @@ public static partial class LoggingExtensions
         }
     }
 
-    public static void LogTransactionTaskNotFinished(this ILogger logger, Guid guid)
+    public static void LogTransactionTaskNotFinished(this ILogger logger, Guid guid, TaskStatus status, bool isCancelled, bool isCompleted, bool isFaulted)
     {
         if (logger.IsEnabled(LogLevel.Error))
         {
             logger.Log(
                 logLevel: LogLevel.Error,
                 eventId: new EventId(EventIds.TransactionTaskNotFinished, nameof(EventIds.TransactionTaskNotFinished)),
-                message: "{Guid} | Firestore transaction have not finished.",
-                args: [guid]
+                message: "{Guid} | Firestore transaction have not finished ({Status}, IsCancelled = {IsCancelled}, IsCompleted = {IsCompleted}, IsFaulted = {IsFaulted}).",
+                args: [guid, status, isCancelled, isCompleted, isFaulted]
             );
         }
     }

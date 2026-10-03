@@ -11,29 +11,6 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore;
 
 public sealed partial class FirestoreDataTransaction : IDataTransaction
 {
-#if NETSTANDARD2_1
-    private static async Task<bool> WaitForAsync(Task task, TimeSpan timeout)
-    {
-        await Task.WhenAny(task, Task.Delay(timeout));
-        if (task.IsCompletedSuccessfully)
-        {
-            return true;
-        }
-        if (task.IsFaulted || task.IsCanceled)
-        {
-            await task;
-            return true; // dummy
-        }
-        return false;
-    }
-#else
-    private static async Task<bool> WaitForAsync(Task task, TimeSpan timeout)
-    {
-        await task.WaitAsync(timeout);
-        return task.IsCompletedSuccessfully;
-    }
-#endif
-
     private readonly Channel<Message> _queue = Channel.CreateUnbounded<Message>(new UnboundedChannelOptions
     {
         AllowSynchronousContinuations = false,
@@ -123,17 +100,11 @@ public sealed partial class FirestoreDataTransaction : IDataTransaction
             {
                 _logger.LogTransactionWaitForMessages(Guid);
                 var message = await DoReceiveMessageAsync(tx.CancellationToken);
-                if (_logger.IsEnabled(LogLevel.Trace))
-                {
-                    _logger.LogTransactionExecutingMessage(Guid, message.ToString());
-                }
+                _logger.LogTransactionExecutingMessage(Guid, message.ToString());
                 stopwatch.Restart();
                 shouldExit = await message.RunAsync(tx);
                 stopwatch.Stop();
-                if (_logger.IsEnabled(LogLevel.Trace))
-                {
-                    _logger.LogTransactionExecutedMessage(Guid, message.ToString(), stopwatch.ElapsedMilliseconds, shouldExit);
-                }
+                _logger.LogTransactionExecutedMessage(Guid, message.ToString(), stopwatch.ElapsedMilliseconds, shouldExit);
             }
             _logger.LogTransactionCommitting(Guid);
         }
@@ -177,7 +148,7 @@ public sealed partial class FirestoreDataTransaction : IDataTransaction
         {
             foreach (var innerException in aexn.InnerExceptions)
             {
-                LogTxException(exn);
+                LogTxException(innerException);
             }
         }
         else
@@ -185,6 +156,42 @@ public sealed partial class FirestoreDataTransaction : IDataTransaction
             _logger.LogTransactionUnexpectedExceptionOnDispose(exn, Guid);
         }
     }
+
+#if NETSTANDARD2_1
+    private static async Task<bool> WaitForAsync(Task task, TimeSpan timeout)
+    {
+        await Task.WhenAny(task, Task.Delay(timeout));
+        if (task.IsCompletedSuccessfully)
+        {
+            return true;
+        }
+        if (task.IsFaulted || task.IsCanceled)
+        {
+            await task;
+            return true; // dummy
+        }
+        return false;
+    }
+#else
+    private async Task<bool> WaitForAsync(Task task, TimeSpan timeout)
+    {
+        try
+        {
+            await task.WaitAsync(timeout);
+            if (task.IsCompletedSuccessfully)
+            {
+                return true;
+            }
+            _logger.LogTransactionWaitFailed(Guid, task.Status, task.IsCanceled, task.IsCompleted, task.IsFaulted);
+            return task.IsCompletedSuccessfully;
+        }
+        catch (TimeoutException)
+        {
+            _logger.LogTransactionWaitTimeout(Guid, task.Status, task.IsCanceled, task.IsCompleted, task.IsFaulted);
+            return false;
+        }
+    }
+#endif
 
     private bool WaitNoThrow(int milliseconds)
     {
@@ -264,7 +271,7 @@ public sealed partial class FirestoreDataTransaction : IDataTransaction
                 _cancellation.Cancel();
                 if (!WaitNoThrow(milliseconds: 200))
                 {
-                    _logger.LogTransactionTaskNotFinished(Guid);
+                    _logger.LogTransactionTaskNotFinished(Guid, _task.Status, _task.IsCanceled, _task.IsCompleted, _task.IsFaulted);
                 }
             }
             _queue.Writer.Complete();
@@ -288,7 +295,7 @@ public sealed partial class FirestoreDataTransaction : IDataTransaction
                 _cancellation.Cancel();
                 if (!await WaitNoThrowAsync(timeout: TimeSpan.FromMilliseconds(200)))
                 {
-                    _logger.LogTransactionTaskNotFinished(Guid);
+                    _logger.LogTransactionTaskNotFinished(Guid, _task.Status, _task.IsCanceled, _task.IsCompleted, _task.IsFaulted);
                 }
             }
             _queue.Writer.Complete();
