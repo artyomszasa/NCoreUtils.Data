@@ -6,6 +6,7 @@ public class FirestoreConversionOptionsBuilder
 {
     public static FirestoreConversionOptionsBuilder FromOptions(FirestoreConversionOptions source)
     {
+        Preconditions.ThrowIfNull(source);
         var builder = new FirestoreConversionOptionsBuilder
         {
             StrictMode = source.StrictMode,
@@ -22,6 +23,7 @@ public class FirestoreConversionOptionsBuilder
 
     public FirestoreEnumHandling EnumHandling { get; set; }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1002:Do not expose generic lists", Justification = "List is intended here.")]
     public List<FirestoreValueConverter> Converters { get; } = [];
 
     public FirestoreConversionOptionsBuilder SetStrictMode(bool strictMode)
@@ -50,6 +52,7 @@ public class FirestoreConversionOptionsBuilder
 
     public FirestoreConversionOptionsBuilder AddConverters(params FirestoreValueConverter[] converters)
     {
+        Preconditions.ThrowIfNull(converters);
         foreach (var converter in converters)
         {
             Converters.Add(converter);

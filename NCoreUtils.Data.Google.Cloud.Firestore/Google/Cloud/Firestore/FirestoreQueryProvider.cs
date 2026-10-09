@@ -1,11 +1,7 @@
-using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using System.Linq.Expressions;
-using System.Threading;
-using System.Threading.Tasks;
+using System.Runtime.CompilerServices;
 using Google.Cloud.Firestore;
 using Microsoft.Extensions.Logging;
 using NCoreUtils.Data.Google.Cloud.Firestore.Expressions;
@@ -17,6 +13,57 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore;
 
 public partial class FirestoreQueryProvider : QueryProviderBase
 {
+    private static async IAsyncEnumerable<DocumentSnapshot> MergeStream(
+        PrefetchAsyncEnumerator<DocumentSnapshot>[] enumerators,
+        IComparer<DocumentSnapshot> comparer,
+        int offset,
+        int? limit)
+    {
+        var consumed = 0;
+        // NOTE: split query my result in duplicates --> elemets matched by more than one query
+        // To handle this we track emitted item ids and skip duplicates
+        var consumedIds = new HashSet<string>();
+        var candidates = enumerators.MapToArray(static _ => new Maybe<DocumentSnapshot>());
+        while (!limit.HasValue || consumed < offset + limit.Value)
+        {
+            // fill
+            for (var i = 0; i < candidates.Length; ++i)
+            {
+                candidates[i] = await enumerators[i].GetCurrentAsync().ConfigureAwait(false);
+            }
+            // select
+            var selectedIndex = -1;
+            DocumentSnapshot? selectedValue = default;
+            for (var i = 0; i < candidates.Length; ++i)
+            {
+                if (candidates[i].TryGetValue(out var doc))
+                {
+                    // first candidate or another value "comes earlier"
+                    if (selectedValue is null || -1 == comparer.Compare(doc!, selectedValue))
+                    {
+
+                        selectedIndex = i;
+                        selectedValue = doc;
+                    }
+                }
+            }
+            // check out of candidates
+            if (selectedValue is null)
+            {
+                yield break;
+            }
+            // consume and yield the value (if not already yield)
+            enumerators[selectedIndex].Consume();
+            if (consumedIds.Add(selectedValue.Id))
+            {
+                if (consumed++ >= offset)
+                {
+                    yield return selectedValue;
+                }
+            }
+        }
+    }
+
     protected ILogger Logger { get; }
 
     protected IFirestoreConfiguration Configuration { get; }
@@ -25,7 +72,7 @@ public partial class FirestoreQueryProvider : QueryProviderBase
 
     protected IFirestoreDbAccessor DbAccessor { get; }
 
-    protected FirestoreMaterializer Materializer { get; }
+    protected internal FirestoreMaterializer Materializer { get; }
 
     public FirestoreQueryProvider(
         ILogger<FirestoreQueryProvider> logger,
@@ -41,10 +88,12 @@ public partial class FirestoreQueryProvider : QueryProviderBase
         Materializer = materializer ?? throw new ArgumentNullException(nameof(materializer));
     }
 
+    [SuppressMessage("Performance", "CA1848:Use the LoggerMessage delegates", Justification = "TODO")]
     protected virtual void LogFirestoreQuery(FirestoreQuery query)
     {
         if (Logger.IsEnabled(LogLevel.Debug))
         {
+            Preconditions.ThrowIfNull(query);
             Logger.LogDebug(
                 "Executing firestore query: {{ Collection = {Collection}, Conditions = [{Conditions}], Ordering = [{Ordering}], Offset = {Offset}, Limit = {Limit} }}.",
                 query.Collection,
@@ -73,10 +122,11 @@ public partial class FirestoreQueryProvider : QueryProviderBase
 
     protected virtual bool TryCreateFilteredQuery(
         FirestoreDb db,
-        FirestoreQuery source,
+        [NotNull] FirestoreQuery source,
         [MaybeNullWhen(false)] out Query query,
         out FirestoreMultiQuery multiQuery)
     {
+        Preconditions.ThrowIfNull(db);
         ValidateQuery(source);
         if (SplitConditionsIfRequired(source, out multiQuery))
         {
@@ -93,7 +143,7 @@ public partial class FirestoreQueryProvider : QueryProviderBase
 
     protected virtual bool TryCreateUnboundQuery(
         FirestoreDb db,
-        FirestoreQuery source,
+        [NotNull] FirestoreQuery source,
         [MaybeNullWhen(false)] out Query query,
         out FirestoreMultiQuery multiQuery)
     {
@@ -124,6 +174,7 @@ public partial class FirestoreQueryProvider : QueryProviderBase
 
     protected virtual IComparer<DocumentSnapshot> CreateDocumentComparer(FirestoreQuery query)
     {
+        Preconditions.ThrowIfNull(query);
         IComparer<DocumentSnapshot>? comparer = default;
         foreach (var by in query.Ordering)
         {
@@ -218,11 +269,11 @@ public partial class FirestoreQueryProvider : QueryProviderBase
         {
             return Task.FromResult(false);
         }
-        return DbAccessor.ExecuteAsync(async db =>
+        return DbAccessor.ExecuteAsync(async (db, tx, cancellationToken) =>
         {
             if (TryCreateUnboundQuery(db, q, out var query, out var mq))
             {
-                return await DoExecuteAny(this, query, q, cancellationToken);
+                return await DoExecuteAny(this, tx, query, q, cancellationToken).ConfigureAwait(false);
             }
             // If query has been split true is returned if any of the split queries returns true.
             foreach (var q1 in mq.Queries)
@@ -231,26 +282,33 @@ public partial class FirestoreQueryProvider : QueryProviderBase
                 {
                     throw new InvalidOperationException("Should never happen (query has already been splitted).");
                 }
-                if (await DoExecuteAny(this, query, q1, cancellationToken))
+                if (await DoExecuteAny(this, tx, query, q1, cancellationToken).ConfigureAwait(false))
                 {
                     return true;
                 }
             }
             return false;
-        });
+        }, cancellationToken);
 
-        static async Task<bool> DoExecuteAny(FirestoreQueryProvider self, Query query, FirestoreQuery q, CancellationToken cancellationToken)
+        static async Task<bool> DoExecuteAny(FirestoreQueryProvider self, Transaction? tx, Query query, FirestoreQuery q, CancellationToken cancellationToken)
         {
-            query.Limit(1);
+            query = query.Limit(1);
             self.LogFirestoreQuery(q);
-            var snapshot = await query.GetSnapshotAsync(cancellationToken);
+            var snapshot = tx is null
+                ? await query.GetSnapshotAsync(cancellationToken).ConfigureAwait(false)
+                : await tx.GetSnapshotAsync(query, cancellationToken).ConfigureAwait(false);
             return snapshot.Count > 0;
         }
     }
 
     protected override Task<int> ExecuteCount<TElement>(IQueryable<TElement> source, CancellationToken cancellationToken)
 #if NET6_0_OR_GREATER
-        => DbAccessor.ExecuteAsync(async db => (int)await CountQueryAsync(db, Cast(source), cancellationToken));
+        => DbAccessor.ExecuteAsync(
+            async (db, tx, cancellationToken) => (int)(tx is null
+                ? await CountQueryAsync(db, Cast(source), cancellationToken).ConfigureAwait(false)
+                : await CountQueryAsync(db, tx, Cast(source), cancellationToken).ConfigureAwait(false)),
+            cancellationToken
+        );
 #else
         => throw new NotSupportedException("Executing .Count(...) would result in querying all entities.");
 #endif
@@ -269,7 +327,7 @@ public partial class FirestoreQueryProvider : QueryProviderBase
 
     protected override async Task<TElement> ExecuteSingle<TElement>(IQueryable<TElement> source, CancellationToken cancellationToken)
     {
-        var items = await ExecuteQuery(source.Skip(0).Take(2)).ToListAsync(cancellationToken);
+        var items = await ExecuteQuery(source.Skip(0).Take(2)).ToListAsync(cancellationToken).ConfigureAwait(false);
         return items.Count switch
         {
             0 => throw new InvalidOperationException("Sequence contains no elements."),
@@ -280,7 +338,7 @@ public partial class FirestoreQueryProvider : QueryProviderBase
 
     protected override async Task<TElement> ExecuteSingleOrDefault<TElement>(IQueryable<TElement> source, CancellationToken cancellationToken)
     {
-        var items = await ExecuteQuery(source.Skip(0).Take(2)).ToListAsync(cancellationToken);
+        var items = await ExecuteQuery(source.Skip(0).Take(2)).ToListAsync(cancellationToken).ConfigureAwait(false);
         return items.Count switch
         {
             0 => default!,
@@ -295,14 +353,82 @@ public partial class FirestoreQueryProvider : QueryProviderBase
         FirestoreQuery<TElement> q,
         CancellationToken cancellationToken)
     {
-        if (TryCreateUnboundQuery(db, q, out var query, out var mq))
+        if (TryCreateUnboundQuery(db, q, out var query, out _))
         {
-            var snapshot = await query.Count().GetSnapshotAsync(cancellationToken);
+            var snapshot = await query.Count().GetSnapshotAsync(cancellationToken).ConfigureAwait(false);
+            return snapshot.Count ?? 0;
+        }
+        throw new NotSupportedException("Only simple (natively supported by Firestore) queries are supported.");
+    }
+
+    protected virtual async Task<long> CountQueryAsync<TElement>(
+        FirestoreDb db,
+        Transaction tx,
+        FirestoreQuery<TElement> q,
+        CancellationToken cancellationToken)
+    {
+        Preconditions.ThrowIfNull(tx);
+        if (TryCreateUnboundQuery(db, q, out var query, out _))
+        {
+            var snapshot = await tx.GetSnapshotAsync(query.Count(), cancellationToken).ConfigureAwait(false);
             return snapshot.Count ?? 0;
         }
         throw new NotSupportedException("Only simple (natively supported by Firestore) queries are supported.");
     }
 #endif
+
+    protected virtual async IAsyncEnumerable<DocumentSnapshot> FetchInsideTransactionAsync<TElement>(
+        FirestoreDb db,
+        Transaction tx,
+        FirestoreQuery<TElement> q,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        Preconditions.ThrowIfNull(db);
+        Preconditions.ThrowIfNull(tx);
+        Preconditions.ThrowIfNull(q);
+        if (TryCreateUnboundQuery(db, q, out var query, out var mq))
+        {
+            if (q.Offset > 0)
+            {
+                query = query.Offset(q.Offset);
+            }
+            if (q.Limit.HasValue)
+            {
+                query = query.Limit(q.Limit.Value);
+            }
+            // apply fields selection
+            var normalFieldPaths = q.Selector.CollectFirestorePaths();
+            var selectPaths = q.ShadowFields.Count == 0
+                ? normalFieldPaths.ToArray()
+                : [.. normalFieldPaths, .. q.ShadowFields];
+            query = query.Select(selectPaths);
+            LogFirestoreQuery(q);
+            var snapshot = await query.GetSnapshotAsync(cancellationToken).ConfigureAwait(false);
+            foreach (var item in snapshot)
+            {
+                yield return item;
+            }
+        }
+        // when query is split we execute all queries concurrently maintaining order of the results
+        // offset and limit are applied on the resulting enumeration on the client side.
+        var enumerators = mq.Queries.MapToArray(q1 =>
+        {
+            if (!TryCreateUnboundQuery(db, q1, out var query, out _))
+            {
+                throw new InvalidOperationException("Should never happen (query has already been split).");
+            }
+            // FIXME: apply selection
+            LogFirestoreQuery(q1);
+            return new PrefetchAsyncEnumerator<DocumentSnapshot>(
+                new PagedQueryEnumerable(query, tx, pageSize: 10),
+                cancellationToken
+            );
+        });
+        await foreach (var item in MergeStream(enumerators, CreateDocumentComparer(q), q.Offset, q.Limit).ConfigureAwait(false))
+        {
+            yield return item;
+        }
+    }
 
     protected virtual IAsyncEnumerable<DocumentSnapshot> StreamQueryAsync<TElement>(
         FirestoreDb db,
@@ -320,9 +446,10 @@ public partial class FirestoreQueryProvider : QueryProviderBase
                 query = query.Limit(q.Limit.Value);
             }
             // apply fields selection
+            var normalFieldPaths = q.Selector.CollectFirestorePaths();
             var selectPaths = q.ShadowFields.Count == 0
-                ? q.Selector.CollectFirestorePaths().ToArray()
-                : q.Selector.CollectFirestorePaths().Concat(q.ShadowFields).ToArray();
+                ? normalFieldPaths.ToArray()
+                : [.. normalFieldPaths, .. q.ShadowFields];
             query = query.Select(selectPaths);
             LogFirestoreQuery(q);
             return query.StreamAsync(cancellationToken);
@@ -331,70 +458,20 @@ public partial class FirestoreQueryProvider : QueryProviderBase
         // offset and limit are applied on the resulting enumeration on the client side.
         var enumerators = mq.Queries.MapToArray(q1 =>
         {
-            if (!TryCreateUnboundQuery(db, q1, out var query, out var mq))
+            if (!TryCreateUnboundQuery(db, q1, out var query, out _))
             {
-                throw new InvalidOperationException("Should never happen (query has already been splitted).");
+                throw new InvalidOperationException("Should never happen (query has already been split).");
             }
             if (q1.Limit.HasValue)
             {
                 // also include elements to skip as ordering is performed on the client side
                 query = query.Limit(q1.Offset + q1.Limit.Value);
             }
+            // FIXME: apply selection
             LogFirestoreQuery(q1);
             return new PrefetchAsyncEnumerator<DocumentSnapshot>(query.StreamAsync(cancellationToken), cancellationToken);
         });
         return MergeStream(enumerators, CreateDocumentComparer(q), q.Offset, q.Limit);
-
-        static async IAsyncEnumerable<DocumentSnapshot> MergeStream(
-            PrefetchAsyncEnumerator<DocumentSnapshot>[] enumerators,
-            IComparer<DocumentSnapshot> comparer,
-            int offset,
-            int? limit)
-        {
-            var consumed = 0;
-            // NOTE: split query my result in duplicates --> elemets matched by more than one query
-            // To handle this we track emitted item ids and skip duplicates
-            var consumedIds = new HashSet<string>();
-            var candidates = enumerators.MapToArray(static _ => new Maybe<DocumentSnapshot>());
-            while (!limit.HasValue || consumed < offset + limit.Value)
-            {
-                // fill
-                for (var i = 0; i < candidates.Length; ++i)
-                {
-                    candidates[i] = await enumerators[i].GetCurrentAsync();
-                }
-                // select
-                var selectedIndex = -1;
-                DocumentSnapshot? selectedValue = default;
-                for (var i = 0; i < candidates.Length; ++i)
-                {
-                    if (candidates[i].TryGetValue(out var doc))
-                    {
-                        // first candidate or another value "comes earlier"
-                        if (selectedValue is null || -1 == comparer.Compare(doc!, selectedValue))
-                        {
-
-                            selectedIndex = i;
-                            selectedValue = doc;
-                        }
-                    }
-                }
-                // check out of candidates
-                if (selectedValue is null)
-                {
-                    yield break;
-                }
-                // consume and yield the value (if not already yield)
-                enumerators[selectedIndex].Consume();
-                if (consumedIds.Add(selectedValue.Id))
-                {
-                    if (consumed++ >= offset)
-                    {
-                        yield return selectedValue;
-                    }
-                }
-            }
-        }
     }
 
     protected override IAsyncEnumerable<TElement> ExecuteQuery<TElement>(IQueryable<TElement> source)
@@ -404,11 +481,21 @@ public partial class FirestoreQueryProvider : QueryProviderBase
         {
             return EmptyAsyncEnumerable<TElement>.Singleton;
         }
-        return LogExecution(new DelayedAsyncEnumerable<TElement>(cancellationToken => new ValueTask<IAsyncEnumerable<TElement>>(DbAccessor.ExecuteAsync(db =>
-        {
-            var stream = StreamQueryAsync(db, q, cancellationToken);
-            return Task.FromResult(Materializer.Materialize(stream, q.Selector));
-        }))));
+        return LogExecution(new DelayedAsyncEnumerable<TElement>(cancellationToken => new ValueTask<IAsyncEnumerable<TElement>>(
+            DbAccessor.ExecuteAsync(async (db, tx, cancellationToken) =>
+            {
+                if (tx is not null)
+                {
+                    var items = await FetchInsideTransactionAsync(db, tx, q, cancellationToken)
+                        .MatreializeAsync(Materializer, q.Selector)
+                        .ToArrayAsync(cancellationToken)
+                        .ConfigureAwait(false);
+                    return items.ToAsyncEnumerable();
+                }
+                var stream = StreamQueryAsync(db, q, cancellationToken);
+                return Materializer.Materialize(stream, q.Selector);
+            }, cancellationToken)
+        )));
     }
 
     /// <summary>
@@ -422,6 +509,7 @@ public partial class FirestoreQueryProvider : QueryProviderBase
     /// </returns>
     protected virtual bool SplitConditionsIfRequired(FirestoreQuery query, out FirestoreMultiQuery queries)
     {
+        Preconditions.ThrowIfNull(query);
         if (query.Conditions.TryGetFirst(c => c.Operation == FirestoreCondition.Op.ArrayContainsAny, out var c))
         {
             var wrapper = Model.GetCollectionWrapperFactory().Create(c.Value!);
@@ -458,8 +546,9 @@ public partial class FirestoreQueryProvider : QueryProviderBase
     /// unhandled in further processing.
     /// </summary>
     /// <param name="query">Query to validate.</param>
-    protected virtual void ValidateQuery(FirestoreQuery query)
+    protected virtual void ValidateQuery([NotNull] FirestoreQuery query)
     {
+        Preconditions.ThrowIfNull(query);
         if (query.Conditions.Count(c => c.Operation == FirestoreCondition.Op.ArrayContainsAny) > 1)
         {
             throw new InvalidOperationException("Firestore query may only include single ArrayContainsAny condition.");

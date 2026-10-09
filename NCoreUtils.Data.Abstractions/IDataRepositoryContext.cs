@@ -6,7 +6,7 @@ namespace NCoreUtils.Data;
 /// Defines data context functionality. Data context is shared between data repositories that uses same data
 /// source.
 /// </summary>
-public interface IDataRepositoryContext : IDisposable
+public interface IDataRepositoryContext : IDisposable, IAsyncDisposable
 {
     /// <summary>
     /// Gets current transaction. Returns <c>null</c> if no transaction is active.

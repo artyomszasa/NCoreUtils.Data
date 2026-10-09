@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-
 namespace NCoreUtils.Data.Google.Cloud.Firestore.Internal;
 
 public sealed class PrefetchAsyncEnumerator<T>(IAsyncEnumerable<T> source, CancellationToken cancellationToken) : IAsyncDisposable
@@ -23,7 +18,7 @@ public sealed class PrefetchAsyncEnumerator<T>(IAsyncEnumerable<T> source, Cance
         {
             return current.Just();
         }
-        if (await _source.MoveNextAsync())
+        if (await _source.MoveNextAsync().ConfigureAwait(false))
         {
             _current = _source.Current.Just();
             return _current;

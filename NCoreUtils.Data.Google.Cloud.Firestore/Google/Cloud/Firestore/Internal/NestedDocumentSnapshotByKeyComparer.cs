@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using Google.Cloud.Firestore;
 using Google.Cloud.Firestore.V1;
 

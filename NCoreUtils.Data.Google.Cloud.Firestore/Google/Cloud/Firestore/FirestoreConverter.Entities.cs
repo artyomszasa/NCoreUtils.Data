@@ -12,6 +12,7 @@ public partial class FirestoreConverter
     [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "All members of data entity has preserved types.")]
     protected Value EntityToValue(object? value, DataEntity entity)
     {
+        Preconditions.ThrowIfNull(entity);
         var map = new MapValue();
         foreach (var property in entity.Properties)
         {
@@ -58,6 +59,8 @@ public partial class FirestoreConverter
 
     protected object? EntityFromValue(Value value, DataEntity entity)
     {
+        Preconditions.ThrowIfNull(value);
+        Preconditions.ThrowIfNull(entity);
         if (value.ValueTypeCase == Value.ValueTypeOneofCase.NullValue)
         {
             return default;

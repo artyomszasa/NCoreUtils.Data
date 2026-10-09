@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using System.Reflection;
 using NCoreUtils.Data.Model;
 
@@ -9,14 +7,8 @@ internal static class EnumerableOptimizations
 {
     public static DataProperty FirstByProperty(this IReadOnlyList<DataProperty> source, PropertyInfo property)
     {
-        if (source is null)
-        {
-            throw new ArgumentNullException(nameof(source));
-        }
-        if (property is null)
-        {
-            throw new ArgumentNullException(nameof(property));
-        }
+        Preconditions.ThrowIfNull(source);
+        Preconditions.ThrowIfNull(property);
         foreach (var item in source)
         {
             if (item.Property == property)

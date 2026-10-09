@@ -18,6 +18,7 @@ public static class FirestoreMetadataExtensions
         this DataProperty property,
         [MaybeNullWhen(false)] out IFirestoreFieldExpressionFactory factory)
     {
+        Preconditions.ThrowIfNull(property);
         if (property.TryGetValue(KeyFieldExpressionFactory, out var boxed)
             && boxed is IFirestoreFieldExpressionFactory f)
         {
@@ -37,6 +38,7 @@ public static class FirestoreMetadataExtensions
         this DataModel model,
         [MaybeNullWhen(false)] out IEnumConversionHelpers helpers)
     {
+        Preconditions.ThrowIfNull(model);
         if (model.TryGetValue(KeyEnumConversionHelpers, out var boxed)
             && boxed is IEnumConversionHelpers h)
         {
@@ -56,6 +58,7 @@ public static class FirestoreMetadataExtensions
         this DataModel model,
         [MaybeNullWhen(false)] out ICollectionFactoryFactory factory)
     {
+        Preconditions.ThrowIfNull(model);
         if (model.TryGetValue(KeyCollectionFactoryFactory, out var boxed)
             && boxed is ICollectionFactoryFactory f)
         {
@@ -83,6 +86,8 @@ public static class FirestoreMetadataExtensions
 
     public static Build.DataModelBuilder OverrideCollectionFactoryFactory(this Build.DataModelBuilder builder, ICollectionFactoryFactory factory)
     {
+        Preconditions.ThrowIfNull(builder);
+        Preconditions.ThrowIfNull(factory);
         if (builder.GetMetadata(KeyCollectionFactoryFactory) is ICollectionFactoryFactory factory0)
         {
             builder.SetMetadata(KeyCollectionFactoryFactory, new CompositeCollectionFactoryFactory(factory0, factory));
@@ -98,6 +103,7 @@ public static class FirestoreMetadataExtensions
         this DataModel model,
         [MaybeNullWhen(false)] out ICollectionWrapperFactory factory)
     {
+        Preconditions.ThrowIfNull(model);
         if (model.TryGetValue(KeyCollectionWrapperFactory, out var boxed)
             && boxed is ICollectionWrapperFactory f)
         {
@@ -122,6 +128,8 @@ public static class FirestoreMetadataExtensions
 
     public static Build.DataModelBuilder OverrideCollectionWrapperFactory(this Build.DataModelBuilder builder, ICollectionWrapperFactory factory)
     {
+        Preconditions.ThrowIfNull(builder);
+        Preconditions.ThrowIfNull(factory);
         if (builder.GetMetadata(KeyCollectionWrapperFactory) is ICollectionWrapperFactory factory0)
         {
             builder.SetMetadata(KeyCollectionWrapperFactory, new CompositeCollectionWrapperFactory(factory0, factory));

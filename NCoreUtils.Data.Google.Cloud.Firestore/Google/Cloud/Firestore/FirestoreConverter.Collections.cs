@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using Google.Cloud.Firestore.V1;
 
 namespace NCoreUtils.Data.Google.Cloud.Firestore;
@@ -16,6 +17,7 @@ public partial class FirestoreConverter
             result = default;
             return false;
         }
+        Preconditions.ThrowIfNull(sourceType);
         // if enumerable?
         Type? elementType = sourceType.IsConstructedGenericType && sourceType.GetGenericTypeDefinition().Equals(typeof(IEnumerable<>))
             ? sourceType.GetGenericArguments()[0]
@@ -49,6 +51,9 @@ public partial class FirestoreConverter
         ICollectionFactory collectionFactory,
         bool strictMode)
     {
+        Preconditions.ThrowIfNull(value);
+        Preconditions.ThrowIfNull(targetType);
+        Preconditions.ThrowIfNull(collectionFactory);
         if (value.ValueTypeCase == Value.ValueTypeOneofCase.NullValue && !strictMode)
         {
             return collectionFactory.CreateBuilder().Build();
@@ -72,7 +77,7 @@ public partial class FirestoreConverter
             var builder = dictionaryFactory.CreateBuilder();
             foreach (var kv in value.MapValue.Fields)
             {
-                var key = keyType == typeof(string) ? kv.Key : Convert.ChangeType(kv.Key, keyType);
+                var key = keyType == typeof(string) ? kv.Key : Convert.ChangeType(kv.Key, keyType, CultureInfo.InvariantCulture);
                 var val = ConvertFromValue(kv.Value, valueType);
                 builder.Add(Activator.CreateInstance(keyValueType, key, val)!);
             }

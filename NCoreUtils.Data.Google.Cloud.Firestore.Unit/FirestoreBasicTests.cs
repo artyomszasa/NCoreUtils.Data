@@ -41,6 +41,28 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Unit
         });
 
         [Fact]
+        public Task PersistWithinTransactionAndQuery() => Scoped(async serviceProvider =>
+        {
+            var repo = serviceProvider.GetRequiredService<IDataRepository<SimpleItem, string>>();
+            var now = RoundToMilliseconds(DateTimeOffset.Now);
+            var item0 = new SimpleItem(default!, "string", 1, 1.0, true, now);
+            var item = await repo.Context.TransactedAsync(
+                isolationLevel: System.Data.IsolationLevel.Serializable,
+                () => repo.PersistAsync(item0)
+            );
+            Assert.NotNull(item);
+            Assert.NotNull(item.Id);
+            Assert.Equal(item0.StringValue, item.StringValue);
+            Assert.Equal(item0.NumValue, item.NumValue);
+            Assert.Equal(item0.FloatValue, item.FloatValue);
+            Assert.Equal(item0.BooleanValue, item.BooleanValue);
+            Assert.Equal(item0.DateValue, item.DateValue);
+            await repo.RemoveAsync(item, true);
+            item = await repo.LookupAsync(item.Id);
+            Assert.Null(item);
+        });
+
+        [Fact]
         public Task QueryByKey() => Scoped(async serviceProvider =>
         {
             var repo = serviceProvider.GetRequiredService<IDataRepository<SimpleItem, string>>();

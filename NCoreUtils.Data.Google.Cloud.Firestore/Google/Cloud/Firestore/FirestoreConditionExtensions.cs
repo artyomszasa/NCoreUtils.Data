@@ -34,7 +34,10 @@ public static class FireStoreConditionExtensions
     }
 
     public static Query Apply(this FirestoreCondition condition, Query query, IFirestoreConfiguration configuration, string collection)
-        => condition.Operation switch
+    {
+        Preconditions.ThrowIfNull(query);
+        Preconditions.ThrowIfNull(configuration);
+        return condition.Operation switch
         {
             FirestoreCondition.Op.NoOp => query,
             FirestoreCondition.Op.ArrayContains => query.WhereArrayContains(condition.Path, AdaptValues(query, collection, condition.Path, condition.Value!)),
@@ -48,4 +51,5 @@ public static class FireStoreConditionExtensions
             FirestoreCondition.Op.AlwaysFalse => throw new InvalidOperationException($"Always false condition not supposed to be applied"),
             _ => throw new InvalidOperationException($"Invalid condition {condition}."),
         };
+    }
 }

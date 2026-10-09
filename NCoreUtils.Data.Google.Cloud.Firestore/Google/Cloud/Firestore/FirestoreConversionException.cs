@@ -1,4 +1,3 @@
-using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.Serialization;
 using Google.Cloud.Firestore.V1;
@@ -8,6 +7,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore;
 #if !NET8_0_OR_GREATER
 [Serializable]
 #endif
+[SuppressMessage("Design", "CA1032:Implement standard exception constructors", Justification = "Used internally")]
 public class FirestoreConversionException : InvalidOperationException
 {
     private static string FormatMessage(Type requestedClrType, Value.ValueTypeOneofCase firestoreType)

@@ -66,7 +66,7 @@ public partial class FirestoreQueryProvider
             if (disposed.TrySet())
             {
                 Finish();
-                await source.DisposeAsync();
+                await source.DisposeAsync().ConfigureAwait(false);
                 StopwatchPool.Return(stopwatch);
             }
         }

@@ -11,6 +11,7 @@ using NCoreUtils.Data.Build;
 using NCoreUtils.Data.Google.Cloud.Firestore.Expressions;
 using NCoreUtils.Data.Google.Cloud.Firestore.Internal;
 using NCoreUtils.Data.Model;
+using FirestoreValue = global::Google.Cloud.Firestore.V1.Value;
 
 namespace NCoreUtils.Data.Google.Cloud.Firestore
 {
@@ -45,6 +46,8 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
         private readonly ConcurrentDictionary<Type, LambdaExpression> _initialSelectorCache = new();
 
+        private readonly ConcurrentDictionary<Type, Delegate> _readbackSelectorCache = new();
+
         public IFirestoreConfiguration Configuration { get; }
 
         public FirestoreConversionOptions ConversionOptions { get; }
@@ -65,7 +68,21 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
             Converter = new FirestoreConverter(LoggerFactory.CreateLogger<FirestoreConverter>(), ConversionOptions, this);
         }
 
-        protected Expression GetInitialSelector(
+        protected virtual Func<Dictionary<string, FirestoreValue>, string, T> CreateReadbackDelegate<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicConstructors)] T>()
+        {
+            var initialSelector = GetInitialSelector<T>();
+            var eArgValueDictionary = Expression.Parameter(typeof(Dictionary<string, FirestoreValue>), "__map");
+            var eArgId = Expression.Parameter(typeof(string), "__id");
+            var visitor = new FirestoreReadbackExpressionTransformer(eArgValueDictionary, eArgId);
+            var eBody = visitor.Visit(initialSelector.Body);
+            var expr = Expression.Lambda<Func<Dictionary<string, FirestoreValue>, string, T>>(
+                eBody,
+                [ eArgValueDictionary, eArgId ]
+            );
+            return expr.Compile();
+        }
+
+        protected virtual Expression GetInitialSelector(
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicConstructors)] Type type,
             Expression snapshot)
         {
@@ -110,6 +127,15 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 return (Expression<Func<DocumentSnapshot, T>>)boxed;
             }
             return (Expression<Func<DocumentSnapshot, T>>)_initialSelectorCache.GetOrAdd(typeof(T), _ => GetInitialSelectorNoCache<T>());
+        }
+
+        public Func<Dictionary<string, FirestoreValue>, string, T> GetReadbackDelegate<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicConstructors)] T>()
+        {
+            if (_readbackSelectorCache.TryGetValue(typeof(T), out var boxed))
+            {
+                return (Func<Dictionary<string, FirestoreValue>, string, T>)boxed;
+            }
+            return (Func<Dictionary<string, FirestoreValue>, string, T>)_readbackSelectorCache.GetOrAdd(typeof(T), _ => CreateReadbackDelegate<T>());
         }
 
         public bool TryGetDataEntity(Type type, [NotNullWhen(true)] out DataEntity? entity)

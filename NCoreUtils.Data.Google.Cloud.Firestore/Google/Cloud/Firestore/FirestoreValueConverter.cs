@@ -31,5 +31,5 @@ public abstract class FirestoreValueConverter<T> : FirestoreValueConverter
     internal sealed override Value ConvertToValue(object? value, Type sourceType, FirestoreConverter converter)
         => ToValue((T)value!, sourceType, converter);
 
-    public override bool CanConvert(Type type) => type.Equals(typeof(T));
+    public override bool CanConvert(Type type) => Preconditions.ThrowIfNull(type).Equals(typeof(T));
 }

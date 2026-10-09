@@ -1,9 +1,11 @@
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using Google.Cloud.Firestore;
 using Microsoft.Extensions.Logging;
 using NCoreUtils.Data.Google.Cloud.Firestore.Internal;
+using static NCoreUtils.Data.Google.Cloud.Firestore.Internal.FlowHelpers;
 
 using RpcException = Grpc.Core.RpcException;
 
@@ -11,6 +13,8 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore;
 
 public sealed partial class FirestoreDataTransaction : IDataTransaction
 {
+    private static TransactionOptions SingleAttempt { get; } = TransactionOptions.ForMaxAttempts(1);
+
     private readonly Channel<Message> _queue = Channel.CreateUnbounded<Message>(new UnboundedChannelOptions
     {
         AllowSynchronousContinuations = false,
@@ -18,19 +22,33 @@ public sealed partial class FirestoreDataTransaction : IDataTransaction
         SingleWriter = false
     });
 
+    private SpinLock _initSync = new(enableThreadOwnerTracking: false);
+
+    private SpinLock _continuationSync = new(enableThreadOwnerTracking: false);
+
     private readonly CancellationTokenSource _cancellation = new();
 
-    private readonly Task _task;
 
     private readonly ILogger _logger;
 
     private readonly FirestoreDataRepositoryContext _context;
 
+    private readonly FirestoreDb _db;
+
+    private Task? _task;
+
+    private int _isStarted;
+
     private int _isCompleted;
 
     private int _isDisposed;
 
-    public Guid Guid => Guid.NewGuid();
+    private TaskCompletionSource? _onCompleted;
+
+    private TaskCompletionSource? _onFailed;
+
+    [SuppressMessage("Naming", "CA1720:Identifier contains type name", Justification = "Intended")]
+    public Guid Guid { get; } = Guid.NewGuid();
 
     public bool IsCompleted => 0 != Interlocked.CompareExchange(ref _isCompleted, 0, 0);
 
@@ -43,12 +61,134 @@ public sealed partial class FirestoreDataTransaction : IDataTransaction
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _context = context ?? throw new ArgumentNullException(nameof(context));
-        _task = db.RunTransactionAsync(Run, TransactionOptions.ForMaxAttempts(1), _cancellation.Token);
+        _db = db ?? throw new ArgumentNullException(nameof(db));
+    }
+
+    private void HandleSuccess()
+    {
+        _logger.LogTransactionCommitted(Guid);
+        if (Exchange(ref _onCompleted, null) is TaskCompletionSource onCompleted)
+        {
+            onCompleted.TrySetResult();
+            // NOTE: _onFailed cannot have value if _onFailed was set.
+        }
+        else
+        {
+            _logger.LogTransactionNoOnCompletedOnSuccess(Guid);
+            if (Exchange(ref _onFailed, null) is TaskCompletionSource onFailed)
+            {
+                // NOTE: when abort completion is expected (which should happen when AbortTransactionException
+                // is thrown) mark the abort completion as cancelled..
+                onFailed.TrySetCanceled();
+            }
+        }
+    }
+
+    private void HandleAbortion(AbortTransactionException exn)
+    {
+        _logger.LogTransactionRollback(Guid);
+        if (Exchange(ref _onFailed, null) is TaskCompletionSource onFailed)
+        {
+            // NOTE: intended rollback should not emit exception, instead it triggers the failed completion.
+            onFailed.TrySetResult();
+            // NOTE: _onCompleted cannot have value if _onFailed was set.
+        }
+        else
+        {
+            _logger.LogTransactionNoOnFailedOnRollbak(Guid);
+            if (Exchange(ref _onCompleted, null) is TaskCompletionSource onCompleted)
+            {
+                // NOTE: when normal completion is expected (which should never happen when AbortTransactionException
+                // is thrown) propagate the exception..
+                onCompleted.TrySetException(exn);
+            }
+        }
+    }
+
+    private void HandleCancellation(OperationCanceledException exn)
+    {
+        _logger.LogTransactionCancelled(Guid);
+        if (Exchange(ref _onCompleted, null) is TaskCompletionSource onCompleted)
+        {
+            onCompleted.TrySetCanceled(exn.CancellationToken);
+        }
+        else if (Exchange(ref _onFailed, null) is TaskCompletionSource onFailed)
+        {
+            onFailed.TrySetCanceled(exn.CancellationToken);
+        }
+    }
+
+    private void HandleError(Exception exn)
+    {
+        _logger.LogTransactionFailedDueToException(exn, Guid);
+        if (Exchange(ref _onCompleted, null) is TaskCompletionSource onCompleted)
+        {
+            onCompleted.TrySetException(exn);
+        }
+        else if (Exchange(ref _onFailed, null) is TaskCompletionSource onFailed)
+        {
+            onFailed.TrySetException(exn);
+        }
+    }
+
+    private async Task RunTransactionWithCompletionAsync()
+    {
+        try
+        {
+            await _db.RunTransactionAsync(Run, SingleAttempt, _cancellation.Token).ConfigureAwait(false);
+            HandleSuccess();
+        }
+        catch (AbortTransactionException exn)
+        {
+            // transaction aborted explicitly
+            HandleAbortion(exn);
+        }
+        catch (OperationCanceledException exn)
+        {
+            // trasnaction failed due to cancellation
+            HandleCancellation(exn);
+        }
+        catch (Exception exn)
+        {
+            // Generic error occured during the transaction
+            HandleError(exn);
+            throw;
+        }
+        finally
+        {
+            Interlocked.CompareExchange(ref _isCompleted, 1, 0);
+            _queue.Writer.TryComplete();
+            // fail potentially pending messages (which should never happen when used as intended..)
+            while (_queue.Reader.TryRead(out var message))
+            {
+                message.Abort();
+            }
+        }
     }
 
     private bool DoPostMessage(Message message)
+    {
+        if (IsCompleted)
+        {
+            _logger.LogTransactionAttemptToSendMessageAfterCompletion(Guid);
+            return false;
+        }
+        var lockTaken = false;
+        _initSync.Enter(ref lockTaken);
+        try
+        {
+            _task ??= RunTransactionWithCompletionAsync();
+        }
+        finally
+        {
+            if (lockTaken)
+            {
+                _initSync.Exit();
+            }
+        }
         // NOTE: for unbounded channels it only returns false when channel is completed...
-        => _queue.Writer.TryWrite(message);
+        return _queue.Writer.TryWrite(message);
+    }
 
     private ValueTask<Message> DoReceiveMessageAsync(CancellationToken cancellationToken)
         => _queue.Reader.ReadAsync(cancellationToken);
@@ -59,12 +199,36 @@ public sealed partial class FirestoreDataTransaction : IDataTransaction
         {
             ThrowIfDisposed();
         }
-        if (!DoPostMessage(Message.Rollback))
+        var message = Message.RollbackAsync();
+        if (!DoPostMessage(message))
         {
             throw new InvalidOperationException("Failed to post rollback message.");
         }
         Unlink();
         Interlocked.CompareExchange(ref _isCompleted, 1, 0);
+        Task.Run(() => message.Completion.Task).GetAwaiter().GetResult();
+    }
+
+    private static async Task AwaitWithCancellation(TaskCompletionSource completion, CancellationToken cancellationToken)
+    {
+#pragma warning disable CA2007 // Consider calling ConfigureAwait on the awaited task
+        await using var _ = cancellationToken.Register(
+            boxed => ((TaskCompletionSource)boxed!).TrySetCanceled(),
+            completion
+        );
+#pragma warning restore CA2007 // Consider calling ConfigureAwait on the awaited task
+        await completion.Task.ConfigureAwait(false);
+    }
+
+    private static async Task<T> AwaitWithCancellation<T>(TaskCompletionSource<T> completion, CancellationToken cancellationToken)
+    {
+#pragma warning disable CA2007 // Consider calling ConfigureAwait on the awaited task
+        await using var _ = cancellationToken.Register(
+            boxed => ((TaskCompletionSource<T>)boxed!).TrySetCanceled(),
+            completion
+        );
+#pragma warning restore CA2007 // Consider calling ConfigureAwait on the awaited task
+        return await completion.Task.ConfigureAwait(false);
     }
 
     private ValueTask RollbackAsync(bool ignoreDisposed, CancellationToken cancellationToken)
@@ -80,17 +244,23 @@ public sealed partial class FirestoreDataTransaction : IDataTransaction
         }
         Unlink();
         Interlocked.CompareExchange(ref _isCompleted, 1, 0);
-        return new(message.Completion.Task);
+        return new(AwaitWithCancellation(message.Completion, cancellationToken));
     }
 
-    private async Task Run(Transaction tx)
+    private async Task<int> Run(Transaction tx)
     {
-        // force new task
+        if (0 != Interlocked.CompareExchange(ref _isStarted, 1, 0))
+        {
+            _logger.LogTransactionUnexpectedRetry(Guid);
+            throw new FirestoreTransactionExpiredException();
+        }
+        // force thread pool
         await Task.Yield();
         if (IsCompleted)
         {
             // SHOULD NEVER HAPPEN DUE TO TransactionOptions.MaxAttempts == 1
             _logger.LogTransactionUnexpectedRetry(Guid);
+            throw new FirestoreTransactionExpiredException();
         }
         try
         {
@@ -99,12 +269,12 @@ public sealed partial class FirestoreDataTransaction : IDataTransaction
             while (!shouldExit)
             {
                 _logger.LogTransactionWaitForMessages(Guid);
-                var message = await DoReceiveMessageAsync(tx.CancellationToken);
-                _logger.LogTransactionExecutingMessage(Guid, message.ToString());
+                var message = await DoReceiveMessageAsync(tx.CancellationToken).ConfigureAwait(false);
+                _logger.LogTransactionExecutingMessage(Guid, message);
                 stopwatch.Restart();
-                shouldExit = await message.RunAsync(tx);
+                shouldExit = await message.RunAsync(this, tx).ConfigureAwait(false);
                 stopwatch.Stop();
-                _logger.LogTransactionExecutedMessage(Guid, message.ToString(), stopwatch.ElapsedMilliseconds, shouldExit);
+                _logger.LogTransactionExecutedMessage(Guid, message, stopwatch.ElapsedMilliseconds, shouldExit);
             }
             _logger.LogTransactionCommitting(Guid);
         }
@@ -112,6 +282,7 @@ public sealed partial class FirestoreDataTransaction : IDataTransaction
         {
             Interlocked.CompareExchange(ref _isCompleted, 1, 0);
         }
+        return 0;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -177,7 +348,7 @@ public sealed partial class FirestoreDataTransaction : IDataTransaction
     {
         try
         {
-            await task.WaitAsync(timeout);
+            await task.WaitAsync(timeout).ConfigureAwait(false);
             if (task.IsCompletedSuccessfully)
             {
                 return true;
@@ -193,11 +364,12 @@ public sealed partial class FirestoreDataTransaction : IDataTransaction
     }
 #endif
 
+    [MemberNotNullWhen(false, nameof(_task))]
     private bool WaitNoThrow(int milliseconds)
     {
         try
         {
-            if (_task.IsCanceled)
+            if (_task is null || _task.IsCanceled)
             {
                 return true;
             }
@@ -214,11 +386,11 @@ public sealed partial class FirestoreDataTransaction : IDataTransaction
     {
         try
         {
-            if (_task.IsCanceled)
+            if (_task is null || _task.IsCanceled)
             {
                 return true;
             }
-            return await WaitForAsync(_task, timeout);
+            return await WaitForAsync(_task, timeout).ConfigureAwait(false);
         }
         catch (Exception exn)
         {
@@ -227,17 +399,75 @@ public sealed partial class FirestoreDataTransaction : IDataTransaction
         }
     }
 
+    internal void SetOnCompleted(TaskCompletionSource completion)
+    {
+        var lockTaken = false;
+        _continuationSync.Enter(ref lockTaken);
+        try
+        {
+            if (_onFailed is TaskCompletionSource onFailed)
+            {
+                _logger.LogTransactionOnCompletedSetWhenOnFailedHasBeenSet(Guid);
+                _onFailed = default;
+                onFailed.TrySetCanceled();
+            }
+            if (_onCompleted is not null)
+            {
+                _logger.LogTransactionMultipleOnCompleted(Guid);
+                _onCompleted.TrySetCanceled();
+            }
+            _onCompleted = completion;
+        }
+        finally
+        {
+            if (lockTaken)
+            {
+                _continuationSync.Exit();
+            }
+        }
+    }
+
+    internal void SetOnFailed(TaskCompletionSource completion)
+    {
+        var lockTaken = false;
+        _continuationSync.Enter(ref lockTaken);
+        try
+        {
+            if (_onCompleted is TaskCompletionSource onCompleted)
+            {
+                _logger.LogTransactionOnFailedSetWhenOnCompletedHasBeenSet(Guid);
+                _onCompleted = default;
+                onCompleted.TrySetCanceled();
+            }
+            if (_onFailed is not null)
+            {
+                _logger.LogTransactionMultipleOnFailed(Guid);
+                _onFailed.TrySetCanceled();
+            }
+            _onFailed = completion;
+        }
+        finally
+        {
+            if (lockTaken)
+            {
+                _continuationSync.Exit();
+            }
+        }
+    }
+
     [Obsolete("Use async version when possible")]
     public void Commit()
     {
         ThrowIfDisposed();
-        if (!DoPostMessage(Message.Commit))
+        var message = Message.CommitAsync();
+        if (!DoPostMessage(message))
         {
             throw new InvalidOperationException("Failed to post commit message.");
         }
         Unlink();
         // set early to avoid rollback in dispose
         Interlocked.CompareExchange(ref _isCompleted, 1, 0);
+        Task.Run(() => message.Completion.Task).GetAwaiter().GetResult();
     }
 
     public ValueTask CommitAsync(CancellationToken cancellationToken)
@@ -252,8 +482,45 @@ public sealed partial class FirestoreDataTransaction : IDataTransaction
         Unlink();
         // set early to avoid rollback in dispose
         Interlocked.CompareExchange(ref _isCompleted, 1, 0);
-        return new(message.Completion.Task);
+        return new(AwaitWithCancellation(message.Completion, cancellationToken));
     }
+
+    public Task<T> ExecuteAsync<T>(
+        Func<Transaction, CancellationToken, Task<T>> action,
+        CancellationToken cancellationToken)
+    {
+        var message = Message.Action(action, cancellationToken);
+        if (!DoPostMessage(message))
+        {
+            throw new InvalidOperationException("Failed to post action message.");
+        }
+        return AwaitWithCancellation(message.Completion, cancellationToken);
+    }
+
+    public Task ExecuteAsync(
+        Func<Transaction, CancellationToken, Task> action,
+        CancellationToken cancellationToken)
+    {
+        var message = Message.Action<bool>(async (tx, cancellationToken) =>
+        {
+            await action(tx, cancellationToken).ConfigureAwait(false);
+            return default;
+        }, cancellationToken);
+        if (!DoPostMessage(message))
+        {
+            throw new InvalidOperationException("Failed to post action message.");
+        }
+        return AwaitWithCancellation(message.Completion, cancellationToken);
+    }
+
+    [Obsolete("Use async version when possible")]
+    public void Rollback()
+        => Rollback(false);
+
+    public ValueTask RollbackAsync(CancellationToken cancellationToken)
+        => RollbackAsync(false, cancellationToken);
+
+    #region disposable
 
     public void Dispose()
     {
@@ -274,9 +541,9 @@ public sealed partial class FirestoreDataTransaction : IDataTransaction
                     _logger.LogTransactionTaskNotFinished(Guid, _task.Status, _task.IsCanceled, _task.IsCompleted, _task.IsFaulted);
                 }
             }
-            _queue.Writer.Complete();
+            _queue.Writer.TryComplete();
             _cancellation.Dispose();
-            try { _task.Dispose(); } catch { }
+            // try { _task.Dispose(); } catch { }
         }
     }
 
@@ -288,50 +555,42 @@ public sealed partial class FirestoreDataTransaction : IDataTransaction
             {
                 // still in transaction
                 _logger.LogTransactionRollbackOnDispose(Guid);
-                await RollbackAsync(true, CancellationToken.None);
-            }
-            if (!await WaitNoThrowAsync(timeout: TimeSpan.FromMilliseconds(20)))
-            {
-                _cancellation.Cancel();
-                if (!await WaitNoThrowAsync(timeout: TimeSpan.FromMilliseconds(200)))
+                using var rollbackCancellation = new CancellationTokenSource(TimeSpan.FromMilliseconds(250));
+                try
                 {
-                    _logger.LogTransactionTaskNotFinished(Guid, _task.Status, _task.IsCanceled, _task.IsCompleted, _task.IsFaulted);
+                    await RollbackAsync(true, rollbackCancellation.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+#if NET8_0_OR_GREATER
+                    await _cancellation.CancelAsync().ConfigureAwait(false);
+#else
+                    _cancellation.Cancel();
+#endif
+                }
+                catch (Exception exn)
+                {
+                    _logger.LogTransactionUnexpectedExceptionOnDispose(exn, Guid);
                 }
             }
-            _queue.Writer.Complete();
+            if (!await WaitNoThrowAsync(timeout: TimeSpan.FromMilliseconds(20)).ConfigureAwait(false))
+            {
+#if NET8_0_OR_GREATER
+                await _cancellation.CancelAsync().ConfigureAwait(false);
+#else
+                _cancellation.Cancel();
+#endif
+                if (!await WaitNoThrowAsync(timeout: TimeSpan.FromMilliseconds(200)).ConfigureAwait(false))
+                {
+                    // NOTE: if _task is null then WaitNoThrowAsync returns immideiately with true
+                    _logger.LogTransactionTaskNotFinished(Guid, _task!.Status, _task.IsCanceled, _task.IsCompleted, _task.IsFaulted);
+                }
+            }
+            _queue.Writer.TryComplete();
             _cancellation.Dispose();
-            try { _task.Dispose(); } catch { }
+            // try { _task.Dispose(); } catch { }
         }
     }
 
-    public Task<T> ExecuteAsync<T>(Func<Transaction, Task<T>> action)
-    {
-        var message = Message.Action(action);
-        if (!DoPostMessage(message))
-        {
-            throw new InvalidOperationException("Failed to post action message.");
-        }
-        return message.Completion.Task;
-    }
-
-    public Task ExecuteAsync(Func<Transaction, Task> action)
-    {
-        var message = Message.Action<bool>(async (tx) =>
-        {
-            await action(tx);
-            return default;
-        });
-        if (!DoPostMessage(message))
-        {
-            throw new InvalidOperationException("Failed to post action message.");
-        }
-        return message.Completion.Task;
-    }
-
-    [Obsolete("Use async version when possible")]
-    public void Rollback()
-        => Rollback(false);
-
-    public ValueTask RollbackAsync(CancellationToken cancellationToken)
-        => RollbackAsync(false, cancellationToken);
+    #endregion
 }

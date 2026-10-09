@@ -15,14 +15,12 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore;
 
 public partial class FirestoreQueryProvider
 {
+    [SuppressMessage("Performance", "CA1815:Override equals and operator equals on value types", Justification = "Irrelevant and never used")]
     protected readonly struct PathOrValue
     {
         public static PathOrValue CreatePath(FieldPath path)
         {
-            if (path is null)
-            {
-                throw new ArgumentNullException(nameof(path));
-            }
+            Preconditions.ThrowIfNull(path);
             return new PathOrValue(path, default!);
         }
 
@@ -93,6 +91,7 @@ public partial class FirestoreQueryProvider
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     protected static bool IsNumericType(Type type)
     {
+        Preconditions.ThrowIfNull(type);
         if (type.IsEnum)
         {
             return false;
@@ -107,6 +106,7 @@ public partial class FirestoreQueryProvider
 
     protected static void CreateCondition(FirestoreCondition.Op operation, (PathOrValue Left, PathOrValue Right) args, List<FirestoreCondition> conditions)
     {
+        Preconditions.ThrowIfNull(conditions);
         ref readonly PathOrValue left = ref args.Left;
         ref readonly PathOrValue right = ref args.Right;
         if (left.IsPath)
@@ -198,6 +198,7 @@ public partial class FirestoreQueryProvider
 #endif
     protected PathOrValue ExtractPathOrValue(ParameterExpression arg, Expression expression, out Type? memberType)
     {
+        Preconditions.ThrowIfNull(expression);
         if (expression.TryExtractConstant(out var value))
         {
             memberType = value?.GetType();
@@ -311,10 +312,15 @@ public partial class FirestoreQueryProvider
     }
 
     protected (PathOrValue Left, PathOrValue Right) ExtractPathOrValue(ParameterExpression arg, BinaryExpression expression)
-        => ExtractPathOrValue(arg, expression.Left, expression.Right);
+    {
+        Preconditions.ThrowIfNull(expression);
+        return ExtractPathOrValue(arg, expression.Left, expression.Right);
+    }
 
     protected virtual void ExtractConditions(ParameterExpression arg, List<FirestoreCondition> conditions, Expression expression)
     {
+        Preconditions.ThrowIfNull(conditions);
+        Preconditions.ThrowIfNull(expression);
         switch (expression)
         {
             case UnaryExpression un:
@@ -401,6 +407,7 @@ public partial class FirestoreQueryProvider
 
     protected virtual List<FirestoreCondition> ExtractConditions(LambdaExpression expression)
     {
+        Preconditions.ThrowIfNull(expression);
         try
         {
             var conditions = new List<FirestoreCondition>();

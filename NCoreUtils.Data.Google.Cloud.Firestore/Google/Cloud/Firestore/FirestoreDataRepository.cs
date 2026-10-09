@@ -8,38 +8,31 @@ using System.Threading.Tasks;
 using Google.Cloud.Firestore;
 using NCoreUtils.Data.Model;
 using NCoreUtils.Linq;
+using FirestoreValue = global::Google.Cloud.Firestore.V1.Value;
 
 namespace NCoreUtils.Data.Google.Cloud.Firestore;
 
-public abstract class FirestoreDataRepository : IDataRepository
+public abstract class FirestoreDataRepository(
+    FirestoreDataRepositoryContext context,
+    FirestoreQueryProvider queryProvider,
+    FirestoreModel model) : IDataRepository
 {
     IDataRepositoryContext IDataRepository.Context => Context;
 
-    protected FirestoreConverter Converter { get; }
+    protected FirestoreConverter Converter { get; } = model.Converter;
 
-    protected FirestoreModel Model { get; }
+    protected FirestoreModel Model { get; } = model ?? throw new ArgumentNullException(nameof(model));
 
     protected abstract DataEntity Entity { get; }
 
     public abstract Type ElementType { get; }
 
-    public FirestoreDataRepositoryContext Context { get; }
+    public FirestoreDataRepositoryContext Context { get; } = context ?? throw new ArgumentNullException(nameof(context));
 
-    public FirestoreQueryProvider QueryProvider { get; }
-
-    public FirestoreDataRepository(
-        FirestoreDataRepositoryContext context,
-        FirestoreQueryProvider queryProvider,
-        FirestoreModel model)
-    {
-        Context = context ?? throw new ArgumentNullException(nameof(context));
-        QueryProvider = queryProvider ?? throw new ArgumentNullException(nameof(queryProvider));
-        Model = model ?? throw new ArgumentNullException(nameof(model));
-        Converter = model.Converter;
-    }
+    public FirestoreQueryProvider QueryProvider { get; } = queryProvider ?? throw new ArgumentNullException(nameof(queryProvider));
 
     [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "All members of data entity has preserved types.")]
-    protected virtual Dictionary<string, object> PopulateDTO(
+    protected virtual Dictionary<string, FirestoreValue> PopulateDTO(
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] Type type,
         object data)
     {
@@ -47,7 +40,7 @@ public abstract class FirestoreDataRepository : IDataRepository
         {
             throw new InvalidOperationException($"Unable to populate data for {type} as it has not been registered.");
         }
-        var d = new Dictionary<string, object>();
+        var d = new Dictionary<string, FirestoreValue>();
         var key = entity.Key;
         foreach (var prop in entity.Properties)
         {
@@ -80,6 +73,7 @@ public class FirestoreDataRepository<[DynamicallyAccessedMembers(DynamicallyAcce
         FirestoreModel model)
         : base(context, queryProvider, model)
     {
+        Preconditions.ThrowIfNull(model);
         if (!model.TryGetDataEntity(typeof(TData), out var entity))
         {
             throw new InvalidOperationException($"Unable to create firestore data respository for {typeof(TData)} as it has not been registered.");
@@ -87,7 +81,7 @@ public class FirestoreDataRepository<[DynamicallyAccessedMembers(DynamicallyAcce
         Entity = entity;
     }
 
-    protected virtual async Task<string> InsertAsync(TData item, CancellationToken cancellationToken = default)
+    protected virtual async Task<TData> InsertAsync(TData item, CancellationToken cancellationToken = default)
     {
         var tx = Context.CurrentTransaction;
         if (tx is null)
@@ -97,25 +91,26 @@ public class FirestoreDataRepository<[DynamicallyAccessedMembers(DynamicallyAcce
                 ? Context.Db.Collection(Entity.Name).Document()
                 : Context.Db.Collection(Entity.Name).Document(item.Id);
             var data = PopulateDTO(typeof(TData), item);
-            var res = await docref.CreateAsync(data, cancellationToken);
-            return docref.Id;
+            var res = await docref.CreateAsync(data, cancellationToken).ConfigureAwait(false);
+            return Model.GetReadbackDelegate<TData>()(data, docref.Id);
         }
         else
         {
-            return await tx.ExecuteAsync(tx =>
+            return await tx.ExecuteAsync((tx, cancellationToken) =>
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 // ID may be user-defined
                 var docref = string.IsNullOrEmpty(item.Id)
                     ? tx.Database.Collection(Entity.Name).Document()
                     : tx.Database.Collection(Entity.Name).Document(item.Id);
                 var data = PopulateDTO(typeof(TData), item);
                 tx.Create(docref, data);
-                return Task.FromResult(docref.Id);
-            });
+                return Task.FromResult(Model.GetReadbackDelegate<TData>()(data, docref.Id));
+            }, cancellationToken).ConfigureAwait(false);
         }
     }
 
-    protected virtual async Task<string> UpdateAsync(TData item, CancellationToken cancellationToken = default)
+    protected virtual async Task<TData> UpdateAsync(TData item, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(item.Id))
         {
@@ -126,18 +121,19 @@ public class FirestoreDataRepository<[DynamicallyAccessedMembers(DynamicallyAcce
         {
             var docref = Context.Db.Collection(Entity.Name).Document(item.Id);
             var data = PopulateDTO(typeof(TData), item);
-            await docref.SetAsync(data, SetOptions.Overwrite, cancellationToken);
-            return docref.Id;
+            await docref.SetAsync(data, SetOptions.Overwrite, cancellationToken).ConfigureAwait(false);
+            return Model.GetReadbackDelegate<TData>()(data, docref.Id);
         }
         else
         {
-            return await tx.ExecuteAsync(tx =>
+            return await tx.ExecuteAsync((tx, cancellationToken) =>
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var docref = tx.Database.Collection(Entity.Name).Document();
                 var data = PopulateDTO(typeof(TData), item);
                 tx.Set(docref, data, SetOptions.Overwrite);
-                return Task.FromResult(docref.Id);
-            });
+                return Task.FromResult(Model.GetReadbackDelegate<TData>()(data, docref.Id));
+            }, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -153,27 +149,26 @@ public class FirestoreDataRepository<[DynamicallyAccessedMembers(DynamicallyAcce
     protected virtual ValueTask<bool> ShouldInsert(TData item, CancellationToken cancellationToken)
         => new(string.IsNullOrEmpty(item.Id));
 
-    public virtual Task<TData?> LookupAsync(string id, CancellationToken cancellationToken = default)
-        => ((FirestoreQuery<TData>)Items)
-            .AddCondition(new FirestoreCondition(
-                FieldPath.DocumentId,
-                FirestoreCondition.Op.EqualTo,
-                Context.Db.Collection(Entity.Name).Document(id)
-            ))
-            .FirstOrDefaultAsync(cancellationToken)!;
+    public virtual async Task<TData?> LookupAsync(string id, CancellationToken cancellationToken = default)
+    {
+        var docref = Context.Db.Collection(Entity.Name).Document(id);
+        var snapshot = await (Context.CurrentTransaction is FirestoreDataTransaction tx
+            ? tx.ExecuteAsync((ftx, cancellationToken) => ftx.GetSnapshotAsync(docref, cancellationToken), cancellationToken)
+            : docref.GetSnapshotAsync(cancellationToken)).ConfigureAwait(false);
+        if (!snapshot.Exists)
+        {
+            return default;
+        }
+        return QueryProvider.Materializer.Materialize(snapshot, Model.GetInitialSelector<TData>());
+    }
 
     public virtual async Task<TData> PersistAsync(TData item, CancellationToken cancellationToken = default)
     {
-        string id;
-        if (await ShouldInsert(item, cancellationToken))
+        if (await ShouldInsert(item, cancellationToken).ConfigureAwait(false))
         {
-            id = await InsertAsync(item, cancellationToken);
+            return await InsertAsync(item, cancellationToken).ConfigureAwait(false);
         }
-        else
-        {
-            id = await UpdateAsync(item, cancellationToken);
-        }
-        return (await LookupAsync(id, cancellationToken))!;
+        return await UpdateAsync(item, cancellationToken).ConfigureAwait(false);
     }
 
     public virtual Task RemoveAsync(TData item, bool force = false, CancellationToken cancellationToken = default)
@@ -188,11 +183,12 @@ public class FirestoreDataRepository<[DynamicallyAccessedMembers(DynamicallyAcce
             var docref = Context.Db.Collection(Entity.Name).Document(item.Id);
             return docref.DeleteAsync(cancellationToken: cancellationToken);
         }
-        return tx.ExecuteAsync(tx =>
+        return tx.ExecuteAsync((tx, cancellationToken) =>
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var docref = tx.Database.Collection(Entity.Name).Document(item.Id);
             tx.Delete(docref);
             return Task.CompletedTask;
-        });
+        }, cancellationToken);
     }
 }

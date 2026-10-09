@@ -9,6 +9,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
     {
         protected virtual bool TryEnumToValue(object? value, Type sourceType, [NotNullWhen(true)] out Value? result)
         {
+            Preconditions.ThrowIfNull(sourceType);
             if (sourceType.IsEnum)
             {
                 var helper = Model.GetEnumConversionHelpers().GetHelper(sourceType);
@@ -21,6 +22,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
         protected virtual bool TryEnumFromValue(Value value, Type targetType, out object? result)
         {
+            Preconditions.ThrowIfNull(targetType);
             if (targetType.IsEnum)
             {
                 result = FirestoreConvert.ToEnum(targetType, value, Options.StrictMode);

@@ -1,8 +1,5 @@
-using System;
 using System.Data;
 using System.Diagnostics.CodeAnalysis;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace NCoreUtils.Data.InMemory
 {
@@ -25,6 +22,15 @@ namespace NCoreUtils.Data.InMemory
         }
 
         public void Dispose() => _tx?.Dispose();
+
+        public ValueTask DisposeAsync()
+        {
+            if (_tx is NoopTransaction tx)
+            {
+                return tx.DisposeAsync();
+            }
+            return default;
+        }
 
         internal void ClearTransaction()
         {

@@ -1,7 +1,6 @@
-using System.Collections.Generic;
-
 namespace NCoreUtils.Data.Google.Cloud.Firestore;
 
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1815:Override equals and operator equals on value types", Justification = "Not relevant in this case")]
 public readonly struct FirestoreMultiQuery(IReadOnlyList<FirestoreQuery> queries)
 {
     private static readonly IReadOnlyList<FirestoreQuery> _noQueries = [];

@@ -9,7 +9,15 @@ using NCoreUtils.Data.Mapping;
 
 namespace NCoreUtils.Data.Google.Cloud.Firestore;
 
-public abstract class FirestoreQuery : IOrderedQueryable
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1010:Generic interface should also be implemented", Justification = "Abstract base class")]
+public abstract class FirestoreQuery(
+    FirestoreQueryProvider provider,
+    string collection,
+    ImmutableHashSet<FirestoreCondition> conditions,
+    ImmutableList<FirestoreOrdering> ordering,
+    ImmutableHashSet<FieldPath> shadowFields,
+    int offset,
+    int? limit) : IOrderedQueryable
 {
     #region IQueryable
 
@@ -19,46 +27,29 @@ public abstract class FirestoreQuery : IOrderedQueryable
 
     public Expression Expression => Expression.Constant(this);
 
-    public FirestoreQueryProvider Provider { get; }
+    public FirestoreQueryProvider Provider { get; } = provider;
 
     #endregion
 
     #region Firestore
 
-    public string Collection { get; }
+    public string Collection { get; } = collection;
 
     public abstract LambdaExpression SelectorExpression { get; }
 
-    public ImmutableHashSet<FirestoreCondition> Conditions { get; }
+    public ImmutableHashSet<FirestoreCondition> Conditions { get; } = conditions;
 
-    public ImmutableList<FirestoreOrdering> Ordering { get; }
+    public ImmutableList<FirestoreOrdering> Ordering { get; } = ordering;
 
-    public ImmutableHashSet<FieldPath> ShadowFields { get; }
+    public ImmutableHashSet<FieldPath> ShadowFields { get; } = shadowFields;
 
-    public int Offset { get; }
+    public int Offset { get; } = offset;
 
-    public int? Limit { get; }
+    public int? Limit { get; } = limit;
 
     #endregion
 
-    public FirestoreQuery(
-        FirestoreQueryProvider provider,
-        string collection,
-        ImmutableHashSet<FirestoreCondition> conditions,
-        ImmutableList<FirestoreOrdering> ordering,
-        ImmutableHashSet<FieldPath> shadowFields,
-        int offset,
-        int? limit)
-    {
-        Provider = provider;
-        Collection = collection;
-        Conditions = conditions;
-        Ordering = ordering;
-        ShadowFields = shadowFields;
-        Offset = offset;
-        Limit = limit;
-    }
-
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1033:Interface methods should be callable by child types", Justification = "Irrelevant")]
     IEnumerator IEnumerable.GetEnumerator() => GetBoxedEnumerator();
 
     protected abstract IEnumerator GetBoxedEnumerator();

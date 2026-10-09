@@ -1,9 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
-using System.Linq;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using Google.Cloud.Firestore.V1;
 using Google.Protobuf;
@@ -58,6 +53,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
         public static string? ToString(Value value, bool strict)
         {
+            Preconditions.ThrowIfNull(value);
             if (strict)
             {
                 return value.ValueTypeCase switch
@@ -84,6 +80,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
         public static sbyte ToSByte(Value value, bool strict)
         {
+            Preconditions.ThrowIfNull(value);
             if (strict)
             {
                 if (Value.ValueTypeOneofCase.IntegerValue == value.ValueTypeCase)
@@ -125,6 +122,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
         public static short ToInt16(Value value, bool strict)
         {
+            Preconditions.ThrowIfNull(value);
             if (strict)
             {
                 if (Value.ValueTypeOneofCase.IntegerValue == value.ValueTypeCase)
@@ -166,6 +164,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
         public static int ToInt32(Value value, bool strict)
         {
+            Preconditions.ThrowIfNull(value);
             if (strict)
             {
                 if (Value.ValueTypeOneofCase.IntegerValue == value.ValueTypeCase)
@@ -207,6 +206,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
         public static long ToInt64(Value value, bool strict)
         {
+            Preconditions.ThrowIfNull(value);
             if (strict)
             {
                 if (Value.ValueTypeOneofCase.IntegerValue == value.ValueTypeCase)
@@ -243,6 +243,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
         public static byte ToByte(Value value, bool strict)
         {
+            Preconditions.ThrowIfNull(value);
             if (strict)
             {
                 if (Value.ValueTypeOneofCase.IntegerValue == value.ValueTypeCase)
@@ -284,6 +285,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
         public static ushort ToUInt16(Value value, bool strict)
         {
+            Preconditions.ThrowIfNull(value);
             if (strict)
             {
                 if (Value.ValueTypeOneofCase.IntegerValue == value.ValueTypeCase)
@@ -325,6 +327,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
         public static uint ToUInt32(Value value, bool strict)
         {
+            Preconditions.ThrowIfNull(value);
             if (strict)
             {
                 if (Value.ValueTypeOneofCase.IntegerValue == value.ValueTypeCase)
@@ -366,6 +369,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
         public static ulong ToUInt64(Value value, bool strict)
         {
+            Preconditions.ThrowIfNull(value);
             if (strict)
             {
                 if (Value.ValueTypeOneofCase.IntegerValue == value.ValueTypeCase)
@@ -407,6 +411,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
         public static float ToSingle(Value value, bool strict)
         {
+            Preconditions.ThrowIfNull(value);
             if (strict)
             {
                 if (Value.ValueTypeOneofCase.DoubleValue == value.ValueTypeCase)
@@ -448,6 +453,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
         public static double ToDouble(Value value, bool strict)
         {
+            Preconditions.ThrowIfNull(value);
             if (strict)
             {
                 if (Value.ValueTypeOneofCase.DoubleValue == value.ValueTypeCase)
@@ -492,6 +498,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
         /// <returns>Converted value.</returns>
         public static decimal ToDecimal(Value value, bool strict)
         {
+            Preconditions.ThrowIfNull(value);
             if (strict)
             {
                 return value.ValueTypeCase switch
@@ -552,6 +559,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
             static long Parse(Value value, bool strict)
             {
+                Preconditions.ThrowIfNull(value);
                 return value.ValueTypeCase switch
                 {
                     Value.ValueTypeOneofCase.ArrayValue => value.ArrayValue
@@ -572,7 +580,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 {
                     return 0L;
                 }
-                if (!source.Contains('|'))
+                if (!source.Contains('|', StringComparison.Ordinal))
                 {
                     // single string
                     return Enum.Parse<TEnum>(source, true).ToInt64(CultureInfo.InvariantCulture);
@@ -588,6 +596,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
         public static object ToEnum(Type enumType, Value value, bool strict)
         {
+            Preconditions.ThrowIfNull(enumType);
             if (!enumType.IsEnum)
             {
                 throw new ArgumentException($"{enumType} is not an enum.", nameof(enumType));
@@ -599,6 +608,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
             static long Parse(Type enumType, Value value, bool strict)
             {
+                Preconditions.ThrowIfNull(value);
                 return value.ValueTypeCase switch
                 {
                     Value.ValueTypeOneofCase.ArrayValue => value.ArrayValue
@@ -619,7 +629,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
                 {
                     return 0L;
                 }
-                if (!source.Contains('|'))
+                if (!source.Contains('|', StringComparison.Ordinal))
                 {
                     // single string
                     return ((IConvertible)Enum.Parse(enumType, source, true)).ToInt64(CultureInfo.InvariantCulture);
@@ -636,6 +646,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
         public static DateTimeOffset ToDateTimeOffset(Value value, bool strict)
         {
+            Preconditions.ThrowIfNull(value);
             if (strict)
             {
                 return value.ValueTypeCase switch
@@ -666,6 +677,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
         public static DateTime ToDateTime(Value value, bool strict)
         {
+            Preconditions.ThrowIfNull(value);
             if (strict)
             {
                 return value.ValueTypeCase switch
@@ -706,6 +718,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
         /// <returns>Converted value.</returns>
         public static TimeSpan ToTimeSpan(Value value, bool strict)
         {
+            Preconditions.ThrowIfNull(value);
             if (strict)
             {
                 return value.ValueTypeCase switch
@@ -736,6 +749,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
         public static bool ToBoolean(Value value, bool strict)
         {
+            Preconditions.ThrowIfNull(value);
             if (strict)
             {
                 return value.ValueTypeCase switch
@@ -757,6 +771,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
         public static Guid ToGuid(Value value, bool strict)
         {
+            Preconditions.ThrowIfNull(value);
             if (strict)
             {
                 if (value.ValueTypeCase == Value.ValueTypeOneofCase.BytesValue)
@@ -894,6 +909,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
             static Value ToStringArray(TEnum value, IEnumInfo<TEnum> enumInfo)
             {
+                Preconditions.ThrowIfNull(enumInfo);
                 var arr = new ArrayValue();
                 foreach (TEnum v in enumInfo.GetValues())
                 {
@@ -910,6 +926,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore
 
             static Value ToNumberArray(TEnum value, IEnumInfo<TEnum> enumInfo)
             {
+                Preconditions.ThrowIfNull(enumInfo);
                 var arr = new ArrayValue();
                 foreach (TEnum v in enumInfo.GetValues())
                 {

@@ -3,7 +3,7 @@ using Google.Cloud.Firestore.V1;
 namespace NCoreUtils.Data.Google.Cloud.Firestore.Internal;
 
 public abstract class EnumConversionHelper<T> : IEnumConversionHelper
-    where T : struct, System.Enum
+    where T : struct, Enum
 {
     public abstract IEnumInfo<T> Info { get; }
 

@@ -81,6 +81,7 @@ public partial class FirestoreConverter(ILogger<FirestoreConverter> logger, Fire
 
     public object? ConvertFromValue(Value value, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type targetType)
     {
+        Preconditions.ThrowIfNull(value);
         // try custom converters
         if (Options.Converters.TryGetFirst(new CanConvertPredicate(targetType).Invoke, out var customConverter))
         {

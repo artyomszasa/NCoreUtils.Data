@@ -13,6 +13,7 @@ public partial class FirestoreConverter
             result = new Value { NullValue = default };
             return true;
         }
+        Preconditions.ThrowIfNull(sourceType);
         if (sourceType.Equals(typeof(string)))
         {
             result = FirestoreConvert.ToValue((string)value);
@@ -109,6 +110,7 @@ public partial class FirestoreConverter
             result = new Value { NullValue = default };
             return true;
         }
+        Preconditions.ThrowIfNull(targetType);
         if (targetType.Equals(typeof(string)))
         {
             result = FirestoreConvert.ToString(value, Options.StrictMode);

@@ -1,10 +1,10 @@
-using System;
 using Microsoft.Extensions.Logging;
 
 namespace NCoreUtils.Data.Google.Cloud.Firestore.Internal;
 
 public static partial class LoggingExtensions
 {
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1034:Nested types should not be visible", Justification = "Used internally, should not pollute global namespace")]
     public static class EventIds
     {
         public const int QueryExecuted = 2400;
@@ -30,6 +30,26 @@ public static partial class LoggingExtensions
         public const int TransactionWaitFailed = 2410;
 
         public const int TransactionWaitTimeout = 2411;
+
+        public const int TransactionMultipleOnCompleted = 2412;
+
+        public const int TransactionOnCompletedSetWhenOnFailedHasBeenSet = 2413;
+
+        public const int TransactionMultipleOnFailed = 2414;
+
+        public const int TransactionOnFailedSetWhenOnCompletedHasBeenSet = 2415;
+
+        public const int TransactionNoOnFailedOnRollbak = 2416;
+
+        public const int TransactionCommitted = 2417;
+
+        public const int TransactionNoOnCompletedOnSuccess = 2418;
+
+        public const int TransactionCancelled = 2419;
+
+        public const int TransactionFailedDueToException = 2420;
+
+        public const int TransactionAttemptToSendMessageAfterCompletion = 2421;
     }
 
 #if NET6_0_OR_GREATER
@@ -55,7 +75,7 @@ public static partial class LoggingExtensions
         Level = LogLevel.Trace,
         Message = "{Guid} | Executing message {Message}."
     )]
-    public static partial void LogTransactionExecutingMessage(this ILogger logger, Guid guid, string? message);
+    public static partial void LogTransactionExecutingMessage(this ILogger logger, Guid guid, ISpanFormattable message);
 
     [LoggerMessage(
         EventId = EventIds.TransactionExecutedMessage,
@@ -63,7 +83,7 @@ public static partial class LoggingExtensions
         Level = LogLevel.Trace,
         Message = "{Guid} | Executed message {Message} ({ElapsedMilliseconds}ms) => {Result}.",
         SkipEnabledCheck = false)]
-    public static partial void LogTransactionExecutedMessage(this ILogger logger, Guid guid, string? message, long elapsedMilliseconds, bool result);
+    public static partial void LogTransactionExecutedMessage(this ILogger logger, Guid guid, ISpanFormattable message, long elapsedMilliseconds, bool result);
 
     [LoggerMessage(
         EventId = EventIds.TransactionCommitting,
@@ -72,6 +92,30 @@ public static partial class LoggingExtensions
         Message = "{Guid} | Committing firestore transaction."
     )]
     public static partial void LogTransactionCommitting(this ILogger logger, Guid guid);
+
+    [LoggerMessage(
+        EventId = EventIds.TransactionCommitted,
+        EventName = nameof(EventIds.TransactionCommitted),
+        Level = LogLevel.Debug,
+        Message = "{Guid} | Firestore transaction has been committed."
+    )]
+    public static partial void LogTransactionCommitted(this ILogger logger, Guid guid);
+
+    [LoggerMessage(
+        EventId = EventIds.TransactionCancelled,
+        EventName = nameof(EventIds.TransactionCancelled),
+        Level = LogLevel.Debug,
+        Message = "{Guid} | Firestore transaction has been cancelled."
+    )]
+    public static partial void LogTransactionCancelled(this ILogger logger, Guid guid);
+
+    [LoggerMessage(
+        EventId = EventIds.TransactionFailedDueToException,
+        EventName = nameof(EventIds.TransactionFailedDueToException),
+        Level = LogLevel.Debug,
+        Message = "{Guid} | Firestore transaction has faild due to exception."
+    )]
+    public static partial void LogTransactionFailedDueToException(this ILogger logger, Exception exn, Guid guid);
 
     [LoggerMessage(
         EventId = EventIds.TransactionRollbackOnDispose,
@@ -129,6 +173,62 @@ public static partial class LoggingExtensions
         SkipEnabledCheck = false)]
     public static partial void LogTransactionWaitTimeout(this ILogger logger, Guid guid, TaskStatus status, bool isCancelled, bool isCompleted, bool isFaulted);
 
+    [LoggerMessage(
+        EventId = EventIds.TransactionMultipleOnCompleted,
+        EventName = nameof(EventIds.TransactionMultipleOnCompleted),
+        Level = LogLevel.Warning,
+        Message = "{Guid} | OnCompleted set multiple times, cancelling earlier completion.",
+        SkipEnabledCheck = false)]
+    public static partial void LogTransactionMultipleOnCompleted(this ILogger logger, Guid guid);
+
+    [LoggerMessage(
+        EventId = EventIds.TransactionOnCompletedSetWhenOnFailedHasBeenSet,
+        EventName = nameof(EventIds.TransactionOnCompletedSetWhenOnFailedHasBeenSet),
+        Level = LogLevel.Warning,
+        Message = "{Guid} | OnCompleted set when OnFailed has been set, cancelling failure completion.",
+        SkipEnabledCheck = false)]
+    public static partial void LogTransactionOnCompletedSetWhenOnFailedHasBeenSet(this ILogger logger, Guid guid);
+
+    [LoggerMessage(
+        EventId = EventIds.TransactionMultipleOnFailed,
+        EventName = nameof(EventIds.TransactionMultipleOnFailed),
+        Level = LogLevel.Warning,
+        Message = "{Guid} | OnFailed set multiple times, cancelling earlier completion.",
+        SkipEnabledCheck = false)]
+    public static partial void LogTransactionMultipleOnFailed(this ILogger logger, Guid guid);
+
+    [LoggerMessage(
+        EventId = EventIds.TransactionOnFailedSetWhenOnCompletedHasBeenSet,
+        EventName = nameof(EventIds.TransactionOnFailedSetWhenOnCompletedHasBeenSet),
+        Level = LogLevel.Warning,
+        Message = "{Guid} | OnFailed set when OnCompleted has been set, cancelling success completion.",
+        SkipEnabledCheck = false)]
+    public static partial void LogTransactionOnFailedSetWhenOnCompletedHasBeenSet(this ILogger logger, Guid guid);
+
+    [LoggerMessage(
+        EventId = EventIds.TransactionNoOnFailedOnRollbak,
+        EventName = nameof(EventIds.TransactionNoOnFailedOnRollbak),
+        Level = LogLevel.Warning,
+        Message = "{Guid} | OnFailed was not set on aborted transaction.",
+        SkipEnabledCheck = false)]
+    public static partial void LogTransactionNoOnFailedOnRollbak(this ILogger logger, Guid guid);
+
+    [LoggerMessage(
+        EventId = EventIds.TransactionNoOnCompletedOnSuccess,
+        EventName = nameof(EventIds.TransactionNoOnCompletedOnSuccess),
+        Level = LogLevel.Warning,
+        Message = "{Guid} | OnCompleted was not set on successfull transaction.",
+        SkipEnabledCheck = false)]
+    public static partial void LogTransactionNoOnCompletedOnSuccess(this ILogger logger, Guid guid);
+
+    [LoggerMessage(
+        EventId = EventIds.TransactionAttemptToSendMessageAfterCompletion,
+        EventName = nameof(EventIds.TransactionAttemptToSendMessageAfterCompletion),
+        Level = LogLevel.Warning,
+        Message = "{Guid} | Attempting to send message after the transaction has completed.",
+        SkipEnabledCheck = false)]
+    public static partial void LogTransactionAttemptToSendMessageAfterCompletion(this ILogger logger, Guid guid);
+
 #else
     public static void LogQueryExecuted(this ILogger logger, long elapsedMilliseconds)
     {
@@ -151,7 +251,7 @@ public static partial class LoggingExtensions
         }
     }
 
-    public static void LogTransactionExecutingMessage(this ILogger logger, Guid guid, string? message)
+    public static void LogTransactionExecutingMessage(this ILogger logger, Guid guid, IFormattable message)
     {
         if (logger.IsEnabled(LogLevel.Trace))
         {
@@ -164,7 +264,7 @@ public static partial class LoggingExtensions
         }
     }
 
-    public static void LogTransactionExecutedMessage(this ILogger logger, Guid guid, string? message, long elapsedMilliseconds, bool result)
+    public static void LogTransactionExecutedMessage(this ILogger logger, Guid guid, IFormattable message, long elapsedMilliseconds, bool result)
     {
         if (logger.IsEnabled(LogLevel.Trace))
         {
@@ -185,6 +285,45 @@ public static partial class LoggingExtensions
                 logLevel: LogLevel.Debug,
                 eventId: new EventId(EventIds.TransactionCommitting, nameof(EventIds.TransactionCommitting)),
                 message: "{Guid} | Committing firestore transaction.",
+                args: [guid]
+            );
+        }
+    }
+
+    public static void LogTransactionCommitted(this ILogger logger, Guid guid)
+    {
+        if (logger.IsEnabled(LogLevel.Debug))
+        {
+            logger.Log(
+                logLevel: LogLevel.Debug,
+                eventId: new EventId(EventIds.TransactionCommitted, nameof(EventIds.TransactionCommitted)),
+                message: "{Guid} | Firestore transaction has been committed.",
+                args: [guid]
+            );
+        }
+    }
+
+    public static void LogTransactionCancelled(this ILogger logger, Guid guid)
+    {
+        if (logger.IsEnabled(LogLevel.Debug))
+        {
+            logger.Log(
+                logLevel: LogLevel.Debug,
+                eventId: new EventId(EventIds.TransactionCancelled, nameof(EventIds.TransactionCancelled)),
+                message: "{Guid} | Firestore transaction has been cancelled.",
+                args: [guid]
+            );
+        }
+    }
+
+    public static void LogTransactionFailedDueToException(this ILogger logger, Exception exn, Guid guid)
+    {
+        if (logger.IsEnabled(LogLevel.Debug))
+        {
+            logger.Log(
+                logLevel: LogLevel.Debug,
+                eventId: new EventId(EventIds.TransactionFailedDueToException, nameof(EventIds.TransactionFailedDueToException)),
+                message: "{Guid} | Firestore transaction has faild due to exception.",
                 args: [guid]
             );
         }
@@ -256,5 +395,104 @@ public static partial class LoggingExtensions
             );
         }
     }
+
+    public static void LogTransactionMultipleOnCompleted(this ILogger logger, Guid guid)
+    {
+        if (logger.IsEnabled(LogLevel.Warning))
+        {
+            logger.Log(
+                logLevel: LogLevel.Warning,
+                eventId: new EventId(EventIds.TransactionMultipleOnCompleted, nameof(EventIds.TransactionMultipleOnCompleted)),
+                exception: default,
+                message: "{Guid} | OnCompleted set multiple times, cancelling earlier completion.",
+                args: [guid]
+            );
+        }
+    }
+
+    public static void LogTransactionOnCompletedSetWhenOnFailedHasBeenSet(this ILogger logger, Guid guid)
+    {
+        if (logger.IsEnabled(LogLevel.Warning))
+        {
+            logger.Log(
+                logLevel: LogLevel.Warning,
+                eventId: new EventId(EventIds.TransactionOnCompletedSetWhenOnFailedHasBeenSet, nameof(EventIds.TransactionOnCompletedSetWhenOnFailedHasBeenSet)),
+                exception: default,
+                message: "{Guid} | OnCompleted set when OnFailed has been set, cancelling failure completion.",
+                args: [guid]
+            );
+        }
+    }
+
+    public static void LogTransactionMultipleOnFailed(this ILogger logger, Guid guid)
+    {
+        if (logger.IsEnabled(LogLevel.Warning))
+        {
+            logger.Log(
+                logLevel: LogLevel.Warning,
+                eventId: new EventId(EventIds.TransactionMultipleOnFailed, nameof(EventIds.TransactionMultipleOnFailed)),
+                exception: default,
+                message: "{Guid} | OnFailed set multiple times, cancelling earlier completion.",
+                args: [guid]
+            );
+        }
+    }
+
+    public static void LogTransactionOnFailedSetWhenOnCompletedHasBeenSet(this ILogger logger, Guid guid)
+    {
+        if (logger.IsEnabled(LogLevel.Warning))
+        {
+            logger.Log(
+                logLevel: LogLevel.Warning,
+                eventId: new EventId(EventIds.TransactionOnFailedSetWhenOnCompletedHasBeenSet, nameof(EventIds.TransactionOnFailedSetWhenOnCompletedHasBeenSet)),
+                exception: default,
+                message: "{Guid} | OnFailed set when OnCompleted has been set, cancelling success completion.",
+                args: [guid]
+            );
+        }
+    }
+
+    public static void LogTransactionNoOnFailedOnRollbak(this ILogger logger, Guid guid)
+    {
+        if (logger.IsEnabled(LogLevel.Warning))
+        {
+            logger.Log(
+                logLevel: LogLevel.Warning,
+                eventId: new EventId(EventIds.TransactionNoOnFailedOnRollbak, nameof(EventIds.TransactionNoOnFailedOnRollbak)),
+                exception: default,
+                message: "{Guid} | OnFailed was not set on aborted transaction.",
+                args: [guid]
+            );
+        }
+    }
+
+    public static void LogTransactionNoOnCompletedOnSuccess(this ILogger logger, Guid guid)
+    {
+        if (logger.IsEnabled(LogLevel.Warning))
+        {
+            logger.Log(
+                logLevel: LogLevel.Warning,
+                eventId: new EventId(EventIds.TransactionNoOnCompletedOnSuccess, nameof(EventIds.TransactionNoOnCompletedOnSuccess)),
+                exception: default,
+                message: "{Guid} | OnCompleted was not set on successfull transaction.",
+                args: [guid]
+            );
+        }
+    }
+
+    public static void LogTransactionAttemptToSendMessageAfterCompletion(this ILogger logger, Guid guid)
+    {
+        if (logger.IsEnabled(LogLevel.Warning))
+        {
+            logger.Log(
+                logLevel: LogLevel.Warning,
+                eventId: new EventId(EventIds.TransactionAttemptToSendMessageAfterCompletion, nameof(EventIds.TransactionAttemptToSendMessageAfterCompletion)),
+                exception: default,
+                message: "{Guid} | Attempting to send message after the transaction has completed.",
+                args: [guid]
+            );
+        }
+    }
+
 #endif
 }

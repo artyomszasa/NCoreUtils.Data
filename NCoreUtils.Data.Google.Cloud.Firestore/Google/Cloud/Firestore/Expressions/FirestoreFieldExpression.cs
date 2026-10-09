@@ -11,23 +11,29 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Expressions;
 
 public abstract class FirestoreFieldExpression : Expression, IExtensionExpression
 {
-    private static readonly MethodInfo _mGetValue;
+    // private static readonly MethodInfo _mGetValue;
 
-    private static readonly MethodInfo _mContainsField;
+    // private static readonly MethodInfo _mContainsField;
 
     private static readonly PropertyInfo _pDocumentSnapshotId;
 
+    [SuppressMessage("Performance", "CA1810:Initialize reference type static fields inline", Justification = "Wooulld be very noisy")]
     static FirestoreFieldExpression()
     {
-        Expression<Func<DocumentSnapshot, FieldPath, Value>> e0 = (doc, name) => doc.GetValue<Value>(name);
-        _mGetValue = ((MethodCallExpression)e0.Body).Method;
-        Expression<Func<DocumentSnapshot, FieldPath, bool>> e1 = (doc, name) => doc.ContainsField(name);
-        _mContainsField = ((MethodCallExpression)e1.Body).Method;
+        // Expression<Func<DocumentSnapshot, FieldPath, Value>> e0 = (doc, name) => doc.GetValue<Value>(name);
+        // _mGetValue = ((MethodCallExpression)e0.Body).Method;
+        // Expression<Func<DocumentSnapshot, FieldPath, bool>> e1 = (doc, name) => doc.ContainsField(name);
+        // _mContainsField = ((MethodCallExpression)e1.Body).Method;
         Expression<Func<DocumentSnapshot, string>> e2 = doc => doc.Id;
         _pDocumentSnapshotId = (PropertyInfo)((MemberExpression)e2.Body).Member;
     }
 
     protected static Value CreateNullValueValue() => new() { NullValue = default };
+
+    internal static Value GetValueOrCreateNullValue(Dictionary<string, Value> map, string path)
+        => map.TryGetValue(path, out var value)
+            ? value
+            : CreateNullValueValue();
 
     public override bool CanReduce => true;
 
@@ -37,6 +43,10 @@ public abstract class FirestoreFieldExpression : Expression, IExtensionExpressio
 
     // FIXME: consider using single string as there is no use case where this field holds more than a single
     // value... At least right now...
+    /// <summary>
+    /// Raw path of the field, <see langword="null" /> only if the field refers to the ID (aka primary key) of the
+    /// entity.
+    /// </summary>
     public ImmutableList<string>? RawPath { get; }
 
     public FieldPath Path { get; }
@@ -59,6 +69,8 @@ public abstract class FirestoreFieldExpression : Expression, IExtensionExpressio
     }
 
     protected abstract Expression ReduceToNonExtension();
+
+    internal abstract Expression ToReadBackExpression(Expression valueDictionary, Expression id);
 
     public override Expression Reduce()
     {
@@ -84,13 +96,10 @@ public class FirestoreFieldExpression<[DynamicallyAccessedMembers(DynamicallyAcc
                 : CreateNullValueValue()
         );
 
-    protected override Expression ReduceToNonExtension()
-    {
-        return _template.Body
-            .SubstituteParameter(_template.Parameters[0], Instance)
-            .SubstituteParameter(_template.Parameters[1], Constant(Converter))
-            .SubstituteParameter(_template.Parameters[2], Constant(Path));
-    }
+    private static readonly Expression<Func<Dictionary<string, Value>, FirestoreConverter, string, T>> _readbackTemplate
+        = (map, converter, path) => converter.ConvertFromValue<T>(
+            GetValueOrCreateNullValue(map, path)
+        );
 
     private FirestoreFieldExpression(FirestoreConverter converter, Expression instance, ImmutableList<string>? rawPath, FieldPath path)
         : base(converter, instance, rawPath, path, typeof(T))
@@ -108,8 +117,37 @@ public class FirestoreFieldExpression<[DynamicallyAccessedMembers(DynamicallyAcc
         : this(converter, instance, default, specialPath)
     { }
 
+    protected override Expression ReduceToNonExtension()
+    {
+        return _template.Body
+            .SubstituteParameter(_template.Parameters[0], Instance)
+            .SubstituteParameter(_template.Parameters[1], Constant(Converter))
+            .SubstituteParameter(_template.Parameters[2], Constant(Path));
+    }
+
+    internal override Expression ToReadBackExpression(Expression valueDictionary, Expression id)
+    {
+        if (RawPath is null)
+        {
+            if (Path.Equals(FieldPath.DocumentId))
+            {
+                return id;
+            }
+            throw new InvalidOperationException($"Cannot convert field expression without raw path to readback expression.");
+        }
+        if (RawPath is not [var singlePathEntry])
+        {
+            throw new InvalidOperationException($"Cannot convert field expression for {string.Join('.', RawPath)} to readback expression.");
+        }
+        return _readbackTemplate.Body
+            .SubstituteParameter(_readbackTemplate.Parameters[0], valueDictionary)
+            .SubstituteParameter(_readbackTemplate.Parameters[1], Constant(Converter))
+            .SubstituteParameter(_readbackTemplate.Parameters[2], Constant(singlePathEntry));
+    }
+
     public override Expression AcceptNoReduce(ExpressionVisitor visitor)
     {
+        Preconditions.ThrowIfNull(visitor);
         var newInstance = visitor.Visit(Instance);
         return ReferenceEquals(newInstance, Instance)
             ? this

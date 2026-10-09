@@ -16,14 +16,6 @@ public abstract class DataRepositoryContext : IDataRepositoryContext
         get => CurrentTransaction;
     }
 
-    protected bool IsDisposed
-    {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [DebuggerStepThrough]
-        [ExcludeFromCodeCoverage]
-        get => 0 != _isDisposed;
-    }
-
     public DataTransaction? CurrentTransaction { get; protected set; }
 
     public abstract DbContext DbContext { get; }
@@ -32,34 +24,44 @@ public abstract class DataRepositoryContext : IDataRepositoryContext
     [DebuggerStepThrough]
     internal void ReleaseTransaction() => CurrentTransaction = null;
 
-    protected abstract void DisposeOnce(bool disposing);
+    public abstract ValueTask<IDataTransaction> BeginTransactionAsync(IsolationLevel isolationLevel, CancellationToken cancellationToken = default);
+
+    #region disposable
 
     protected virtual void Dispose(bool disposing)
     {
+        if (disposing && 0 == Interlocked.CompareExchange(ref _isDisposed, 1, 0))
+        {
+            CurrentTransaction?.Dispose();
+        }
+    }
+
+    protected virtual ValueTask DisposeAsyncCore()
+    {
         if (0 == Interlocked.CompareExchange(ref _isDisposed, 1, 0))
         {
-            DisposeOnce(disposing);
+            if (CurrentTransaction is DataTransaction tx)
+            {
+                return tx.DisposeAsync();
+            }
         }
+        return default;
     }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    [DebuggerStepThrough]
-    [ExcludeFromCodeCoverage]
-    protected void ThrowIfDisposed()
-    {
-        if (IsDisposed)
-        {
-            throw new ObjectDisposedException(this.GetType().Name);
-        }
-    }
-
-    public abstract ValueTask<IDataTransaction> BeginTransactionAsync(IsolationLevel isolationLevel, CancellationToken cancellationToken = default);
 
     public void Dispose()
     {
-        Dispose(true);
+        Dispose(disposing: true);
         GC.SuppressFinalize(this);
     }
+
+    public async ValueTask DisposeAsync()
+    {
+        await DisposeAsyncCore();
+        Dispose(disposing: false);
+        GC.SuppressFinalize(this);
+    }
+
+    #endregion
 }
 
 public sealed class DataRepositoryContext<TDbContext>(TDbContext dbContext)
@@ -69,8 +71,6 @@ public sealed class DataRepositoryContext<TDbContext>(TDbContext dbContext)
     readonly TDbContext _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
 
     public override DbContext DbContext => _dbContext;
-
-    protected override void DisposeOnce(bool disposing) => CurrentTransaction?.Dispose();
 
     public override async ValueTask<IDataTransaction> BeginTransactionAsync(IsolationLevel isolationLevel, CancellationToken cancellationToken = default)
     {

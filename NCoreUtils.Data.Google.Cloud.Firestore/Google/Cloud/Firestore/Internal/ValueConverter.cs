@@ -52,6 +52,8 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Internal
 
         public int Compare(Value left, Value right)
         {
+            Preconditions.ThrowIfNull(left);
+            Preconditions.ThrowIfNull(right);
             TypeOrder leftType = GetType(left);
             TypeOrder rightType = GetType(right);
             if (leftType != rightType)
@@ -144,7 +146,7 @@ namespace NCoreUtils.Data.Google.Cloud.Firestore.Internal
             bool rightMoveNext = rightIterator.MoveNext();
             while (leftMoveNext && rightMoveNext)
             {
-                int result = string.Compare(leftIterator.Current.Key, rightIterator.Current.Key);
+                int result = string.Compare(leftIterator.Current.Key, rightIterator.Current.Key, StringComparison.Ordinal);
                 if (result != 0)
                 {
                     return result;

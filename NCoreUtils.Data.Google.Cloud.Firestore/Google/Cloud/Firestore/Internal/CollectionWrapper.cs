@@ -22,6 +22,7 @@ public readonly struct CollectionSource<T>
 
 #else
 
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1815:Override equals and operator equals on value types", Justification = "Irrelevant here")]
 public readonly struct CollectionSource<T>
 {
     private readonly List<T>? _list;
@@ -82,15 +83,16 @@ public class AnyCollectionWrapper<T>(CollectionSource<T> source) : ICollectionWr
         : this(CollectionSource.Create(source))
     { }
 
-    public void SplitIntoChunks(int chunkSize, List<object> results)
+    public void SplitIntoChunks(int size, List<object> chunks)
     {
+        Preconditions.ThrowIfNull(chunks);
         var span = Span;
-        for (var offset = 0; offset < span.Length; offset += chunkSize)
+        for (var offset = 0; offset < span.Length; offset += size)
         {
-            var size = Math.Min(span.Length - offset, chunkSize);
-            var chunk = new T[size];
-            span[offset .. (offset + size)].CopyTo(chunk.AsSpan());
-            results.Add(chunk);
+            var minSize = Math.Min(span.Length - offset, size);
+            var chunk = new T[minSize];
+            span[offset .. (offset + minSize)].CopyTo(chunk.AsSpan());
+            chunks.Add(chunk);
         }
     }
 }

@@ -18,4 +18,6 @@ public sealed class RestDataRepositoryContext : IDataRepositoryContext
     }
 
     public void Dispose() { /* noop */ }
+
+    public ValueTask DisposeAsync() => default; // noop
 }

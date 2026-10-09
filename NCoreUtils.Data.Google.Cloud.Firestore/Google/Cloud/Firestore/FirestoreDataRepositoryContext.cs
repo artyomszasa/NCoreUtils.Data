@@ -1,13 +1,11 @@
-using System;
 using System.Data;
 using System.Diagnostics.CodeAnalysis;
-using System.Threading;
-using System.Threading.Tasks;
 using Google.Cloud.Firestore;
 using Microsoft.Extensions.Logging;
 
 namespace NCoreUtils.Data.Google.Cloud.Firestore;
 
+[SuppressMessage("Design", "CA1033:Interface methods should be callable by child types", Justification = "Should not be accessed from derived classes")]
 public class FirestoreDataRepositoryContext : IDataRepositoryContext, IFirestoreDbAccessor
 {
     private int _isDisposed;
@@ -20,7 +18,7 @@ public class FirestoreDataRepositoryContext : IDataRepositoryContext, IFirestore
 
     public FirestoreDb Db { get; }
 
-    public FirestoreDataTransaction? CurrentTransaction { get; }
+    public FirestoreDataTransaction? CurrentTransaction => _tx;
 
     public FirestoreDataRepositoryContext(ILoggerFactory loggerFactory, FirestoreDb db)
     {
@@ -31,36 +29,32 @@ public class FirestoreDataRepositoryContext : IDataRepositoryContext, IFirestore
     ValueTask<IDataTransaction> IDataRepositoryContext.BeginTransactionAsync(IsolationLevel isolationLevel, CancellationToken cancellationToken)
         => new(BeginTransaction(isolationLevel));
 
-    Task IFirestoreDbAccessor.ExecuteAsync(Func<FirestoreDb, Task> action)
+    Task IFirestoreDbAccessor.ExecuteAsync(
+        Func<FirestoreDb, Transaction?, CancellationToken, Task> action,
+        CancellationToken cancellationToken)
     {
         var tx = Interlocked.CompareExchange(ref _tx, null, null);
         if (tx is null)
         {
-            return action(Db);
+            return action(Db, default, cancellationToken);
         }
-        return tx.ExecuteAsync(ftx => action(ftx.Database));
+        return tx.ExecuteAsync((ftx, cancellationToken) => action(ftx.Database, ftx, cancellationToken), cancellationToken);
     }
 
-    Task<T> IFirestoreDbAccessor.ExecuteAsync<T>(Func<FirestoreDb, Task<T>> action)
+    Task<T> IFirestoreDbAccessor.ExecuteAsync<T>(
+        Func<FirestoreDb, Transaction?, CancellationToken, Task<T>> action,
+        CancellationToken cancellationToken)
     {
         var tx = Interlocked.CompareExchange(ref _tx, null, null);
         if (tx is null)
         {
-            return action(Db);
+            return action(Db, default, cancellationToken);
         }
-        return tx.ExecuteAsync(ftx => action(ftx.Database));
+        return tx.ExecuteAsync((ftx, cancellationToken) => action(ftx.Database, ftx, cancellationToken), cancellationToken);
     }
 
     internal void Unlink(FirestoreDataTransaction tx)
         => Interlocked.CompareExchange(ref _tx, default, tx);
-
-    protected virtual void Dispose(bool disposing)
-    {
-        if (0 == Interlocked.CompareExchange(ref _isDisposed, 1, 0))
-        {
-            _tx?.Dispose();
-        }
-    }
 
     [SuppressMessage("Microsoft.Performance", "CA1801:ReviewUnusedParameters", MessageId = "isolationLevel")]
     [SuppressMessage("Style", "IDE0060:Remove unused parameter", MessageId = "isolationLevel")]
@@ -83,9 +77,40 @@ public class FirestoreDataRepositoryContext : IDataRepositoryContext, IFirestore
         return tx;
     }
 
+    #region disposable
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (0 == Interlocked.CompareExchange(ref _isDisposed, 1, 0))
+        {
+            _tx?.Dispose();
+        }
+    }
+
+    protected virtual ValueTask DisposeAsyncCore()
+    {
+        if (0 == Interlocked.CompareExchange(ref _isDisposed, 1, 0))
+        {
+            if (_tx is FirestoreDataTransaction tx)
+            {
+                return tx.DisposeAsync();
+            }
+        }
+        return default;
+    }
+
     public void Dispose()
     {
-        Dispose(true);
+        Dispose(disposing: true);
         GC.SuppressFinalize(this);
     }
+
+    public async ValueTask DisposeAsync()
+    {
+        await DisposeAsyncCore().ConfigureAwait(false);
+        Dispose(disposing: false);
+        GC.SuppressFinalize(this);
+    }
+
+    #endregion
 }

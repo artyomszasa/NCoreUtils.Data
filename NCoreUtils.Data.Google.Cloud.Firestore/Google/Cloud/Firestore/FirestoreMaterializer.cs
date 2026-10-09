@@ -12,6 +12,7 @@ public class FirestoreMaterializer
     // FIXME: Expression parameterization and cache.
     protected virtual Func<DocumentSnapshot, T> CompileMaterialization<T>(Expression<Func<DocumentSnapshot, T>> expression)
     {
+        Preconditions.ThrowIfNull(expression);
         if (expression.Body is CtorExpression ctorExpression && ctorExpression.Arguments.All(e => e is FirestoreFieldExpression ex && ex.Instance.Equals(expression.Parameters[0])))
         {
             if (_ctorExpressionCache.TryGetValue(ctorExpression.Ctor, out var boxed))

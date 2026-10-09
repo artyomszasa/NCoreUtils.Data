@@ -109,10 +109,7 @@ public readonly struct FirestoreCondition : IEquatable<FirestoreCondition>
     {
         if (operation != Op.AlwaysFalse)
         {
-            if (path is null)
-            {
-                throw new ArgumentNullException(nameof(path));
-            }
+            Preconditions.ThrowIfNull(path);
         }
         Path = path;
         Operation = operation;
